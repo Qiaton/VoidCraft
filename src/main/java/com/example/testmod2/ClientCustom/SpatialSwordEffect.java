@@ -24,15 +24,7 @@ public class SpatialSwordEffect {
         }
 
     }
-    @SubscribeEvent
-    public static void renderVoidOverlay(RenderGuiLayerEvent.Post event) {
-        if (!IN_VOID) return;
-        int color = 0x028894c5; // ARGB: 半透明蓝色
-        int width = event.getGuiGraphics().guiWidth();
-        int height = event.getGuiGraphics().guiHeight();
 
-        event.getGuiGraphics().fill(0, 0, width, height, color);
-    }
 
 
 

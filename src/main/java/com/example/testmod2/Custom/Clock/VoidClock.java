@@ -13,6 +13,8 @@ import java.util.UUID;
 @EventBusSubscriber
 public class VoidClock {
     public static Map<UUID,Integer> VOID_TICKS = new HashMap<>();
+    public static Map<UUID,Integer> VOID_PLAYER_TICKS = new HashMap<>();
+    public static final int VOID_PLAYER_FLASH_TOTAL = 3;
     @SubscribeEvent
     public static void VOID_TICK_SERVER(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
@@ -29,5 +31,25 @@ public class VoidClock {
             VOID_TICKS.remove(uuid);//删除数据表 优化性能
         }
     }
-
+ @SubscribeEvent
+    public static void VOID_PLAYER_TICK_CLIENT(PlayerTickEvent.Post event) {
+        Player player = event.getEntity();
+        if(!player.level().isClientSide()){
+            return;
+        }
+        UUID uuid = player.getUUID();
+        Integer ticks = VOID_PLAYER_TICKS.get(uuid);
+        if(ticks != null && ticks > 0){
+            VOID_PLAYER_TICKS.put(uuid,ticks-1);
+        }
+        else{
+            VOID_PLAYER_TICKS.remove(uuid);//删除数据表 优化性能
+        }
+    }
+    public static void VOID_PLAYER_FLASH(Player player){
+        if(!(VOID_PLAYER_TICKS.get(player.getUUID()) == null)){
+            VOID_PLAYER_TICKS.put(player.getUUID(),VOID_PLAYER_FLASH_TOTAL);
+        }
+        VOID_PLAYER_TICKS.put(player.getUUID(),VOID_PLAYER_FLASH_TOTAL);
+    }
 }

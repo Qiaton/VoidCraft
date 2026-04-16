@@ -4,6 +4,7 @@ import com.example.testmod2.Block.ModBlock;
 import com.example.testmod2.Block.ModBlockItem;
 import com.example.testmod2.CreativeModeTab.CreativeModeTabs;
 import com.example.testmod2.Item.ModItem;
+import com.example.testmod2.Sound.ModSound;
 import net.neoforged.bus.api.IEventBus;
 
 import net.neoforged.fml.common.Mod;
@@ -17,7 +18,7 @@ public class TestMod2 {
         ModBlockItem.register(bus);
         ModItem.register(bus);
         ModAttachments.register(bus);
+        ModSound.register(bus);
     }
 
     }
-

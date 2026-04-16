@@ -3,8 +3,9 @@ package com.example.testmod2.Item.custom;
 import com.example.testmod2.ClientCustom.SpatialSwordEffect;
 import com.example.testmod2.Custom.Behavior.VoidEvents;
 import com.example.testmod2.Custom.Clock.VoidClock;
+import com.example.testmod2.Effect.VoidRingManager;
 import com.example.testmod2.ModAttachments;
-import net.minecraft.sounds.SoundEvents;
+import com.example.testmod2.Sound.ModSound;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -22,6 +23,12 @@ public class SpatialSword extends Item{
     public SpatialSword(Properties properties) {
         super(properties);//一键继承item的构造方法进行简单构造
     }
+
+    @Override
+    public boolean isFoil(ItemStack stack) {
+        return true;
+    }
+
     @Override
     public int getUseDuration(ItemStack stack, LivingEntity entity){    //设置物品使用时长
         return 99999;
@@ -41,11 +48,15 @@ public class SpatialSword extends Item{
                 level.playSound(
                         null,                                       //谁听不见
                         player.getX(), player.getY(), player.getZ(),      //声音播放的坐标
-                        SoundEvents.ENDERMAN_TELEPORT,                    //播放的声音事件
+                        ModSound.OUT_VOID.get(),                    //播放的声音事件
                         SoundSource.PLAYERS,                              //声音属于哪类（敌对生物 友好生物这种）
-                        1.0F,                                             //音量
+                        6.0F,                                             //音量
                         1.0F                                              //音高
                 );
+            }
+            else{
+                VoidRingManager.addRing(player.position().add(0,1.0,0));
+                VoidClock.VOID_PLAYER_FLASH(player);
             }
         }
 
@@ -63,11 +74,15 @@ public class SpatialSword extends Item{
             level.playSound(
                     null,                                       //谁听不见
                     player.getX(), player.getY(), player.getZ(),      //声音播放的坐标
-                    SoundEvents.ENDERMAN_TELEPORT,                    //播放的声音事件
+                    ModSound.ENTER_VOID.get(),                    //播放的声音事件
                     SoundSource.PLAYERS,                              //声音属于哪类（敌对生物 友好生物这种）
-                    1.0F,                                             //音量
+                    6.0F,                                             //音量
                     1.0F                                              //音高
             );
+        }
+        else{
+            VoidRingManager.addRing(player.position().add(0,1.0,0));
+            VoidClock.VOID_PLAYER_FLASH(player);
         }
         return InteractionResult.SUCCESS;
     }

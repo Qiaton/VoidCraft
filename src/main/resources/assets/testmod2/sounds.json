@@ -1,0 +1,26 @@
+{
+  "enter_void": {
+    "sounds": [
+      {
+        "name": "testmod2:enter_void",
+        "stream": false
+      }
+    ]
+  },
+  "out_void": {
+    "sounds": [
+      {
+        "name": "testmod2:outer_void",
+        "stream": false
+      }
+    ]
+  },
+  "in_void_long": {
+    "sounds": [
+      {
+        "name": "testmod2:in_void_long",
+        "stream": true
+      }
+    ]
+  }
+}
