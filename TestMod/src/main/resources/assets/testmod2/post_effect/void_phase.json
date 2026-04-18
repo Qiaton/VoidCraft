@@ -1,0 +1,48 @@
+{
+  "targets": {
+    "swap": {}
+  },
+  "passes": [
+    {
+      "vertex_shader": "minecraft:core/screenquad",
+      "fragment_shader": "testmod2:post/void_phase",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "minecraft:main",
+          "bilinear": true
+        },
+        {
+          "sampler_name": "SceneDepth",
+          "target": "minecraft:main",
+          "use_depth_buffer": true
+        },
+        {
+          "sampler_name": "PhaseTearData",
+          "location": "testmod2:phase_tear_data",
+          "width": 5,
+          "height": 9
+        },
+        {
+          "sampler_name": "PhaseTearMask",
+          "location": "testmod2:phase_tear_mask",
+          "width": 128,
+          "height": 1024
+        }
+      ],
+      "output": "swap"
+    },
+    {
+      "vertex_shader": "minecraft:core/screenquad",
+      "fragment_shader": "testmod2:post/void_copy",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "swap",
+          "bilinear": true
+        }
+      ],
+      "output": "minecraft:main"
+    }
+  ]
+}
