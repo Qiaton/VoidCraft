@@ -64,6 +64,7 @@ public class VoidRingInstance {
         private final float startHalfWidth;
         private final float peakHalfWidth;
         private final float endHalfWidth;
+        private final int peakHoldTicks;
         private final float glowAlpha;
         private final float coreAlpha;
         private final float distortionAlpha;
@@ -86,6 +87,7 @@ public class VoidRingInstance {
             this.startHalfWidth = builder.startHalfWidth;
             this.peakHalfWidth = builder.peakHalfWidth;
             this.endHalfWidth = builder.endHalfWidth;
+            this.peakHoldTicks = Mth.clamp(builder.peakHoldTicks, 0, Math.max(0, builder.durationTicks - 1));
             this.glowAlpha = builder.glowAlpha;
             this.coreAlpha = builder.coreAlpha;
             this.distortionAlpha = builder.distortionAlpha;
@@ -130,6 +132,10 @@ public class VoidRingInstance {
 
         public float endHalfWidth() {
             return this.endHalfWidth;
+        }
+
+        public int peakHoldTicks() {
+            return this.peakHoldTicks;
         }
 
         public float glowAlpha() {
@@ -198,6 +204,7 @@ public class VoidRingInstance {
             private float startHalfWidth = 0.42F; // 起始阶段白光半宽，越小越像先从细线亮起。
             private float peakHalfWidth = 1.85F; // 爆发阶段白光半宽，决定白光瞬间张开的最大宽度。
             private float endHalfWidth = 0.028F; // 收线阶段白光半宽，越小最后那条线越细。
+            private int peakHoldTicks = 1; // 白光到达最大形态后额外停留的时长，单位 tick。
             private float glowAlpha = 0.40F; // 预留的外发光透明度，当前渲染主体没有直接使用，主要保留给后续扩展和网络同步。
             private float coreAlpha = 0.96F; // 白光主体透明度。
             private float distortionAlpha = 1.92F; // 空间膜整体可见度/影响权重。
@@ -223,6 +230,7 @@ public class VoidRingInstance {
                 this.startHalfWidth = preset.startHalfWidth;
                 this.peakHalfWidth = preset.peakHalfWidth;
                 this.endHalfWidth = preset.endHalfWidth;
+                this.peakHoldTicks = preset.peakHoldTicks;
                 this.glowAlpha = preset.glowAlpha;
                 this.coreAlpha = preset.coreAlpha;
                 this.distortionAlpha = preset.distortionAlpha;
@@ -274,6 +282,11 @@ public class VoidRingInstance {
 
             public Builder endHalfWidth(float endHalfWidth) {
                 this.endHalfWidth = Math.max(0.001F, endHalfWidth);
+                return this;
+            }
+
+            public Builder peakHoldTicks(int peakHoldTicks) {
+                this.peakHoldTicks = Math.max(0, peakHoldTicks);
                 return this;
             }
 
