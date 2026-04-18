@@ -64,9 +64,13 @@ public class VoidRingRenderer {
     private static RenderMetrics computeMetrics(VoidRingInstance ring, float partialTick) {
         VoidRingInstance.Preset preset = ring.preset;
         float progress = ring.getProgress(partialTick);
-        float expand = smoothstep(0.0F, 0.18F, progress);
-        float collapse = smoothstep(0.20F, 1.0F, progress);
-        float fade = 1.0F - smoothstep(0.72F, 1.0F, progress);
+        float peakHoldRatio = Mth.clamp((float) preset.peakHoldTicks() / Math.max(1.0F, preset.durationTicks()), 0.0F, 0.70F);
+        float expandEnd = 0.18F;
+        float collapseStart = Mth.clamp(expandEnd + peakHoldRatio, expandEnd, 0.98F);
+        float expand = smoothstep(0.0F, expandEnd, progress);
+        float collapseTimeline = normalizedProgress(collapseStart, 1.0F, progress);
+        float collapse = smoothstep(0.0F, 1.0F, collapseTimeline);
+        float fade = 1.0F - smoothstep(0.60F, 1.0F, collapseTimeline);
 
         float burstHeight = Mth.lerp(expand, preset.startHalfHeight(), preset.peakHalfHeight());
         float burstWidth = Mth.lerp(expand, preset.startHalfWidth(), preset.peakHalfWidth());
@@ -74,8 +78,8 @@ public class VoidRingRenderer {
         float halfWidth = Mth.lerp(collapse, burstWidth, preset.endHalfWidth()) * ring.scale;
 
         float lineAlpha = preset.lineAlpha()
-                * smoothstep(0.30F, 0.82F, progress)
-                * (1.0F - smoothstep(0.90F, 1.0F, progress));
+                * smoothstep(0.18F, 0.78F, collapseTimeline)
+                * (1.0F - smoothstep(0.90F, 1.0F, collapseTimeline));
         float lineHalfWidth = Math.max(preset.endHalfWidth() * ring.scale, halfWidth * 0.35F);
 
         return new RenderMetrics(halfHeight, halfWidth, fade, lineAlpha, lineHalfWidth);
@@ -168,6 +172,13 @@ public class VoidRingRenderer {
         }
         float t = Mth.clamp((value - start) / (end - start), 0.0F, 1.0F);
         return t * t * (3.0F - 2.0F * t);
+    }
+
+    private static float normalizedProgress(float start, float end, float value) {
+        if (start >= end) {
+            return value >= end ? 1.0F : 0.0F;
+        }
+        return Mth.clamp((value - start) / (end - start), 0.0F, 1.0F);
     }
 
     private static int alphaToByte(float alpha) {
