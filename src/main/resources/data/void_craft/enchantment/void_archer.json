@@ -1,0 +1,23 @@
+{
+  "description": {
+    "translate": "enchantment.void_craft.void_archer"
+  },
+  "supported_items": "minecraft:bow",
+  "primary_items": "minecraft:bow",
+  "weight": 6,
+  "max_level": 3,
+  "min_cost": {
+    "base": 5,
+    "per_level_above_first": 8
+  },
+  "max_cost": {
+    "base": 20,
+    "per_level_above_first": 8
+  },
+  "anvil_cost": 5,
+  "slots": [
+    "mainhand",
+    "offhand"
+  ],
+  "effects": {}
+}

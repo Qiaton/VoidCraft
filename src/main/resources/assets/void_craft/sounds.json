@@ -1,0 +1,26 @@
+{
+  "enter_void": {
+    "sounds": [
+      {
+        "name": "void_craft:enter_void",
+        "stream": false
+      }
+    ]
+  },
+  "out_void": {
+    "sounds": [
+      {
+        "name": "void_craft:outer_void",
+        "stream": false
+      }
+    ]
+  },
+  "in_void_long": {
+    "sounds": [
+      {
+        "name": "void_craft:in_void_long",
+        "stream": true
+      }
+    ]
+  }
+}

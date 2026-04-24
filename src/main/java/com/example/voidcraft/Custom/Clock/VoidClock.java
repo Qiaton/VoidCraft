@@ -65,4 +65,7 @@ public class VoidClock {
         VOID_PLAYER_TICKS.put(player.getUUID(), clampedTicks);
         VOID_PLAYER_TOTAL_TICKS.put(player.getUUID(), clampedTicks);
     }
+    public static void SET_VOID_TICKS(Player player,Integer ticks){
+        VOID_TICKS.put(player.getUUID(),ticks);
+    }
 }

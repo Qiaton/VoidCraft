@@ -2,22 +2,61 @@ package com.example.voidcraft.Effect;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
-public class VoidRingRenderer {
-    private static final int ANGLE_SEGMENTS = 48;
-    private static final int RADIAL_SEGMENTS = 10;
+public final class VoidRingRenderer {
+    private static final int ANGLE_SEGMENTS = 32;
+    private static final int RENDER_RADIAL_SEGMENTS = 20;
+    private static final int MASK_RADIAL_SEGMENTS = 8;
+    private static final float INNER_GLOW_BLEND = 3.0F / 7.0F;
+    private static final float BLOOM_LAYER_TWO_BLEND = 2.0F / 3.0F;
+    private static final float BLOOM_LAYER_FOUR_BLEND = 1.0F / 21.0F;
+    private static final double BILLBOARD_EPSILON = 1.0E-8D;
+
+    private VoidRingRenderer() {
+    }
 
     public static void render(
             PoseStack poseStack,
             VertexConsumer buffer,
             VoidRingInstance ring,
-            float partialTick,
-            int light
+            float partialTick
     ) {
         RenderMetrics metrics = computeMetrics(ring, partialTick);
         Matrix4f matrix4f = poseStack.last().pose();
+        float glowAlpha = ring.preset.glowAlpha() * metrics.fade();
+        float outerGlowHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.glowHeightScale(), 1.0F);
+        float outerGlowHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.glowWidthScale(), 1.0F);
+        float innerGlowHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.glowHeightScale(), INNER_GLOW_BLEND);
+        float innerGlowHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.glowWidthScale(), INNER_GLOW_BLEND);
+
+        renderFilledLayer(
+                buffer,
+                matrix4f,
+                outerGlowHalfHeight,
+                outerGlowHalfWidth,
+                -0.006F,
+                glowAlpha * 0.40F,
+                255,
+                255,
+                255
+        );
+
+        renderFilledLayer(
+                buffer,
+                matrix4f,
+                innerGlowHalfHeight,
+                innerGlowHalfWidth,
+                -0.005F,
+                glowAlpha * 0.68F,
+                255,
+                255,
+                255
+        );
 
         renderFilledLayer(
                 buffer,
@@ -44,6 +83,120 @@ public class VoidRingRenderer {
         );
     }
 
+    public static void renderShaderCompat(
+            PoseStack poseStack,
+            VertexConsumer buffer,
+            VoidRingInstance ring,
+            float partialTick,
+            int light
+    ) {
+        RenderMetrics metrics = computeMetrics(ring, partialTick);
+        Matrix4f matrix4f = poseStack.last().pose();
+        float coreAlpha = ring.preset.coreAlpha() * metrics.fade();
+        float glowAlpha = ring.preset.glowAlpha() * metrics.fade();
+
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                scaleFromBase(metrics.halfHeight(), ring.preset.glowHeightScale(), 1.0F),
+                scaleFromBase(metrics.halfWidth(), ring.preset.glowWidthScale(), 1.0F),
+                -0.006F,
+                boostShaderCompatAlpha(glowAlpha * 0.40F, ring.preset.shaderCompatOuterGlowGain()),
+                light
+        );
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                metrics.halfHeight(),
+                metrics.halfWidth(),
+                -0.003F,
+                boostShaderCompatAlpha(coreAlpha, ring.preset.shaderCompatCoreGain()),
+                light
+        );
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                metrics.halfHeight() * 0.92F,
+                metrics.lineHalfWidth(),
+                0.012F,
+                boostShaderCompatAlpha(metrics.lineAlpha(), ring.preset.shaderCompatLineGain()),
+                light
+        );
+    }
+
+    public static void renderShaderGlow(
+            PoseStack poseStack,
+            VertexConsumer buffer,
+            VoidRingInstance ring,
+            float partialTick,
+            int light
+    ) {
+        RenderMetrics metrics = computeMetrics(ring, partialTick);
+        Matrix4f matrix4f = poseStack.last().pose();
+        float coreAlpha = ring.preset.coreAlpha() * metrics.fade();
+        float glowAlpha = ring.preset.glowAlpha() * metrics.fade();
+        float bloomAlpha = Mth.clamp(
+                glowAlpha * ring.preset.shaderCompatBloomGlowWeight()
+                        + coreAlpha * ring.preset.shaderCompatBloomCoreWeight(),
+                0.0F,
+                1.0F
+        );
+        float bloomOuterHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), 1.0F);
+        float bloomOuterHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.shaderGlowWidthScale(), 1.0F);
+        float bloomMidLargeHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), BLOOM_LAYER_TWO_BLEND);
+        float bloomMidLargeHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.shaderGlowWidthScale(), BLOOM_LAYER_TWO_BLEND);
+        float bloomInnerHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), BLOOM_LAYER_FOUR_BLEND);
+        float bloomInnerHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.shaderGlowWidthScale(), BLOOM_LAYER_FOUR_BLEND);
+        float bloomCoreHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), 0.0F);
+        float bloomCoreHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.shaderGlowWidthScale(), 0.0F);
+        float bloomLayerAlphaScale = ring.preset.shaderCompatBloomAlphaScale();
+
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                bloomOuterHalfHeight,
+                bloomOuterHalfWidth,
+                -0.009F,
+                boostShaderCompatAlpha(bloomAlpha * 0.34F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                light
+        );
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                bloomMidLargeHalfHeight,
+                bloomMidLargeHalfWidth,
+                -0.008F,
+                boostShaderCompatAlpha(bloomAlpha * 0.52F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                light
+        );
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                bloomInnerHalfHeight,
+                bloomInnerHalfWidth,
+                -0.004F,
+                boostShaderCompatAlpha(bloomAlpha * 0.56F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                light
+        );
+        renderTexturedLayer(
+                buffer,
+                matrix4f,
+                bloomCoreHalfHeight,
+                bloomCoreHalfWidth,
+                -0.003F,
+                boostShaderCompatAlpha(
+                        Mth.clamp(
+                                coreAlpha * ring.preset.shaderCompatBloomCoreLayerCoreWeight()
+                                        + glowAlpha * ring.preset.shaderCompatBloomCoreLayerGlowWeight(),
+                                0.0F,
+                                1.0F
+                        ) * bloomLayerAlphaScale,
+                        ring.preset.shaderCompatBloomGain()
+                ),
+                light
+        );
+    }
+
     public static void renderMask(
             PoseStack poseStack,
             VertexConsumer buffer,
@@ -59,6 +212,103 @@ public class VoidRingRenderer {
         }
 
         renderMaskLayer(buffer, poseStack.last().pose(), halfHeight, halfWidth, -0.003F, effectIndex);
+    }
+
+    public static ScreenMaskData computeScreenMaskData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos, float partialTick) {
+        return computeScreenMaskData(
+                Minecraft.getInstance(),
+                ring,
+                center,
+                partialTick,
+                computeFacingData(ring, center, cameraPos)
+        );
+    }
+
+    public static ScreenMaskData computeScreenMaskData(
+            Minecraft mc,
+            VoidRingInstance ring,
+            Vec3 center,
+            float partialTick,
+            FacingData facingData
+    ) {
+        RenderMetrics metrics = computeMetrics(ring, partialTick);
+        float halfHeight = metrics.halfHeight() * ring.preset.distortionHeightScale();
+        float halfWidth = metrics.halfWidth() * ring.preset.distortionWidthScale();
+        if (halfHeight <= 0.001F || halfWidth <= 0.001F || mc.gameRenderer == null) {
+            return null;
+        }
+
+        Vec3 forward = facingData.forward();
+        Vec3 horizontal = facingData.horizontal();
+        Vec3 vertical = facingData.vertical();
+        Vec3 planeCenter = center.add(forward.scale(-0.003D));
+
+        Vec3 centerNdc = mc.gameRenderer.projectPointToScreen(planeCenter);
+        Vec3 leftNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(horizontal.scale(halfWidth)));
+        Vec3 rightNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(horizontal.scale(halfWidth)));
+        Vec3 downNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(vertical.scale(halfHeight)));
+        Vec3 upNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(vertical.scale(halfHeight)));
+
+        float centerU = (float) (centerNdc.x * 0.5D + 0.5D);
+        float centerV = (float) (centerNdc.y * 0.5D + 0.5D);
+        float halfWidthU = (float) (Math.max(Math.abs(rightNdc.x - centerNdc.x), Math.abs(leftNdc.x - centerNdc.x)) * 0.5D);
+        float halfHeightV = (float) (Math.max(Math.abs(upNdc.y - centerNdc.y), Math.abs(downNdc.y - centerNdc.y)) * 0.5D);
+        if (halfWidthU <= 0.0001F || halfHeightV <= 0.0001F) {
+            return null;
+        }
+
+        return new ScreenMaskData(
+                Mth.clamp(centerU, 0.0F, 1.0F),
+                Mth.clamp(centerV, 0.0F, 1.0F),
+                Mth.clamp(halfWidthU, 0.0F, 1.0F),
+                Mth.clamp(halfHeightV, 0.0F, 1.0F)
+        );
+    }
+
+    public static void applyCameraFacingRotation(PoseStack poseStack, VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
+        applyCameraFacingRotation(poseStack, ring, computeFacingData(ring, center, cameraPos));
+    }
+
+    public static void applyCameraFacingRotation(PoseStack poseStack, VoidRingInstance ring, FacingData facingData) {
+        poseStack.mulPose(com.mojang.math.Axis.YP.rotation(facingData.yaw()));
+        if (ring.preset.followCameraPitch()) {
+            poseStack.mulPose(com.mojang.math.Axis.XP.rotation(facingData.pitch()));
+        }
+    }
+
+    public static FacingData computeFacingData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
+        Vec3 toCamera = cameraPos.subtract(center);
+        double horizontalLength = Math.sqrt(toCamera.x * toCamera.x + toCamera.z * toCamera.z);
+        float yaw = (float) Math.atan2(toCamera.x, toCamera.z);
+        if (!ring.preset.followCameraPitch()) {
+            return new FacingData(
+                    yaw,
+                    0.0F,
+                    new Vec3(Mth.sin(yaw), 0.0D, Mth.cos(yaw)),
+                    new Vec3(Mth.cos(yaw), 0.0D, -Mth.sin(yaw)),
+                    new Vec3(0.0D, 1.0D, 0.0D)
+            );
+        }
+
+        Vec3 forward = toCamera.lengthSqr() < BILLBOARD_EPSILON
+                ? new Vec3(Mth.sin(yaw), 0.0D, Mth.cos(yaw))
+                : toCamera.normalize();
+        Vec3 horizontal = new Vec3(forward.z, 0.0D, -forward.x);
+        if (horizontal.lengthSqr() < BILLBOARD_EPSILON) {
+            horizontal = new Vec3(1.0D, 0.0D, 0.0D);
+        } else {
+            horizontal = horizontal.normalize();
+        }
+
+        Vec3 vertical = forward.cross(horizontal);
+        if (vertical.lengthSqr() < BILLBOARD_EPSILON) {
+            vertical = new Vec3(0.0D, 1.0D, 0.0D);
+        } else {
+            vertical = vertical.normalize();
+        }
+
+        float pitch = (float) -Math.atan2(forward.y, Math.max(1.0E-6D, horizontalLength / Math.max(1.0E-6D, toCamera.length())));
+        return new FacingData(yaw, pitch, forward, horizontal, vertical);
     }
 
     private static RenderMetrics computeMetrics(VoidRingInstance ring, float partialTick) {
@@ -100,9 +350,9 @@ public class VoidRingRenderer {
             return;
         }
 
-        for (int radial = 0; radial < RADIAL_SEGMENTS; radial++) {
-            float radius0 = (float) radial / RADIAL_SEGMENTS;
-            float radius1 = (float) (radial + 1) / RADIAL_SEGMENTS;
+        for (int radial = 0; radial < RENDER_RADIAL_SEGMENTS; radial++) {
+            float radius0 = (float) radial / RENDER_RADIAL_SEGMENTS;
+            float radius1 = (float) (radial + 1) / RENDER_RADIAL_SEGMENTS;
             float alpha0 = filledLayerAlpha(alpha, radius0);
             float alpha1 = filledLayerAlpha(alpha, radius1);
 
@@ -127,6 +377,26 @@ public class VoidRingRenderer {
         }
     }
 
+    private static void renderTexturedLayer(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            float halfHeight,
+            float halfWidth,
+            float z,
+            float alpha,
+            int light
+    ) {
+        int a = alphaToByte(alpha);
+        if (a <= 0 || halfHeight <= 0.001F || halfWidth <= 0.001F) {
+            return;
+        }
+
+        putCompatVertex(buffer, matrix4f, -halfWidth, -halfHeight, z, 255, 255, 255, a, 0.0F, 1.0F, light);
+        putCompatVertex(buffer, matrix4f, halfWidth, -halfHeight, z, 255, 255, 255, a, 1.0F, 1.0F, light);
+        putCompatVertex(buffer, matrix4f, halfWidth, halfHeight, z, 255, 255, 255, a, 1.0F, 0.0F, light);
+        putCompatVertex(buffer, matrix4f, -halfWidth, halfHeight, z, 255, 255, 255, a, 0.0F, 0.0F, light);
+    }
+
     private static void renderMaskLayer(
             VertexConsumer buffer,
             Matrix4f matrix4f,
@@ -136,9 +406,9 @@ public class VoidRingRenderer {
             int effectIndex
     ) {
         int ringIdByte = Mth.clamp(effectIndex + 1, 1, 255);
-        for (int radial = 0; radial < RADIAL_SEGMENTS; radial++) {
-            float radius0 = (float) radial / RADIAL_SEGMENTS;
-            float radius1 = (float) (radial + 1) / RADIAL_SEGMENTS;
+        for (int radial = 0; radial < MASK_RADIAL_SEGMENTS; radial++) {
+            float radius0 = (float) radial / MASK_RADIAL_SEGMENTS;
+            float radius1 = (float) (radial + 1) / MASK_RADIAL_SEGMENTS;
 
             for (int angle = 0; angle < ANGLE_SEGMENTS; angle++) {
                 float theta0 = Mth.TWO_PI * angle / ANGLE_SEGMENTS;
@@ -181,6 +451,14 @@ public class VoidRingRenderer {
         return Mth.clamp((value - start) / (end - start), 0.0F, 1.0F);
     }
 
+    private static float boostShaderCompatAlpha(float alpha, float gain) {
+        return Mth.clamp(alpha * gain, 0.0F, 1.0F);
+    }
+
+    private static float scaleFromBase(float base, float maxScale, float blend) {
+        return base * Mth.lerp(Mth.clamp(blend, 0.0F, 1.0F), 1.0F, Math.max(1.0F, maxScale));
+    }
+
     private static int alphaToByte(float alpha) {
         return Mth.clamp((int) (alpha * 255.0F), 0, 255);
     }
@@ -189,7 +467,7 @@ public class VoidRingRenderer {
         return Mth.clamp((int) Math.round((local * 0.5F + 0.5F) * 255.0F), 0, 255);
     }
 
-    public static void putVertex(
+    private static void putVertex(
             VertexConsumer buffer,
             Matrix4f matrix4f,
             float x,
@@ -202,6 +480,28 @@ public class VoidRingRenderer {
     ) {
         buffer.addVertex(matrix4f, x, y, z)
                 .setColor(r, g, b, a);
+    }
+
+    private static void putCompatVertex(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            float x,
+            float y,
+            float z,
+            int r,
+            int g,
+            int b,
+            int a,
+            float u,
+            float v,
+            int light
+    ) {
+        buffer.addVertex(matrix4f, x, y, z)
+                .setColor(r, g, b, a)
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light)
+                .setNormal(0.0F, 0.0F, 1.0F);
     }
 
     private static void putMaskVertex(
@@ -219,5 +519,11 @@ public class VoidRingRenderer {
     }
 
     private record RenderMetrics(float halfHeight, float halfWidth, float fade, float lineAlpha, float lineHalfWidth) {
+    }
+
+    public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV) {
+    }
+
+    public record FacingData(float yaw, float pitch, Vec3 forward, Vec3 horizontal, Vec3 vertical) {
     }
 }

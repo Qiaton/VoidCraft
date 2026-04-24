@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "void_craft:block/black_block"
+    }
+  }
+}

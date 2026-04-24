@@ -56,10 +56,6 @@ public final class VoidPhasePostProcessor {
         clearMaskTarget();
     }
 
-    public static void resetTexture() {
-        resetFrame();
-    }
-
     public static void beginMaskWrite() {
         if (maskTarget == null) {
             return;
@@ -79,6 +75,18 @@ public final class VoidPhasePostProcessor {
     }
 
     public static void writeEffectRow(int effectIndex, VoidRingInstance ring, float partialTick) {
+        writeEffectRow(effectIndex, ring, partialTick, 0.0F, 0.0F, 0.0F, 0.0F);
+    }
+
+    public static void writeEffectRow(
+            int effectIndex,
+            VoidRingInstance ring,
+            float partialTick,
+            float centerU,
+            float centerV,
+            float halfWidthU,
+            float halfHeightV
+    ) {
         if (dataPixels == null || effectIndex < 0 || effectIndex >= MAX_EFFECTS) {
             return;
         }
@@ -103,8 +111,18 @@ public final class VoidPhasePostProcessor {
                 Mth.clamp(ring.preset.noiseFrequency() / 18.0F, 0.0F, 1.0F),
                 Mth.clamp(ring.preset.noiseScrollSpeed() / 8.0F, 0.0F, 1.0F)
         );
-        dataPixels.setPixel(3, row, 0);
-        dataPixels.setPixel(4, row, 0);
+        writePackedU16(
+                3,
+                row,
+                Mth.clamp(centerU, 0.0F, 1.0F),
+                Mth.clamp(centerV, 0.0F, 1.0F)
+        );
+        writePackedU16(
+                4,
+                row,
+                Mth.clamp(halfWidthU, 0.0F, 1.0F),
+                Mth.clamp(halfHeightV, 0.0F, 1.0F)
+        );
     }
 
     private static void ensureResources(Minecraft mc) {

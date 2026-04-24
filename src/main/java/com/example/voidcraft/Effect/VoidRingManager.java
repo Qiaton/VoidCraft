@@ -23,7 +23,11 @@ public class VoidRingManager {
     }
 
     public static void addTrackedRing(int trackedEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset) {
-        RINGS.add(new VoidRingInstance(center, Math.max(0.01F, scale), preset, trackedEntityId, trackedEntityId));
+        addTrackedRing(trackedEntityId, trackedEntityId, center, scale, preset);
+    }
+
+    public static void addTrackedRing(int ownerEntityId, int trackedEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset) {
+        RINGS.add(new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, trackedEntityId));
     }
 
     public static void clientTick(Minecraft mc) {
