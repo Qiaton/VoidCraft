@@ -1,10 +1,12 @@
 package com.example.voidcraft;
 
 import com.example.voidcraft.ClientCustom.FlowEffect;
+import com.example.voidcraft.Gui.ModuleScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
@@ -20,6 +22,10 @@ public class VoidCraftClient {
         else if(FlowEffect.fov_effect>0.01){
             FlowEffect.fov_effect-=0.5F;
         }
+    }
+    @SubscribeEvent
+    public static void MODULE_MENU(RegisterMenuScreensEvent event){
+        event.register(ModMenuType.MODULE_MENU.get(), ModuleScreen::new);
     }
 
 }

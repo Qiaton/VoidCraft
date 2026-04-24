@@ -38,12 +38,8 @@ public class VoidPhaseClient {
 
         LocalPlayer player = mc.player;                 //拿到玩家本体
         if (player == null || mc.level == null) {       //如果玩家没生成 或者没有在任何一个世界里（加载状态）
-            if (postEffectApplied) {                    //如果之前开启了相位视觉效果
-                mc.gameRenderer.clearPostEffect();      //清除相位效果
-                postEffectApplied = false;              //关闭相位效果
-                activePostEffectId = null;              //清除相位效果
-            }
-            VoidPhasePostProcessor.resetTexture();
+            clearPostEffect(mc);
+            VoidPhasePostProcessor.resetFrame();
             stopLoopSound(mc);                          //停止播放声音
             lastResolvedInVoid = false;                 //清空缓存的虚空状态
             lastAttachmentInVoid = false;               //同上
@@ -57,11 +53,11 @@ public class VoidPhaseClient {
         boolean shouldApplyPost = inVoid || hasNearbyTears;
 
         if (attachmentInVoid != lastAttachmentInVoid) {             //如果附件虚空状态发生改变 发送一条改变状态的日志
-            LOGGER.info("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);
+            LOGGER.debug("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);
             lastAttachmentInVoid = attachmentInVoid;
         }
         if (inVoid != lastResolvedInVoid) {                         //如果虚空状态发生改变 发送一条各组件状态的日志
-            LOGGER.info("[VoidPhase] resolved inVoid={} (attachment={}, usingSword={})",
+            LOGGER.debug("[VoidPhase] resolved inVoid={} (attachment={}, usingSword={})",
                     inVoid, attachmentInVoid, usingSpatialSword);
             lastResolvedInVoid = inVoid;
         }
@@ -79,7 +75,7 @@ public class VoidPhaseClient {
                     mc.gameRenderer.setPostEffect(desiredEffectId); //把渲染设置的相位效果设置成期望相位效果
                     postEffectApplied = true;                       //开启相位效果
                     activePostEffectId = desiredEffectId;           //把当前的相位效果设置成期望相位效果
-                    LOGGER.info("[VoidPhase] post effect enabled: {}", desiredEffectId);
+                    LOGGER.debug("[VoidPhase] post effect enabled: {}", desiredEffectId);
                 } catch (RuntimeException e) {
                     LOGGER.error("[VoidPhase] failed to enable post effect {}", desiredEffectId, e);
                 }
@@ -87,18 +83,13 @@ public class VoidPhaseClient {
                 try {
                     mc.gameRenderer.setPostEffect(desiredEffectId);         //改成期望的效果
                     activePostEffectId = desiredEffectId;                   //同上
-                    LOGGER.info("[VoidPhase] post effect switched: {}", desiredEffectId);
+                    LOGGER.debug("[VoidPhase] post effect switched: {}", desiredEffectId);
                 } catch (RuntimeException e) {
                     LOGGER.error("[VoidPhase] failed to switch post effect {}", desiredEffectId, e);
                 }
             }
         } else {
-            if (postEffectApplied) {
-                mc.gameRenderer.clearPostEffect();
-                postEffectApplied = false;                      //清理缓存
-                activePostEffectId = null;
-                LOGGER.info("[VoidPhase] post effect cleared");
-            }
+            clearPostEffect(mc);
         }
     }
 
@@ -122,6 +113,17 @@ public class VoidPhaseClient {
             mc.getSoundManager().stop(activeLoopSound);
             activeLoopSound = null;
         }
+    }
+
+    private static void clearPostEffect(Minecraft mc) {
+        if (!postEffectApplied) {
+            return;
+        }
+
+        mc.gameRenderer.clearPostEffect();
+        postEffectApplied = false;
+        activePostEffectId = null;
+        LOGGER.debug("[VoidPhase] post effect cleared");
     }
 
 }

@@ -1,0 +1,17 @@
+
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.example.voidcraft.Custom.Behavior.Mixin",
+  "mixins": [
+    "AbstractArrowAccessor",
+    "VoidArcherArrowDamageMixin",
+    "VoidEntity",
+    "VoidLivingEntityClass",
+    "VoidPlayer"
+  ],
+  "client": [
+    "VoidArrowRenderer"
+  ],
+  "server": []
+}

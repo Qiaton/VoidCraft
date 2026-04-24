@@ -1,0 +1,22 @@
+{
+  "block.void_craft.black_block": "Black Block",
+  "itemGroup.void_craft.create_tab": "Void Craft",
+  "item.void_craft.flow_type": "Flow Type",
+  "item.void_craft.spatial_sword": "Spatial Sword",
+  "item.void_craft.phase_gauntlet": "Phase Gauntlet",
+  "item.void_craft.module_item": "Module",
+  "item.void_craft.module_modifier_item": "Module Modifier",
+  "enchantment.void_craft.void_archer": "Void Archer",
+  "module_mode.void_craft.channel": "Channel",
+  "module_mode.void_craft.burst": "Burst",
+  "module_mode.void_craft.blink": "Blink",
+  "module_modifier_type.void_craft.cooldown_reduction": "Cooldown Reduction",
+  "module_modifier_type.void_craft.speed_boost": "Speed Boost",
+  "module_modifier_type.void_craft.active_duration": "Active Duration",
+  "tooltip.void_craft.module.mode": "Mode: %s",
+  "tooltip.void_craft.module.level": "Level: %s",
+  "tooltip.void_craft.module.modifier_entry": "%s: %s",
+  "tooltip.void_craft.module_modifier.effect": "Effect: %s",
+  "tooltip.void_craft.module_modifier.level": "Level: %s",
+  "item.voidcraft.phase_gauntlet.module": "type : %s"
+}

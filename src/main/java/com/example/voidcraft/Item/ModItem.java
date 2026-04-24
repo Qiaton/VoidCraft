@@ -1,6 +1,9 @@
 package com.example.voidcraft.Item;
 
 import com.example.voidcraft.Item.custom.FlowType;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.PhaseGauntlet;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModToolMaterial;
@@ -36,6 +39,18 @@ public class ModItem {
             props-> props
             .stacksTo(1)
             .durability(100)
+    );
+    public static final DeferredItem<Item> MODULE_ITEM = ITEMS.registerItem(
+            "module_item",
+            VoidModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> MODULE_MODIFIER_ITEM = ITEMS.registerItem(
+            "module_modifier_item",
+            ModuleModifierItem::new,
+            props-> props
+
     );
 
     public static void register(IEventBus bus) {

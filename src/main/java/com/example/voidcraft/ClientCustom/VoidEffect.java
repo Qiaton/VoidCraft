@@ -11,7 +11,7 @@ import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 import com.google.common.reflect.TypeToken;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -33,7 +33,6 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.context.ContextKey;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelType;
@@ -41,11 +40,17 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
+
+import java.util.ArrayList;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.List;
 
 
 @EventBusSubscriber(modid = VoidCraft.MODID, value = Dist.CLIENT)
@@ -57,6 +62,13 @@ public class VoidEffect {
             new ContextKey<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID,"void_player_alpha"));
     private static final Identifier VOID_PLAYER_TEXTURE =
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/entity/void_player.png");
+    private static final Identifier VOID_FLAT_WHITE_TEXTURE =
+            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_flat_white.png");
+    private static final Identifier VOID_SOFT_GLOW_TEXTURE =
+            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_soft_glow.png");
+    private static final boolean IRIS_LOADED = ModList.get().isLoaded("iris");
+    private static final Method IRIS_GET_INSTANCE_METHOD = findIrisMethod("getInstance");
+    private static final Method IRIS_IS_SHADERPACK_IN_USE_METHOD = findIrisMethod("isShaderPackInUse");
     private static final RenderType VOID_WORLD_EFFECT = RenderType.create(
             "void_world_effect",
             RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
@@ -74,6 +86,40 @@ public class VoidEffect {
                     .bufferSize(RenderType.SMALL_BUFFER_SIZE)
                     .createRenderSetup()
     );
+    private static final RenderType VOID_TRAIL_WORLD_EFFECT_COMPAT =
+            RenderTypes.eyes(VOID_FLAT_WHITE_TEXTURE);
+    private static final RenderType VOID_TRAIL_GLOW_EFFECT_COMPAT =
+            RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
+    private static final RenderType VOID_RING_WORLD_EFFECT_COMPAT =
+            RenderTypes.entityNoOutline(VOID_SOFT_GLOW_TEXTURE);
+    private static final RenderType VOID_RING_BLOOM_EFFECT_COMPAT =
+            RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
+
+    public static boolean isShaderCompatMode() {
+        if (!IRIS_LOADED || IRIS_GET_INSTANCE_METHOD == null || IRIS_IS_SHADERPACK_IN_USE_METHOD == null) {
+            return false;
+        }
+
+        try {
+            Object irisApi = IRIS_GET_INSTANCE_METHOD.invoke(null);
+            return irisApi != null && Boolean.TRUE.equals(IRIS_IS_SHADERPACK_IN_USE_METHOD.invoke(irisApi));
+        } catch (ReflectiveOperationException ignored) {
+            return false;
+        }
+    }
+
+    private static Method findIrisMethod(String name) {
+        if (!IRIS_LOADED) {
+            return null;
+        }
+
+        try {
+            Class<?> irisApiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            return irisApiClass.getMethod(name);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
     public static class VoidPlayerEffect extends  RenderLayer<AvatarRenderState, PlayerModel> {
         public VoidPlayerEffect(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
             super(parent);          //玩家渲染类
@@ -163,67 +209,210 @@ public class VoidEffect {
         float partialTick = mc.gameRenderer.getMainCamera().getPartialTickTime();//获取相机的帧间隔
         boolean firstPerson = mc.options.getCameraType().isFirstPerson();
         boolean localInVoid = mc.player.getData(ModAttachments.IN_VOID.get());
-        if (!localInVoid && VoidRingManager.getRings().isEmpty() && VoidTrailManager.getTrails().isEmpty()) {
+        var rings = VoidRingManager.getRings();
+        var trails = VoidTrailManager.getTrails();
+        if (!localInVoid && rings.isEmpty() && trails.isEmpty()) {
             VoidPhasePostProcessor.resetFrame();
             return;
         }
 
+        boolean shaderPackActive = isShaderCompatMode();
         VoidPhasePostProcessor.beginFrame(mc, partialTick);
+        List<PreparedRingRender> preparedRings = prepareVisibleRings(mc, rings, cameraPos, partialTick, firstPerson);
+
         int light = 0x00F000F0; //设定光照颜色亮度
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        var buffer = buffers.getBuffer(VOID_WORLD_EFFECT);
-        for (VoidTrailInstance trail : VoidTrailManager.getTrails()) {
-            VoidTrailRenderer.render(poseStack, buffer, trail, cameraPos, partialTick);
+        if (shaderPackActive) {
+            renderTrailPass(buffers, VOID_TRAIL_WORLD_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_COMPAT);
+            renderRingPass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_COMPAT);
+            renderTrailPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_GLOW);
+            renderRingPass(buffers, VOID_RING_BLOOM_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_GLOW);
+        } else {
+            renderTrailPass(buffers, VOID_WORLD_EFFECT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.NORMAL);
+            renderRingPass(buffers, VOID_WORLD_EFFECT, preparedRings, poseStack, light, RingRenderPass.NORMAL);
         }
-        for(VoidRingInstance ring : VoidRingManager.getRings()) {  //遍历所有存在的圆环
-            if (firstPerson && mc.player != null && ring.ownerEntityId == mc.player.getId()) {
-                continue;
+
+        writeRingEffects(mc, buffers, preparedRings, poseStack, partialTick, shaderPackActive);
+        VoidPhasePostProcessor.finishFrame();
+    }
+
+    private static void renderTrailPass(
+            MultiBufferSource.BufferSource buffers,
+            RenderType renderType,
+            Collection<VoidTrailInstance> trails,
+            PoseStack poseStack,
+            Vec3 cameraPos,
+            float partialTick,
+            int light,
+            TrailRenderPass pass
+    ) {
+        if (trails.isEmpty()) {
+            return;
+        }
+
+        VertexConsumer buffer = buffers.getBuffer(renderType);
+        for (VoidTrailInstance trail : trails) {
+            switch (pass) {
+                case NORMAL -> VoidTrailRenderer.render(poseStack, buffer, trail, cameraPos, partialTick);
+                case SHADER_COMPAT -> VoidTrailRenderer.renderShaderCompat(poseStack, buffer, trail, cameraPos, partialTick, light);
+                case SHADER_GLOW -> VoidTrailRenderer.renderShaderGlow(poseStack, buffer, trail, cameraPos, partialTick, light);
             }
-            Vec3 center = ring.getCenter(mc.level, partialTick);
-            poseStack.pushPose();      //把当前姿态存档一下
+        }
+        buffers.endBatch(renderType);
+    }
+
+    private static void renderRingPass(
+            MultiBufferSource.BufferSource buffers,
+            RenderType renderType,
+            List<PreparedRingRender> rings,
+            PoseStack poseStack,
+            int light,
+            RingRenderPass pass
+    ) {
+        if (rings.isEmpty()) {
+            return;
+        }
+
+        VertexConsumer buffer = buffers.getBuffer(renderType);
+        for (PreparedRingRender prepared : rings) {
+            poseStack.pushPose();
             poseStack.translate(
-                    center.x - cameraPos.x,
-                    center.y - cameraPos.y,        //吧posestack里的坐标纠正成圆环真正的位置
-                    center.z - cameraPos.z);
-            float yawToCamera = (float) Math.atan2(cameraPos.x - center.x, cameraPos.z - center.z);
-            poseStack.mulPose(Axis.YP.rotation(yawToCamera));
-            VoidRingRenderer.render(poseStack, buffer, ring, partialTick, light);
+                    prepared.renderX(),
+                    prepared.renderY(),
+                    prepared.renderZ()
+            );
+            VoidRingRenderer.applyCameraFacingRotation(poseStack, prepared.ring(), prepared.facingData());
+            switch (pass) {
+                case NORMAL -> VoidRingRenderer.render(poseStack, buffer, prepared.ring(), prepared.partialTick());
+                case SHADER_COMPAT -> VoidRingRenderer.renderShaderCompat(poseStack, buffer, prepared.ring(), prepared.partialTick(), light);
+                case SHADER_GLOW -> VoidRingRenderer.renderShaderGlow(poseStack, buffer, prepared.ring(), prepared.partialTick(), light);
+            }
             poseStack.popPose();
         }
-        buffers.endBatch(VOID_WORLD_EFFECT);
+        buffers.endBatch(renderType);
+    }
 
-        if (!VoidRingManager.getRings().isEmpty()) {
+    private static void writeRingEffects(
+            Minecraft mc,
+            MultiBufferSource.BufferSource buffers,
+            List<PreparedRingRender> rings,
+            PoseStack poseStack,
+            float partialTick,
+            boolean shaderPackActive
+    ) {
+        if (rings.isEmpty()) {
+            return;
+        }
+
+        VertexConsumer maskBuffer = null;
+        if (!shaderPackActive) {
             VoidPhasePostProcessor.beginMaskWrite();
-            var maskBuffer = buffers.getBuffer(VOID_MASK_EFFECT);
-            int effectIndex = 0;
-            for (VoidRingInstance ring : VoidRingManager.getRings()) {
-                if (!VoidPhasePostProcessor.shouldRenderRing(mc, ring, firstPerson)) {
-                    continue;
-                }
-                if (effectIndex >= VoidPhasePostProcessor.MAX_EFFECTS) {
-                    break;
-                }
+            maskBuffer = buffers.getBuffer(VOID_MASK_EFFECT);
+        }
 
-                VoidPhasePostProcessor.writeEffectRow(effectIndex, ring, partialTick);
-                Vec3 center = ring.getCenter(mc.level, partialTick);
-                poseStack.pushPose();
-                poseStack.translate(
-                        center.x - cameraPos.x,
-                        center.y - cameraPos.y,
-                        center.z - cameraPos.z
-                );
-                float yawToCamera = (float) Math.atan2(cameraPos.x - center.x, cameraPos.z - center.z);
-                poseStack.mulPose(Axis.YP.rotation(yawToCamera));
-                VoidRingRenderer.renderMask(poseStack, maskBuffer, ring, partialTick, effectIndex);
-                poseStack.popPose();
-                effectIndex++;
+        int effectIndex = 0;
+        for (PreparedRingRender prepared : rings) {
+            if (effectIndex >= VoidPhasePostProcessor.MAX_EFFECTS) {
+                break;
             }
+
+            poseStack.pushPose();
+            poseStack.translate(
+                    prepared.renderX(),
+                    prepared.renderY(),
+                    prepared.renderZ()
+            );
+            VoidRingRenderer.applyCameraFacingRotation(poseStack, prepared.ring(), prepared.facingData());
+            if (shaderPackActive) {
+                VoidRingRenderer.ScreenMaskData screenMaskData =
+                        VoidRingRenderer.computeScreenMaskData(
+                                mc,
+                                prepared.ring(),
+                                prepared.center(),
+                                partialTick,
+                                prepared.facingData()
+                        );
+                if (screenMaskData != null) {
+                    VoidPhasePostProcessor.writeEffectRow(
+                            effectIndex,
+                            prepared.ring(),
+                            partialTick,
+                            screenMaskData.centerU(),
+                            screenMaskData.centerV(),
+                            screenMaskData.halfWidthU(),
+                            screenMaskData.halfHeightV()
+                    );
+                } else {
+                    VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
+                }
+            } else {
+                VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
+                VoidRingRenderer.renderMask(poseStack, maskBuffer, prepared.ring(), partialTick, effectIndex);
+            }
+            poseStack.popPose();
+            effectIndex++;
+        }
+
+        if (!shaderPackActive) {
             buffers.endBatch(VOID_MASK_EFFECT);
             VoidPhasePostProcessor.endMaskWrite();
         }
-
-        VoidPhasePostProcessor.finishFrame();
     }
+
+    private static List<PreparedRingRender> prepareVisibleRings(
+            Minecraft mc,
+            List<VoidRingInstance> rings,
+            Vec3 cameraPos,
+            float partialTick,
+            boolean firstPerson
+    ) {
+        if (rings.isEmpty()) {
+            return List.of();
+        }
+
+        List<PreparedRingRender> prepared = new ArrayList<>(rings.size());
+        for (VoidRingInstance ring : rings) {
+            if (!VoidPhasePostProcessor.shouldRenderRing(mc, ring, firstPerson)) {
+                continue;
+            }
+
+            Vec3 center = ring.getCenter(mc.level, partialTick);
+            prepared.add(new PreparedRingRender(
+                    ring,
+                    center,
+                    center.x - cameraPos.x,
+                    center.y - cameraPos.y,
+                    center.z - cameraPos.z,
+                    partialTick,
+                    VoidRingRenderer.computeFacingData(ring, center, cameraPos)
+            ));
+        }
+        return prepared;
+    }
+
+    private enum TrailRenderPass {
+        NORMAL,
+        SHADER_COMPAT,
+        SHADER_GLOW
+    }
+
+    private enum RingRenderPass {
+        NORMAL,
+        SHADER_COMPAT,
+        SHADER_GLOW
+    }
+
+    private record PreparedRingRender(
+            VoidRingInstance ring,
+            Vec3 center,
+            double renderX,
+            double renderY,
+            double renderZ,
+            float partialTick,
+            VoidRingRenderer.FacingData facingData
+    ) {
+    }
+
     @SubscribeEvent
     public static void NO_INVISIBLE(RenderPlayerEvent.Pre event) {
         Boolean inVoid = event.getRenderState().getRenderData(IN_VOID_RENDER);
