@@ -45,7 +45,7 @@ public class VoidEvents {
         // 当前水平速度
         double horizontal = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
 
-        double minHorizontalSpeed = 0.55;
+        double minHorizontalSpeed = player.getData(ModAttachments.VOID_SPEED)+0.2;
 
         // 只有“起跳后水平速度不够”时才补
         if (horizontal > 1.0E-6 && horizontal < minHorizontalSpeed) {

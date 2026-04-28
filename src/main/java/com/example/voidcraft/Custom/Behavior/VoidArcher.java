@@ -3,13 +3,16 @@ package com.example.voidcraft.Custom.Behavior; // 这个类属于虚空射手附
 import com.example.voidcraft.Custom.Behavior.Mixin.AbstractArrowAccessor; // 用来读取和回写箭的基础伤害。
 import com.example.voidcraft.Effect.VoidRingInstance; // 白光特效预设类型。
 import com.example.voidcraft.Effect.VoidTrailInstance; // 拉丝特效预设类型。
+import com.example.voidcraft.ModDamageTypes;
 import com.example.voidcraft.network.ModNetworking; // 发送白光和拉丝网络包的工具类。
 import net.minecraft.core.Holder; // 附魔 Holder 类型。
 import net.minecraft.core.HolderLookup; // 注册表查询器类型。
 import net.minecraft.core.registries.Registries; // 原版注册表常量。
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel; // 服务端世界类型。
 import net.minecraft.util.Mth; // 数学工具类。
 import net.minecraft.world.damagesource.DamageSource; // 伤害来源类型。
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity; // 实体基类。
 import net.minecraft.world.entity.LivingEntity; // 生物实体基类。
 import net.minecraft.world.entity.projectile.Projectile; // 投射物基类。
@@ -65,6 +68,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     private static final Map<UUID, Double> ORIGINAL_BASE_DAMAGES = new HashMap<>(); // 记录加速前的箭伤，用于命中时按原速重新结算。
     private static final Map<UUID, Vec3> LOCKED_DIRECTIONS = new HashMap<>(); // 记录箭发射瞬间锁定的飞行方向，后续 tick 不再跟准心转向。
     private static final Map<UUID, Float> SPEED_MULTIPLIERS = new HashMap<>(); // 记录每支箭实际套用的速度倍率，给原版直击结算还原用。
+    private static final Set<UUID> IMPACTED_ARROWS = new HashSet<>(); // 记录已经触发过白光/AOE 的箭，避免穿透或多目标路径重复爆炸。
     private static final Map<ServerLevel, Deque<PendingAreaDamage>> PENDING_AREA_DAMAGE = new HashMap<>(); // 超大范围 AOE 拆到后续 tick 继续结算。
 
     // ===== 视觉预设入口 =====
@@ -94,6 +98,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             ORIGINAL_BASE_DAMAGES.remove(arrowId);
             LOCKED_DIRECTIONS.remove(arrowId);
             SPEED_MULTIPLIERS.remove(arrowId);
+            IMPACTED_ARROWS.remove(arrowId);
         }
     }
 
@@ -120,6 +125,15 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
 
         if (projectile instanceof AbstractArrow arrow && projectile.level() instanceof ServerLevel serverLevel) {
+            if (isOwnerHit(arrow, event.getRayTraceResult())) {
+                event.setCanceled(true);
+                return;
+            }
+
+            if (!IMPACTED_ARROWS.add(arrow.getUUID())) {
+                return;
+            }
+
             if (handleArrowImpact(serverLevel, arrow, event.getRayTraceResult(), level)) {
                 event.setCanceled(true);
             }
@@ -276,6 +290,39 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .noiseScrollSpeed(6.68F)
                 .build();
     }
+//private static VoidRingInstance.Preset buildBaseLightPreset() { // 以后要调命中白光，优先改这里。
+//    return VoidRingInstance.Preset.builder()
+//            .durationTicks(80)
+//            .followCameraPitch(true)
+//
+//            // 尺寸尽量接近圆
+//            .startHalfHeight(0.2F)
+//            .startHalfWidth(0.2F)
+//            .peakHalfHeight(3.6F)
+//            .peakHalfWidth(3.6F)
+//            .endHalfHeight(3.6F)
+//            .endHalfWidth(3.6F)
+//
+//            // 光不要填太实，否则中心不像黑洞
+//            .color(0x000000)
+//            .coreAlpha(1.00F)
+//            .glowAlpha(0.95F)
+//            .lineAlpha(1.0F)
+//            .filledFadeStart(0.3F)
+//
+//            // 黑洞透镜/吸入
+//            .distortionAlpha(3.9F)
+//            .distortionAmplitude(15.0F)
+//            .distortionThickness(5.2F)
+//            .distortionWidthScale(1.2F)
+//            .distortionHeightScale(1.2F)
+//            .noiseFrequency(1.4F)
+//            .noiseScrollSpeed(0.01F)
+//            .swirlStrength(0.2F)
+//            .suctionStrength(3.0F)
+//            .occludedByBlocks(true)
+//            .build();
+//}
 
     private static VoidRingInstance.Preset buildLightForLevel(int level) { // 按附魔等级放大白光尺寸。
         if (level <= 1) {
@@ -304,7 +351,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     ) {
         ImpactAreaProfile areaProfile = buildImpactAreaProfile(impactPosition, impactScale, lightPreset);
         Entity directHitEntity = resolveDirectHitEntity(hitResult);
-        List<PendingAreaTarget> targets = collectImpactTargets(serverLevel, areaProfile, directHitEntity);
+        List<PendingAreaTarget> targets = collectImpactTargets(serverLevel, areaProfile, directHitEntity, arrow.getOwner());
         if (targets.isEmpty()) {
             return;
         }
@@ -343,6 +390,12 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return null;
     }
 
+    private static boolean isOwnerHit(AbstractArrow arrow, HitResult hitResult) {
+        Entity owner = arrow.getOwner();
+        Entity directHitEntity = resolveDirectHitEntity(hitResult);
+        return owner != null && directHitEntity != null && directHitEntity.is(owner);
+    }
+
     private static float getAreaDamageMultiplier(Entity target, Entity directHitEntity) { // 统一管理 AOE 对直击目标和普通目标的倍率。
         return target == directHitEntity ? DIRECT_HIT_AOE_MULTIPLIER : AOE_DAMAGE_MULTIPLIER;
     }
@@ -350,11 +403,16 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     private static List<PendingAreaTarget> collectImpactTargets(
             ServerLevel serverLevel,
             ImpactAreaProfile areaProfile,
-            Entity directHitEntity
+            Entity directHitEntity,
+            Entity immuneEntity
     ) {
         List<LivingEntity> candidates = serverLevel.getEntitiesOfClass(LivingEntity.class, areaProfile.damageBox(), LivingEntity::isAlive);
         List<PendingAreaTarget> targets = new ArrayList<>(candidates.size());
         for (LivingEntity target : candidates) {
+            if (immuneEntity != null && target.is(immuneEntity)) {
+                continue;
+            }
+
             float damageMultiplier = getAreaDamageMultiplier(target, directHitEntity);
             if (damageMultiplier <= 0.0F || !isInsideImpactShape(target, areaProfile)) {
                 continue;
@@ -523,9 +581,13 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return getSpeedMultiplier(getVoidArcherLevel(arrow));
     }
 
-    private static DamageSource buildArrowDamageSource(AbstractArrow arrow) {
+    public static DamageSource buildArrowDamageSource(AbstractArrow arrow) {
         Entity owner = arrow.getOwner();
-        return arrow.damageSources().arrow(arrow, owner == null ? arrow : owner);
+        return arrow.damageSources().source(getVoidArcherDamageType(arrow), arrow, owner == null ? arrow : owner);
+    }
+
+    private static ResourceKey<DamageType> getVoidArcherDamageType(AbstractArrow arrow) {
+        return arrow.getRandom().nextBoolean() ? ModDamageTypes.VOID_ARCHER_PHASE : ModDamageTypes.VOID_ARCHER_ENTER_VOID;
     }
 
     private static float getImpactScale(AbstractArrow arrow) { // 命中特效和范围伤害统一复用这一套缩放计算。

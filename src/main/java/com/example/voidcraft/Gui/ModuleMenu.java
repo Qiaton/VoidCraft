@@ -1,6 +1,5 @@
 package com.example.voidcraft.Gui;
 
-import com.example.voidcraft.Container.GauntletModuleContainer;
 import com.example.voidcraft.ModMenuType;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -11,22 +10,20 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.NonNull;
 
-import static com.example.voidcraft.Item.custom.PhaseGauntlet.GAUNTLET_MODULE_SLOT_COUNT;
+import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_MODULE_SLOT_COUNT;
 
 
 public class ModuleMenu extends AbstractContainerMenu{
-    private final Container moduleContainer;
     public ModuleMenu(int id, Inventory inventory) {
-        this(id,inventory,new SimpleContainer(GAUNTLET_MODULE_SLOT_COUNT));
+        this(id,inventory,new SimpleContainer(WATCH_MODULE_SLOT_COUNT));
     }
     public ModuleMenu(int id, Inventory playerInventory,Container moduleContainer) {
         super(ModMenuType.MODULE_MENU.get(), id);
-        this.moduleContainer = moduleContainer;
-        checkContainerSize(moduleContainer, GAUNTLET_MODULE_SLOT_COUNT);
-        int startX = 44;
+        checkContainerSize(moduleContainer, WATCH_MODULE_SLOT_COUNT);
+        int startX = 70;
         int y = 20;
 
-        for (int slot = 0; slot < GAUNTLET_MODULE_SLOT_COUNT; slot++) {
+        for (int slot = 0; slot < WATCH_MODULE_SLOT_COUNT; slot++) {
             this.addSlot(new ModuleSlot(moduleContainer, slot, startX + slot * 18, y));
         }
 

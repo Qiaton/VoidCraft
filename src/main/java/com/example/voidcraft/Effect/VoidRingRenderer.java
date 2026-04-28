@@ -28,6 +28,11 @@ public final class VoidRingRenderer {
     ) {
         RenderMetrics metrics = computeMetrics(ring, partialTick);
         Matrix4f matrix4f = poseStack.last().pose();
+        int color = ring.preset.color();
+        int r = colorRed(color);
+        int g = colorGreen(color);
+        int b = colorBlue(color);
+        float filledFadeStart = ring.preset.filledFadeStart();
         float glowAlpha = ring.preset.glowAlpha() * metrics.fade();
         float outerGlowHalfHeight = scaleFromBase(metrics.halfHeight(), ring.preset.glowHeightScale(), 1.0F);
         float outerGlowHalfWidth = scaleFromBase(metrics.halfWidth(), ring.preset.glowWidthScale(), 1.0F);
@@ -41,9 +46,10 @@ public final class VoidRingRenderer {
                 outerGlowHalfWidth,
                 -0.006F,
                 glowAlpha * 0.40F,
-                255,
-                255,
-                255
+                filledFadeStart,
+                r,
+                g,
+                b
         );
 
         renderFilledLayer(
@@ -53,9 +59,10 @@ public final class VoidRingRenderer {
                 innerGlowHalfWidth,
                 -0.005F,
                 glowAlpha * 0.68F,
-                255,
-                255,
-                255
+                filledFadeStart,
+                r,
+                g,
+                b
         );
 
         renderFilledLayer(
@@ -65,9 +72,10 @@ public final class VoidRingRenderer {
                 metrics.halfWidth(),
                 -0.003F,
                 ring.preset.coreAlpha() * metrics.fade(),
-                255,
-                255,
-                255
+                filledFadeStart,
+                r,
+                g,
+                b
         );
 
         renderFilledLayer(
@@ -77,9 +85,10 @@ public final class VoidRingRenderer {
                 metrics.lineHalfWidth(),
                 0.012F,
                 metrics.lineAlpha(),
-                255,
-                255,
-                255
+                filledFadeStart,
+                r,
+                g,
+                b
         );
     }
 
@@ -94,32 +103,22 @@ public final class VoidRingRenderer {
         Matrix4f matrix4f = poseStack.last().pose();
         float coreAlpha = ring.preset.coreAlpha() * metrics.fade();
         float glowAlpha = ring.preset.glowAlpha() * metrics.fade();
+        float mergedAlpha = Mth.clamp(
+                coreAlpha * 0.66F
+                        + glowAlpha * 0.20F
+                        + metrics.lineAlpha() * 0.10F,
+                0.0F,
+                1.0F
+        );
 
         renderTexturedLayer(
                 buffer,
                 matrix4f,
-                scaleFromBase(metrics.halfHeight(), ring.preset.glowHeightScale(), 1.0F),
-                scaleFromBase(metrics.halfWidth(), ring.preset.glowWidthScale(), 1.0F),
+                scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), 1.0F),
+                scaleFromBase(metrics.halfWidth(), ring.preset.shaderGlowWidthScale(), 1.0F),
                 -0.006F,
-                boostShaderCompatAlpha(glowAlpha * 0.40F, ring.preset.shaderCompatOuterGlowGain()),
-                light
-        );
-        renderTexturedLayer(
-                buffer,
-                matrix4f,
-                metrics.halfHeight(),
-                metrics.halfWidth(),
-                -0.003F,
-                boostShaderCompatAlpha(coreAlpha, ring.preset.shaderCompatCoreGain()),
-                light
-        );
-        renderTexturedLayer(
-                buffer,
-                matrix4f,
-                metrics.halfHeight() * 0.92F,
-                metrics.lineHalfWidth(),
-                0.012F,
-                boostShaderCompatAlpha(metrics.lineAlpha(), ring.preset.shaderCompatLineGain()),
+                boostShaderCompatAlpha(mergedAlpha, ring.preset.shaderCompatCoreGain()),
+                ring.preset.color(),
                 light
         );
     }
@@ -158,6 +157,7 @@ public final class VoidRingRenderer {
                 bloomOuterHalfWidth,
                 -0.009F,
                 boostShaderCompatAlpha(bloomAlpha * 0.34F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                ring.preset.color(),
                 light
         );
         renderTexturedLayer(
@@ -167,6 +167,7 @@ public final class VoidRingRenderer {
                 bloomMidLargeHalfWidth,
                 -0.008F,
                 boostShaderCompatAlpha(bloomAlpha * 0.52F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                ring.preset.color(),
                 light
         );
         renderTexturedLayer(
@@ -176,6 +177,7 @@ public final class VoidRingRenderer {
                 bloomInnerHalfWidth,
                 -0.004F,
                 boostShaderCompatAlpha(bloomAlpha * 0.56F * bloomLayerAlphaScale, ring.preset.shaderCompatBloomGain()),
+                ring.preset.color(),
                 light
         );
         renderTexturedLayer(
@@ -193,6 +195,7 @@ public final class VoidRingRenderer {
                         ) * bloomLayerAlphaScale,
                         ring.preset.shaderCompatBloomGain()
                 ),
+                ring.preset.color(),
                 light
         );
     }
@@ -257,11 +260,13 @@ public final class VoidRingRenderer {
             return null;
         }
 
+        float centerDepth = Mth.clamp((float) (centerNdc.z * 0.5D + 0.5D), 0.0F, 1.0F);
         return new ScreenMaskData(
                 Mth.clamp(centerU, 0.0F, 1.0F),
                 Mth.clamp(centerV, 0.0F, 1.0F),
                 Mth.clamp(halfWidthU, 0.0F, 1.0F),
-                Mth.clamp(halfHeightV, 0.0F, 1.0F)
+                Mth.clamp(halfHeightV, 0.0F, 1.0F),
+                centerDepth
         );
     }
 
@@ -342,6 +347,7 @@ public final class VoidRingRenderer {
             float halfWidth,
             float z,
             float alpha,
+            float filledFadeStart,
             int r,
             int g,
             int b
@@ -353,8 +359,8 @@ public final class VoidRingRenderer {
         for (int radial = 0; radial < RENDER_RADIAL_SEGMENTS; radial++) {
             float radius0 = (float) radial / RENDER_RADIAL_SEGMENTS;
             float radius1 = (float) (radial + 1) / RENDER_RADIAL_SEGMENTS;
-            float alpha0 = filledLayerAlpha(alpha, radius0);
-            float alpha1 = filledLayerAlpha(alpha, radius1);
+            float alpha0 = filledLayerAlpha(alpha, radius0, filledFadeStart);
+            float alpha1 = filledLayerAlpha(alpha, radius1, filledFadeStart);
 
             for (int angle = 0; angle < ANGLE_SEGMENTS; angle++) {
                 float theta0 = Mth.TWO_PI * angle / ANGLE_SEGMENTS;
@@ -384,6 +390,7 @@ public final class VoidRingRenderer {
             float halfWidth,
             float z,
             float alpha,
+            int color,
             int light
     ) {
         int a = alphaToByte(alpha);
@@ -391,10 +398,13 @@ public final class VoidRingRenderer {
             return;
         }
 
-        putCompatVertex(buffer, matrix4f, -halfWidth, -halfHeight, z, 255, 255, 255, a, 0.0F, 1.0F, light);
-        putCompatVertex(buffer, matrix4f, halfWidth, -halfHeight, z, 255, 255, 255, a, 1.0F, 1.0F, light);
-        putCompatVertex(buffer, matrix4f, halfWidth, halfHeight, z, 255, 255, 255, a, 1.0F, 0.0F, light);
-        putCompatVertex(buffer, matrix4f, -halfWidth, halfHeight, z, 255, 255, 255, a, 0.0F, 0.0F, light);
+        int r = colorRed(color);
+        int g = colorGreen(color);
+        int b = colorBlue(color);
+        putCompatVertex(buffer, matrix4f, -halfWidth, -halfHeight, z, r, g, b, a, 0.0F, 1.0F, light);
+        putCompatVertex(buffer, matrix4f, halfWidth, -halfHeight, z, r, g, b, a, 1.0F, 1.0F, light);
+        putCompatVertex(buffer, matrix4f, halfWidth, halfHeight, z, r, g, b, a, 1.0F, 0.0F, light);
+        putCompatVertex(buffer, matrix4f, -halfWidth, halfHeight, z, r, g, b, a, 0.0F, 0.0F, light);
     }
 
     private static void renderMaskLayer(
@@ -431,8 +441,8 @@ public final class VoidRingRenderer {
         }
     }
 
-    private static float filledLayerAlpha(float alpha, float normalizedRadius) {
-        float edgeFade = 1.0F - smoothstep(0.62F, 1.0F, normalizedRadius);
+    private static float filledLayerAlpha(float alpha, float normalizedRadius, float fadeStart) {
+        float edgeFade = 1.0F - smoothstep(fadeStart, 1.0F, normalizedRadius);
         return alpha * edgeFade;
     }
 
@@ -465,6 +475,18 @@ public final class VoidRingRenderer {
 
     private static int localCoordToByte(float local) {
         return Mth.clamp((int) Math.round((local * 0.5F + 0.5F) * 255.0F), 0, 255);
+    }
+
+    private static int colorRed(int color) {
+        return color >> 16 & 255;
+    }
+
+    private static int colorGreen(int color) {
+        return color >> 8 & 255;
+    }
+
+    private static int colorBlue(int color) {
+        return color & 255;
     }
 
     private static void putVertex(
@@ -521,7 +543,7 @@ public final class VoidRingRenderer {
     private record RenderMetrics(float halfHeight, float halfWidth, float fade, float lineAlpha, float lineHalfWidth) {
     }
 
-    public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV) {
+    public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV, float centerDepth) {
     }
 
     public record FacingData(float yaw, float pitch, Vec3 forward, Vec3 horizontal, Vec3 vertical) {

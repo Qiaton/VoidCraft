@@ -20,7 +20,7 @@
         {
           "sampler_name": "PhaseTearData",
           "location": "void_craft:phase_tear_data",
-          "width": 5,
+          "width": 7,
           "height": 9
         },
         {

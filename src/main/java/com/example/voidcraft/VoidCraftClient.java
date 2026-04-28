@@ -17,10 +17,13 @@ public class VoidCraftClient {
     @SubscribeEvent
     public static void ClientFlowFov(net.neoforged.neoforge.client.event.ClientTickEvent.Post  event) {
         if(FlowEffect.fov_effect>1.38){             //控制视角缩放效果
-            FlowEffect.fov_effect-=0.01F;
+            FlowEffect.fov_effect-=0.1F;
         }
         else if(FlowEffect.fov_effect>0.01){
             FlowEffect.fov_effect-=0.5F;
+        }
+        else{
+            FlowEffect.fov_effect=0;
         }
     }
     @SubscribeEvent

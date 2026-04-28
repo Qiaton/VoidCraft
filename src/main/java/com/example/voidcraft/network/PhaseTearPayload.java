@@ -42,6 +42,11 @@ public record PhaseTearPayload(
         float coreAlpha,
         float distortionAlpha,
         float lineAlpha,
+        int color,
+        float filledFadeStart,
+        float swirlStrength,
+        float suctionStrength,
+        boolean occludedByBlocks,
         float distortionThickness,
         float distortionAmplitude,
         float distortionWidthScale,
@@ -102,6 +107,11 @@ public record PhaseTearPayload(
                 preset.coreAlpha(),
                 preset.distortionAlpha(),
                 preset.lineAlpha(),
+                preset.color(),
+                preset.filledFadeStart(),
+                preset.swirlStrength(),
+                preset.suctionStrength(),
+                preset.occludedByBlocks(),
                 preset.distortionThickness(),
                 preset.distortionAmplitude(),
                 preset.distortionWidthScale(),
@@ -140,6 +150,11 @@ public record PhaseTearPayload(
                 .coreAlpha(this.coreAlpha)
                 .distortionAlpha(this.distortionAlpha)
                 .lineAlpha(this.lineAlpha)
+                .color(this.color)
+                .filledFadeStart(this.filledFadeStart)
+                .swirlStrength(this.swirlStrength)
+                .suctionStrength(this.suctionStrength)
+                .occludedByBlocks(this.occludedByBlocks)
                 .distortionThickness(this.distortionThickness)
                 .distortionAmplitude(this.distortionAmplitude)
                 .distortionWidthScale(this.distortionWidthScale)
@@ -196,6 +211,11 @@ public record PhaseTearPayload(
         ByteBufCodecs.FLOAT.encode(buffer, payload.coreAlpha);
         ByteBufCodecs.FLOAT.encode(buffer, payload.distortionAlpha);
         ByteBufCodecs.FLOAT.encode(buffer, payload.lineAlpha);
+        ByteBufCodecs.VAR_INT.encode(buffer, payload.color);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.filledFadeStart);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.swirlStrength);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.suctionStrength);
+        ByteBufCodecs.BOOL.encode(buffer, payload.occludedByBlocks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.distortionThickness);
         ByteBufCodecs.FLOAT.encode(buffer, payload.distortionAmplitude);
         ByteBufCodecs.FLOAT.encode(buffer, payload.distortionWidthScale);
@@ -205,46 +225,96 @@ public record PhaseTearPayload(
     }
 
     private static PhaseTearPayload decode(RegistryFriendlyByteBuf buffer) {
+        int ownerEntityId = ByteBufCodecs.VAR_INT.decode(buffer);
+        int trackedEntityId = ByteBufCodecs.VAR_INT.decode(buffer);
+        double centerX = ByteBufCodecs.DOUBLE.decode(buffer);
+        double centerY = ByteBufCodecs.DOUBLE.decode(buffer);
+        double centerZ = ByteBufCodecs.DOUBLE.decode(buffer);
+        float scale = ByteBufCodecs.FLOAT.decode(buffer);
+        int durationTicks = ByteBufCodecs.VAR_INT.decode(buffer);
+        float centerYOffset = ByteBufCodecs.FLOAT.decode(buffer);
+        boolean followCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
+        float startHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float peakHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float endHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float startHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
+        float peakHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
+        float endHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
+        int peakHoldTicks = ByteBufCodecs.VAR_INT.decode(buffer);
+        float glowAlpha = ByteBufCodecs.FLOAT.decode(buffer);
+        float glowWidthScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float glowHeightScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderGlowWidthScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderGlowHeightScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatOuterGlowGain = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatCoreGain = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatLineGain = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomGain = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomAlphaScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomGlowWeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomCoreWeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomCoreLayerGlowWeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float shaderCompatBloomCoreLayerCoreWeight = ByteBufCodecs.FLOAT.decode(buffer);
+        float coreAlpha = ByteBufCodecs.FLOAT.decode(buffer);
+        float distortionAlpha = ByteBufCodecs.FLOAT.decode(buffer);
+        float lineAlpha = ByteBufCodecs.FLOAT.decode(buffer);
+        int color = ByteBufCodecs.VAR_INT.decode(buffer);
+        float filledFadeStart = ByteBufCodecs.FLOAT.decode(buffer);
+        float swirlStrength = ByteBufCodecs.FLOAT.decode(buffer);
+        float suctionStrength = ByteBufCodecs.FLOAT.decode(buffer);
+        boolean occludedByBlocks = ByteBufCodecs.BOOL.decode(buffer);
+        float distortionThickness = ByteBufCodecs.FLOAT.decode(buffer);
+        float distortionAmplitude = ByteBufCodecs.FLOAT.decode(buffer);
+        float distortionWidthScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float distortionHeightScale = ByteBufCodecs.FLOAT.decode(buffer);
+        float noiseFrequency = ByteBufCodecs.FLOAT.decode(buffer);
+        float noiseScrollSpeed = ByteBufCodecs.FLOAT.decode(buffer);
+
         return new PhaseTearPayload(
-                ByteBufCodecs.VAR_INT.decode(buffer),
-                ByteBufCodecs.VAR_INT.decode(buffer),
-                ByteBufCodecs.DOUBLE.decode(buffer),
-                ByteBufCodecs.DOUBLE.decode(buffer),
-                ByteBufCodecs.DOUBLE.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.VAR_INT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.BOOL.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.VAR_INT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer),
-                ByteBufCodecs.FLOAT.decode(buffer)
+                ownerEntityId,
+                trackedEntityId,
+                centerX,
+                centerY,
+                centerZ,
+                scale,
+                durationTicks,
+                centerYOffset,
+                followCameraPitch,
+                startHalfHeight,
+                peakHalfHeight,
+                endHalfHeight,
+                startHalfWidth,
+                peakHalfWidth,
+                endHalfWidth,
+                peakHoldTicks,
+                glowAlpha,
+                glowWidthScale,
+                glowHeightScale,
+                shaderGlowWidthScale,
+                shaderGlowHeightScale,
+                shaderCompatOuterGlowGain,
+                shaderCompatCoreGain,
+                shaderCompatLineGain,
+                shaderCompatBloomGain,
+                shaderCompatBloomAlphaScale,
+                shaderCompatBloomGlowWeight,
+                shaderCompatBloomCoreWeight,
+                shaderCompatBloomCoreLayerGlowWeight,
+                shaderCompatBloomCoreLayerCoreWeight,
+                coreAlpha,
+                distortionAlpha,
+                lineAlpha,
+                color,
+                filledFadeStart,
+                swirlStrength,
+                suctionStrength,
+                occludedByBlocks,
+                distortionThickness,
+                distortionAmplitude,
+                distortionWidthScale,
+                distortionHeightScale,
+                noiseFrequency,
+                noiseScrollSpeed
         );
     }
 }

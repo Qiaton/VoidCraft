@@ -5,6 +5,7 @@ import com.example.voidcraft.Block.ModBlockItem;
 import com.example.voidcraft.ClientCustom.Key.ModKeyMappings;
 import com.example.voidcraft.CreativeModeTab.CreativeModeTabs;
 import com.example.voidcraft.Item.ModItem;
+import com.example.voidcraft.loot.ModLootTables;
 import com.example.voidcraft.network.ModNetworking;
 import com.example.voidcraft.Sound.ModSound;
 import net.neoforged.bus.api.IEventBus;
@@ -25,7 +26,7 @@ public class VoidCraft {
         ModNetworking.register(bus);
         ModDataComponents.register(bus);
         ModMenuType.register(bus);
+        ModLootTables.register();
         }
     }
-
 

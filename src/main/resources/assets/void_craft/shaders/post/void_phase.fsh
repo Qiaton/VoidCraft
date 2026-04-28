@@ -75,15 +75,30 @@ void accumulatePhaseEffect(
     vec2 state = decodePair(ivec2(0, row));
     vec2 style = decodePair(ivec2(1, row));
     vec2 detail = decodePair(ivec2(2, row));
+    vec2 pull = decodePair(ivec2(5, row));
+    vec2 occlusion = decodePair(ivec2(6, row));
 
     float progress = state.x;
     float amplitude = state.y;
     float thickness = style.x;
     float alpha = style.y;
+    float swirlStrength = pull.x;
+    float suctionStrength = pull.y;
+    float occlusionEnabled = occlusion.x;
+    float effectDepth = occlusion.y;
     float dist = length(normalized);
 
     if (progress <= 0.0001 || alpha <= 0.0001 || maskAlpha <= 0.0001) {
         return;
+    }
+
+    if (occlusionEnabled > 0.5) {
+        float sceneDepth = texture(SceneDepthSampler, texCoord).r;
+        float depthVisibility = smoothstep(effectDepth - 0.0015, effectDepth + 0.0005, sceneDepth);
+        maskAlpha *= depthVisibility;
+        if (maskAlpha <= 0.0001) {
+            return;
+        }
     }
 
     float collapse = smoothstep(0.20, 1.0, progress);
@@ -135,11 +150,26 @@ void accumulatePhaseEffect(
     float lensStrength = baseStrength
             * centerMask
             * (0.008 + 0.006 * breakupNoise);
+    float swirlMask = smoothstep(0.08, 0.86, dist) * (1.0 - smoothstep(1.0, 1.12, dist)) * maskAlpha;
+    float suctionMask = (1.0 - smoothstep(0.0, 1.04, dist)) * maskAlpha;
+    float swirlPulse = 0.72 + 0.28 * sin(time * (1.2 + noiseSpeed * 0.35) + dist * 4.5 + breakupNoise * 2.8);
+    float swirlPullStrength = baseStrength
+            * swirlStrength
+            * swirlMask
+            * (0.010 + 0.018 * thickness)
+            * swirlPulse;
+    float suctionPullStrength = baseStrength
+            * suctionStrength
+            * suctionMask
+            * (0.010 + 0.018 * centerMask + 0.012 * rimMask)
+            * (1.0 - collapse * 0.18);
 
     totalOffset += membraneDirection * bulkStrength;
     totalOffset += tangent * (((flowNoise - 0.5) * 1.32) + ripple * 0.24) * sheetStrength;
     totalOffset += radial * ((breakupNoise - 0.38) * 1.16) * rimStrength;
     totalOffset += radial * lensStrength;
+    totalOffset += tangent * swirlPullStrength;
+    totalOffset += radial * suctionPullStrength;
     strongestEdge = max(strongestEdge, rimMask * fade);
     membranePresence = max(membranePresence, maskAlpha * fade);
 }

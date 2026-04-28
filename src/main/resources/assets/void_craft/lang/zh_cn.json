@@ -3,13 +3,19 @@
   "itemGroup.void_craft.create_tab": "虚空工艺",
   "item.void_craft.flow_type": "流型",
   "item.void_craft.spatial_sword": "空间之剑",
-  "item.void_craft.phase_gauntlet": "相位手套",
+  "item.void_craft.phase_watch": "相位手表",
+  "item.void_craft.void_module_item": "虚空模块",
+  "item.void_craft.health_void_module_item": "恢复虚空模块",
+  "item.void_craft.dash_void_module_item": "冲刺虚空模块",
   "item.void_craft.module_item": "模块",
   "item.void_craft.module_modifier_item": "模块加强组件",
   "enchantment.void_craft.void_archer": "虚空射手",
+  "death.attack.void_craft.void_archer_phase": "%1$s被相位撕裂成了碎片",
+  "death.attack.void_craft.void_archer_phase.item": "%1$s被相位撕裂成了碎片",
+  "death.attack.void_craft.void_archer_enter_void": "%1$s尝试进入虚空",
+  "death.attack.void_craft.void_archer_enter_void.item": "%1$s尝试进入虚空",
   "module_mode.void_craft.channel": "持续",
   "module_mode.void_craft.burst": "爆发",
-  "module_mode.void_craft.blink": "闪烁",
   "module_modifier_type.void_craft.cooldown_reduction": "冷却缩减",
   "module_modifier_type.void_craft.speed_boost": "速度提升",
   "module_modifier_type.void_craft.active_duration": "持续时间",
@@ -18,5 +24,5 @@
   "tooltip.void_craft.module.modifier_entry": "%s：%s",
   "tooltip.void_craft.module_modifier.effect": "效果：%s",
   "tooltip.void_craft.module_modifier.level": "等级：%s",
-  "item.voidcraft.phase_gauntlet.module": "类型 : %s"
+  "item.voidcraft.phase_watch.module": "类型 : %s"
 }

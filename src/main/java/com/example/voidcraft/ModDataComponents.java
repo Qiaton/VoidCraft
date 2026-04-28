@@ -3,16 +3,12 @@ package com.example.voidcraft;
 
 
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
-import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
 import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
-import java.util.function.Supplier;
 
 
 public class ModDataComponents {
