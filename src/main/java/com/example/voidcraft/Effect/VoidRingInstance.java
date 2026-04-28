@@ -79,6 +79,11 @@ public class VoidRingInstance {
         private final float coreAlpha;
         private final float distortionAlpha;
         private final float lineAlpha;
+        private final int color;
+        private final float filledFadeStart;
+        private final float swirlStrength;
+        private final float suctionStrength;
+        private final boolean occludedByBlocks;
         private final float distortionThickness;
         private final float distortionAmplitude;
         private final float distortionWidthScale;
@@ -114,6 +119,11 @@ public class VoidRingInstance {
             this.coreAlpha = builder.coreAlpha;
             this.distortionAlpha = builder.distortionAlpha;
             this.lineAlpha = builder.lineAlpha;
+            this.color = builder.color;
+            this.filledFadeStart = builder.filledFadeStart;
+            this.swirlStrength = builder.swirlStrength;
+            this.suctionStrength = builder.suctionStrength;
+            this.occludedByBlocks = builder.occludedByBlocks;
             this.distortionThickness = builder.distortionThickness;
             this.distortionAmplitude = builder.distortionAmplitude;
             this.distortionWidthScale = builder.distortionWidthScale;
@@ -230,6 +240,26 @@ public class VoidRingInstance {
             return this.lineAlpha;
         }
 
+        public int color() {
+            return this.color;
+        }
+
+        public float filledFadeStart() {
+            return this.filledFadeStart;
+        }
+
+        public float swirlStrength() {
+            return this.swirlStrength;
+        }
+
+        public float suctionStrength() {
+            return this.suctionStrength;
+        }
+
+        public boolean occludedByBlocks() {
+            return this.occludedByBlocks;
+        }
+
         public float distortionThickness() {
             return this.distortionThickness;
         }
@@ -281,20 +311,25 @@ public class VoidRingInstance {
             private float glowAlpha = 0.56F; // 白光外层柔光透明度，数值越高外沿会更亮、更有包裹感。
             private float glowWidthScale = 1.14F; // 非 shader 路径下，白光外圈相对主体的横向放大量。
             private float glowHeightScale = 1.14F; // 非 shader 路径下，白光外圈相对主体的纵向放大量。
-            private float shaderGlowWidthScale = 1.42F; // shader bloom 路径下，最外层柔光相对主体的横向放大量。
-            private float shaderGlowHeightScale = 1.42F; // shader bloom 路径下，最外层柔光相对主体的纵向放大量。
-            private float shaderCompatOuterGlowGain = 1.95F; // 光影兼容下外层柔光亮度增益。
-            private float shaderCompatCoreGain = 2.15F; // 光影兼容下主体亮度增益。
-            private float shaderCompatLineGain = 1.90F; // 光影兼容下收线阶段亮度增益。
-            private float shaderCompatBloomGain = 2.32F; // 光影 bloom 路径整体亮度增益。
-            private float shaderCompatBloomAlphaScale = 1.0F; // 光影 bloom 分层透明度整体缩放。
-            private float shaderCompatBloomGlowWeight = 1.08F; // 光影 bloom 中柔光对总亮度的贡献权重。
-            private float shaderCompatBloomCoreWeight = 0.72F; // 光影 bloom 中主体对白光总亮度的贡献权重。
-            private float shaderCompatBloomCoreLayerGlowWeight = 0.28F; // 光影 bloom 最内层里柔光分量的权重。
-            private float shaderCompatBloomCoreLayerCoreWeight = 0.48F; // 光影 bloom 最内层里主体分量的权重。
+            private float shaderGlowWidthScale = 1.52F; // shader bloom 路径下，最外层柔光相对主体的横向放大量。
+            private float shaderGlowHeightScale = 1.52F; // shader bloom 路径下，最外层柔光相对主体的纵向放大量。
+            private float shaderCompatOuterGlowGain = 1.55F; // 光影兼容下外层柔光亮度增益。
+            private float shaderCompatCoreGain = 1.28F; // 光影兼容下主体亮度增益。
+            private float shaderCompatLineGain = 1.55F; // 光影兼容下收线阶段亮度增益。
+            private float shaderCompatBloomGain = 1.48F; // 光影 bloom 路径整体亮度增益。
+            private float shaderCompatBloomAlphaScale = 0.70F; // 光影 bloom 分层透明度整体缩放。
+            private float shaderCompatBloomGlowWeight = 0.68F; // 光影 bloom 中柔光对总亮度的贡献权重。
+            private float shaderCompatBloomCoreWeight = 0.48F; // 光影 bloom 中主体对白光总亮度的贡献权重。
+            private float shaderCompatBloomCoreLayerGlowWeight = 0.18F; // 光影 bloom 最内层里柔光分量的权重。
+            private float shaderCompatBloomCoreLayerCoreWeight = 0.32F; // 光影 bloom 最内层里主体分量的权重。
             private float coreAlpha = 1.00F; // 白光主体透明度。
             private float distortionAlpha = 1.92F; // 空间膜整体可见度/影响权重。
             private float lineAlpha = 0.96F; // 最后收成竖线时的亮度。
+            private int color = 0xFFFFFF; // 白光颜色，格式是 0xRRGGBB。
+            private float filledFadeStart = 0.62F; // 白光填充层从归一化半径的哪里开始渐隐，越小越早淡出。
+            private float swirlStrength = 0.0F; // 额外旋涡卷曲强度，默认关闭
+            private float suctionStrength = 0.0F; // 额外向中心吸入强度，默认关闭，不影响普通 ring。
+            private boolean occludedByBlocks = true; // 扭曲后处理是否会被前方方块/实体深度遮挡，默认关闭。
             private float distortionThickness = 4.56F; // 空间膜外沿厚度，越大越像一层有体积的膜。
             private float distortionAmplitude = 7.78F; // 空间扭曲强度，越大背景被拉弯得越明显。
             private float distortionWidthScale = 3.06F; // 扭曲层相对白光的横向放大倍数；想和白光更贴就保持接近 1。
@@ -333,6 +368,11 @@ public class VoidRingInstance {
                 this.coreAlpha = preset.coreAlpha;
                 this.distortionAlpha = preset.distortionAlpha;
                 this.lineAlpha = preset.lineAlpha;
+                this.color = preset.color;
+                this.filledFadeStart = preset.filledFadeStart;
+                this.swirlStrength = preset.swirlStrength;
+                this.suctionStrength = preset.suctionStrength;
+                this.occludedByBlocks = preset.occludedByBlocks;
                 this.distortionThickness = preset.distortionThickness;
                 this.distortionAmplitude = preset.distortionAmplitude;
                 this.distortionWidthScale = preset.distortionWidthScale;
@@ -473,6 +513,39 @@ public class VoidRingInstance {
 
             public Builder lineAlpha(float lineAlpha) {
                 this.lineAlpha = Math.max(0.0F, lineAlpha);
+                return this;
+            }
+
+            public Builder color(int color) {
+                this.color = color & 0xFFFFFF;
+                return this;
+            }
+
+            public Builder color(int red, int green, int blue) {
+                return this.color(
+                        Mth.clamp(red, 0, 255) << 16
+                                | Mth.clamp(green, 0, 255) << 8
+                                | Mth.clamp(blue, 0, 255)
+                );
+            }
+
+            public Builder filledFadeStart(float filledFadeStart) {
+                this.filledFadeStart = Mth.clamp(filledFadeStart, 0.0F, 1.0F);
+                return this;
+            }
+
+            public Builder swirlStrength(float swirlStrength) {
+                this.swirlStrength = Mth.clamp(swirlStrength, 0.0F, 1.0F);
+                return this;
+            }
+
+            public Builder suctionStrength(float suctionStrength) {
+                this.suctionStrength = Mth.clamp(suctionStrength, 0.0F, 1.0F);
+                return this;
+            }
+
+            public Builder occludedByBlocks(boolean occludedByBlocks) {
+                this.occludedByBlocks = occludedByBlocks;
                 return this;
             }
 

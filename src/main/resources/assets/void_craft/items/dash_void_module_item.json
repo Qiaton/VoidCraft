@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "void_craft:item/dash_void_module_item"
+  }
+}

@@ -91,7 +91,7 @@ public class VoidEffect {
     private static final RenderType VOID_TRAIL_GLOW_EFFECT_COMPAT =
             RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
     private static final RenderType VOID_RING_WORLD_EFFECT_COMPAT =
-            RenderTypes.entityNoOutline(VOID_SOFT_GLOW_TEXTURE);
+            RenderTypes.eyes(VOID_SOFT_GLOW_TEXTURE);
     private static final RenderType VOID_RING_BLOOM_EFFECT_COMPAT =
             RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
 
@@ -226,7 +226,6 @@ public class VoidEffect {
             renderTrailPass(buffers, VOID_TRAIL_WORLD_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_COMPAT);
             renderRingPass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_COMPAT);
             renderTrailPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_GLOW);
-            renderRingPass(buffers, VOID_RING_BLOOM_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_GLOW);
         } else {
             renderTrailPass(buffers, VOID_WORLD_EFFECT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.NORMAL);
             renderRingPass(buffers, VOID_WORLD_EFFECT, preparedRings, poseStack, light, RingRenderPass.NORMAL);
@@ -323,15 +322,17 @@ public class VoidEffect {
                     prepared.renderZ()
             );
             VoidRingRenderer.applyCameraFacingRotation(poseStack, prepared.ring(), prepared.facingData());
+            VoidRingRenderer.ScreenMaskData screenMaskData = null;
+            if (shaderPackActive || prepared.ring().preset.occludedByBlocks()) {
+                screenMaskData = VoidRingRenderer.computeScreenMaskData(
+                        mc,
+                        prepared.ring(),
+                        prepared.center(),
+                        partialTick,
+                        prepared.facingData()
+                );
+            }
             if (shaderPackActive) {
-                VoidRingRenderer.ScreenMaskData screenMaskData =
-                        VoidRingRenderer.computeScreenMaskData(
-                                mc,
-                                prepared.ring(),
-                                prepared.center(),
-                                partialTick,
-                                prepared.facingData()
-                        );
                 if (screenMaskData != null) {
                     VoidPhasePostProcessor.writeEffectRow(
                             effectIndex,
@@ -340,13 +341,19 @@ public class VoidEffect {
                             screenMaskData.centerU(),
                             screenMaskData.centerV(),
                             screenMaskData.halfWidthU(),
-                            screenMaskData.halfHeightV()
+                            screenMaskData.halfHeightV(),
+                            screenMaskData.centerDepth()
                     );
                 } else {
                     VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
                 }
             } else {
-                VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
+                VoidPhasePostProcessor.writeEffectRow(
+                        effectIndex,
+                        prepared.ring(),
+                        partialTick,
+                        screenMaskData == null ? -1.0F : screenMaskData.centerDepth()
+                );
                 VoidRingRenderer.renderMask(poseStack, maskBuffer, prepared.ring(), partialTick, effectIndex);
             }
             poseStack.popPose();

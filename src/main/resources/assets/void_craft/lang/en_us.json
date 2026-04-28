@@ -3,13 +3,19 @@
   "itemGroup.void_craft.create_tab": "Void Craft",
   "item.void_craft.flow_type": "Flow Type",
   "item.void_craft.spatial_sword": "Spatial Sword",
-  "item.void_craft.phase_gauntlet": "Phase Gauntlet",
+  "item.void_craft.phase_watch": "Phase Watch",
+  "item.void_craft.void_module_item": "Void Module",
+  "item.void_craft.health_void_module_item": "Recovery Void Module",
+  "item.void_craft.dash_void_module_item": "Dash Void Module",
   "item.void_craft.module_item": "Module",
   "item.void_craft.module_modifier_item": "Module Modifier",
   "enchantment.void_craft.void_archer": "Void Archer",
+  "death.attack.void_craft.void_archer_phase": "%1$s was torn into fragments by a phase rift",
+  "death.attack.void_craft.void_archer_phase.item": "%1$s was torn into fragments by a phase rift",
+  "death.attack.void_craft.void_archer_enter_void": "%1$s tried to enter the void",
+  "death.attack.void_craft.void_archer_enter_void.item": "%1$s tried to enter the void",
   "module_mode.void_craft.channel": "Channel",
   "module_mode.void_craft.burst": "Burst",
-  "module_mode.void_craft.blink": "Blink",
   "module_modifier_type.void_craft.cooldown_reduction": "Cooldown Reduction",
   "module_modifier_type.void_craft.speed_boost": "Speed Boost",
   "module_modifier_type.void_craft.active_duration": "Active Duration",
@@ -18,5 +24,5 @@
   "tooltip.void_craft.module.modifier_entry": "%s: %s",
   "tooltip.void_craft.module_modifier.effect": "Effect: %s",
   "tooltip.void_craft.module_modifier.level": "Level: %s",
-  "item.voidcraft.phase_gauntlet.module": "type : %s"
+  "item.voidcraft.phase_watch.module": "type : %s"
 }

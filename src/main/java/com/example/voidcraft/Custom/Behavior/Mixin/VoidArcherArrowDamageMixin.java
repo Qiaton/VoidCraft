@@ -3,6 +3,7 @@ package com.example.voidcraft.Custom.Behavior.Mixin;
 import com.example.voidcraft.Custom.Behavior.VoidArcher;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
@@ -15,6 +16,20 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(AbstractArrow.class)
 public abstract class VoidArcherArrowDamageMixin {
+    @Redirect(
+            method = "onHitEntity",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/damagesource/DamageSources;arrow(Lnet/minecraft/world/entity/projectile/arrow/AbstractArrow;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;"
+            )
+    )
+    private DamageSource voidcraft$useVoidArcherDeathMessage(DamageSources damageSources, AbstractArrow arrow, Entity shooter) {
+        if (VoidArcher.isVoidArcherProjectile(arrow)) {
+            return VoidArcher.buildArrowDamageSource(arrow);
+        }
+
+        return damageSources.arrow(arrow, shooter);
+    }
 
     @ModifyVariable(method = "onHitEntity", at = @At("STORE"), ordinal = 0)
     private float voidcraft$useVanillaEquivalentImpactSpeed(float speed) {

@@ -1,7 +1,8 @@
 package com.example.voidcraft.Item.custom.ModuleItem;
 
 
-import com.example.voidcraft.Item.custom.PhaseGauntlet;
+import com.example.voidcraft.ClientCustom.ModuleInputMode;
+import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.ModDataComponents;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -10,7 +11,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
-import net.neoforged.neoforge.common.world.BiomeModifier;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -53,19 +53,20 @@ public class ModuleItem extends Item {
             ));
         }
     }
-    public void useSkill(ServerPlayer player, ItemStack gauntletStack, ItemStack moduleStack, int slot) {
-        if(gauntletStack.isEmpty()) return;
-        System.out.println("技能阶段：空槽位检验完毕");
+    public void useSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
+        if(watchStack.isEmpty()) return;
         if(player == null) return;
-        System.out.println("技能阶段：空玩家检验完毕");
-        if(!(gauntletStack.getItem() instanceof PhaseGauntlet)) return;
-        System.out.println("技能阶段：手套类型检验完毕");
-        if(!gauntletStack.has(DataComponents.CONTAINER)) return;
-        System.out.println("技能阶段：是否有模块检验完毕");
-        doUseSkill(player, gauntletStack, moduleStack, slot);
-        System.out.println("技能阶段：子模块施放技能完成");
+        if(!(watchStack.getItem() instanceof PhaseWatch)) return;
+        if(!watchStack.has(DataComponents.CONTAINER)) return;
+        doUseSkill(player, watchStack, moduleStack, slot);
     }
-    protected void doUseSkill(ServerPlayer player, ItemStack gauntletStack, ItemStack moduleStack, int slot) {
+    protected void doUseSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
 
+    }
+    public ModuleInputMode getInputMode() {
+        return ModuleInputMode.CLICK;
+    }
+    public boolean canUseMode(ModuleMode mode) {
+        return true;
     }
 }

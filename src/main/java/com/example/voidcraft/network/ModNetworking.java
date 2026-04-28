@@ -5,13 +5,17 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
-import com.example.voidcraft.Item.custom.PhaseGauntlet;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
+import com.example.voidcraft.Item.custom.PhaseWatch;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -20,7 +24,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "9";
+    private static final String NETWORK_VERSION = "13";
 
     private ModNetworking() {
     }
@@ -144,35 +148,69 @@ public final class ModNetworking {
         PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
         registrar.playToClient(PhaseTearPayload.TYPE, PhaseTearPayload.STREAM_CODEC, ModNetworking::handlePhaseTearClient);
         registrar.playToClient(VoidTrailPayload.TYPE, VoidTrailPayload.STREAM_CODEC, ModNetworking::handleVoidTrailClient);
-        registrar.playToServer(UseGauntletModulePayload.TYPE,UseGauntletModulePayload.STREAM_CODEC,ModNetworking::handleUseGauntletModuleServer);
-        System.out.println("网络主要内容注册完毕");
+        registrar.playToServer(UseWatchModulePayload.TYPE,UseWatchModulePayload.STREAM_CODEC,ModNetworking::handleUseWatchModuleServer);
+        registrar.playToServer(ReleaseBlinkModulePayload.TYPE,ReleaseBlinkModulePayload.STREAM_CODEC,ModNetworking::handleReleaseBlinkModuleServer);
     }
+    private static void handleReleaseBlinkModuleServer(
+            ReleaseBlinkModulePayload payload,
+            IPayloadContext context
+    ){
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
 
-    private static void handleUseGauntletModuleServer(
-            UseGauntletModulePayload payload,
+        int slot = payload.slot();
+        int ticks = payload.ticks();
+
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {      // 服务端再次检查槽位，不能只信客户端
+            return;
+        }
+
+        ItemStack watchStack = player.getOffhandItem();                    // 真正执行时，以服务端副手里的手表为准
+
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {               // 副手不是 PhaseWatch，就不能释放模块技能
+            return;
+        }
+
+        ItemContainerContents contents = watchStack.getOrDefault(
+                DataComponents.CONTAINER,
+                ItemContainerContents.EMPTY
+        );
+        NonNullList<ItemStack> items = NonNullList.withSize(
+                PhaseWatch.WATCH_MODULE_SLOT_COUNT,
+                ItemStack.EMPTY
+        );
+        contents.copyInto(items);                                          // 把手表容器里的模块复制到固定槽位列表
+
+        ItemStack moduleStack = items.get(slot);                           // 找到客户端说要释放的那个模块槽
+        if (!(moduleStack.getItem() instanceof BlinkVoidModule blinkModule)) { // 释放包只服务 Blink 模块
+            return;
+        }
+
+        blinkModule.releaseBlink(player, watchStack, moduleStack, slot, ticks); // 最终交给 BlinkVoidModule 决定怎么闪
+
+
+    }
+    private static void handleUseWatchModuleServer(
+            UseWatchModulePayload payload,
             IPayloadContext context
     ) {
-        System.out.println("网络模块执行中");
         Player player = context.player();
 
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        System.out.println("玩家检验完毕");
         int slot = payload.slot();
 
-        if (slot < 0 || slot >= PhaseGauntlet.GAUNTLET_MODULE_SLOT_COUNT) {
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
             return;
         }
-        System.out.println("槽位检验完毕");
-        ItemStack gauntletStack = serverPlayer.getOffhandItem();
+        ItemStack watchStack = serverPlayer.getOffhandItem();
 
-        if (!(gauntletStack.getItem() instanceof PhaseGauntlet)) {
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
             return;
         }
-        System.out.println("手套道具检验完毕");
-        PhaseGauntlet.useModule(serverPlayer, gauntletStack, slot);
-        System.out.println("手套使用中");
+        PhaseWatch.useModule(serverPlayer, watchStack, slot);
     }
 
     private static void handleVoidTrailClient(VoidTrailPayload payload, IPayloadContext context) {

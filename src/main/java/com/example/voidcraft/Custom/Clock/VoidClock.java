@@ -68,4 +68,9 @@ public class VoidClock {
     public static void SET_VOID_TICKS(Player player,Integer ticks){
         VOID_TICKS.put(player.getUUID(),ticks);
     }
+    public static void STOP_VOID(Player player){
+        ModSound.playOutVoid(player.level(), player);
+        ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
+        VOID_TICKS.remove(player.getUUID());
+    }
 }

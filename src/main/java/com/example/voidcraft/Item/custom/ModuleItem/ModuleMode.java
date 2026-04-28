@@ -5,8 +5,7 @@ import net.minecraft.network.chat.Component;
 
 public enum  ModuleMode{
     CHANNEL("channel"),//持续
-    BURST("burst"),//单次
-    BLINK("blink");//闪烁
+    BURST("burst");//单次
     private final String id;
     ModuleMode(String id) {
         this.id = id;

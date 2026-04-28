@@ -3,8 +3,11 @@ package com.example.voidcraft.Item;
 import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.DashVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
-import com.example.voidcraft.Item.custom.PhaseGauntlet;
+import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModToolMaterial;
 import com.example.voidcraft.VoidCraft;
@@ -33,15 +36,15 @@ public class ModItem {
             .durability(100)
             .sword(ModToolMaterial.BLACK_BLOCK,5,-2.4F)//这是一把剑（材质，攻击加成，攻击速度 空手=4 所以这里-2.4F就是1.6）
     );
-    public static final DeferredItem<Item> PHASE_GAUNTLET = ITEMS.registerItem(
-            "phase_gauntlet",
-            PhaseGauntlet::new,
+    public static final DeferredItem<Item> PHASE_WATCH = ITEMS.registerItem(
+            "phase_watch",
+            PhaseWatch::new,
             props-> props
             .stacksTo(1)
             .durability(100)
     );
     public static final DeferredItem<Item> MODULE_ITEM = ITEMS.registerItem(
-            "module_item",
+            "void_module_item",
             VoidModule::new,
             props-> props
 
@@ -52,6 +55,25 @@ public class ModItem {
             props-> props
 
     );
+    public static final DeferredItem<Item> HEALTH_VOID_MODULE = ITEMS.registerItem(
+            "health_void_module_item",
+            HealthVoidModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> DASH_VOID_MODULE = ITEMS.registerItem(
+            "dash_void_module_item",
+            DashVoidModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> BLINK_VOID_MODULE = ITEMS.registerItem(
+            "blink_void_module_item",
+            BlinkVoidModule::new,
+            props-> props
+
+    );
+
 
     public static void register(IEventBus bus) {
         ITEMS.register(bus);

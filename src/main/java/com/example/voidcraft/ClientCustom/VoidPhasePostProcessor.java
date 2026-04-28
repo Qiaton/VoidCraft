@@ -16,7 +16,7 @@ import net.minecraft.util.Mth;
 
 public final class VoidPhasePostProcessor {
     public static final int MAX_EFFECTS = 8;
-    public static final int DATA_TEXTURE_WIDTH = 5;
+    public static final int DATA_TEXTURE_WIDTH = 7;
     public static final int DATA_TEXTURE_HEIGHT = MAX_EFFECTS + 1;
     public static final Identifier DATA_TEXTURE_ID =
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
@@ -75,7 +75,11 @@ public final class VoidPhasePostProcessor {
     }
 
     public static void writeEffectRow(int effectIndex, VoidRingInstance ring, float partialTick) {
-        writeEffectRow(effectIndex, ring, partialTick, 0.0F, 0.0F, 0.0F, 0.0F);
+        writeEffectRow(effectIndex, ring, partialTick, 0.0F, 0.0F, 0.0F, 0.0F, -1.0F);
+    }
+
+    public static void writeEffectRow(int effectIndex, VoidRingInstance ring, float partialTick, float centerDepth) {
+        writeEffectRow(effectIndex, ring, partialTick, 0.0F, 0.0F, 0.0F, 0.0F, centerDepth);
     }
 
     public static void writeEffectRow(
@@ -85,7 +89,8 @@ public final class VoidPhasePostProcessor {
             float centerU,
             float centerV,
             float halfWidthU,
-            float halfHeightV
+            float halfHeightV,
+            float centerDepth
     ) {
         if (dataPixels == null || effectIndex < 0 || effectIndex >= MAX_EFFECTS) {
             return;
@@ -122,6 +127,19 @@ public final class VoidPhasePostProcessor {
                 row,
                 Mth.clamp(halfWidthU, 0.0F, 1.0F),
                 Mth.clamp(halfHeightV, 0.0F, 1.0F)
+        );
+        writePackedU16(
+                5,
+                row,
+                Mth.clamp(ring.preset.swirlStrength(), 0.0F, 1.0F),
+                Mth.clamp(ring.preset.suctionStrength(), 0.0F, 1.0F)
+        );
+        boolean useOcclusionDepth = ring.preset.occludedByBlocks() && centerDepth >= 0.0F && centerDepth <= 1.0F;
+        writePackedU16(
+                6,
+                row,
+                useOcclusionDepth ? 1.0F : 0.0F,
+                Mth.clamp(centerDepth, 0.0F, 1.0F)
         );
     }
 
@@ -168,6 +186,8 @@ public final class VoidPhasePostProcessor {
         dataPixels.setPixel(2, 0, 0);
         dataPixels.setPixel(3, 0, 0);
         dataPixels.setPixel(4, 0, 0);
+        dataPixels.setPixel(5, 0, 0);
+        dataPixels.setPixel(6, 0, 0);
     }
 
     private static void clearDataPixels() {

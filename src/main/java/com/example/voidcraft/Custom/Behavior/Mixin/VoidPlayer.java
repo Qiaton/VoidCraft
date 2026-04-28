@@ -16,7 +16,7 @@ public class VoidPlayer {
             cir.setReturnValue(false);
         }
     }
-    @Inject(method = "isPushedByFluid", at = @At("HEAD"), cancellable = true)       //还没完成实现
+    @Inject(method = "isPushedByFluid", at = @At("HEAD"), cancellable = true)
     private void NO_FLUID(CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player)(Object)this;
         if (player.getData(ModAttachments.IN_VOID.get())) {
@@ -28,7 +28,7 @@ public class VoidPlayer {
         Player player = (Player)(Object)this;
 
         if (player.getData(ModAttachments.IN_VOID.get())) {
-            cir.setReturnValue(0.43F); // 虚空内移速
+            cir.setReturnValue(player.getData(ModAttachments.VOID_SPEED)); // 虚空内移速
         }
     }
 }

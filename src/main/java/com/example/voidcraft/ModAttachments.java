@@ -20,6 +20,12 @@ public class ModAttachments {       //模组的附件中心
                     .sync(ByteBufCodecs.BOOL)//这个附件是一个布尔值 把它同步到服务器上 不然的话客户端不知道你进虚空 会有显示bug
                     .build()//需要附件的时候创建一个默认值为false的附件 .build完成创建
     );//用刚刚定义的注册起注册一个IN_VOID附件 参数（注册id，注册值）
+    public static Supplier<AttachmentType<Float>> VOID_SPEED = VOID_ATTACHMENTS.register(
+            "void_speed",
+            ()->AttachmentType.builder(()->0.3F)
+                    .sync(ByteBufCodecs.FLOAT)
+                    .build()
+    );
     public static void register(IEventBus bus) {
         VOID_ATTACHMENTS.register(bus);
     }

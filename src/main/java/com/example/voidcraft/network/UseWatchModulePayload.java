@@ -9,16 +9,16 @@ import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
 
 
-public record UseGauntletModulePayload(int slot) implements CustomPacketPayload {
+public record UseWatchModulePayload(int slot) implements CustomPacketPayload {
 
-    public static final Type<UseGauntletModulePayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "use_gauntlet_module"));
+    public static final Type<UseWatchModulePayload> TYPE =
+            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "use_watch_module"));
 
-    public static final StreamCodec<ByteBuf, UseGauntletModulePayload> STREAM_CODEC =
+    public static final StreamCodec<ByteBuf, UseWatchModulePayload> STREAM_CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.VAR_INT,
-                    UseGauntletModulePayload::slot,
-                    UseGauntletModulePayload::new
+                    UseWatchModulePayload::slot,
+                    UseWatchModulePayload::new
             );
 
     @Override

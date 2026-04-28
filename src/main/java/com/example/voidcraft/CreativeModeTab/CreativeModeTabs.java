@@ -29,9 +29,12 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.BLACK_BLOCK.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
-                        output.accept(ModItem.PHASE_GAUNTLET);
+                        output.accept(ModItem.PHASE_WATCH);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem());
+                        output.accept(getHealthModuleItem());
+                        output.accept(getDashVoidModuleItem());
+                        output.accept(getBlinkVoidModuleItem());
                     }))
                     .build()
 
@@ -40,9 +43,25 @@ public class CreativeModeTabs {
         ItemStack stack = new ItemStack(ModItem.MODULE_ITEM.get());
         stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5))));
         return stack;
-    }    public static ItemStack getModuleModifierItem(){
+    }
+    public static ItemStack getHealthModuleItem(){
+        ItemStack stack = new ItemStack(ModItem.HEALTH_VOID_MODULE.get());
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5))));
+        return stack;
+    }
+    public static ItemStack getBlinkVoidModuleItem(){
+        ItemStack stack = new ItemStack(ModItem.BLINK_VOID_MODULE.get());
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5)))); // Blink 只支持 BURST，创造栏样品也要给 BURST
+        return stack;
+    }
+    public static ItemStack getModuleModifierItem(){
         ItemStack stack = new ItemStack(ModItem.MODULE_MODIFIER_ITEM.get());
         stack.set(ModDataComponents.MODULE_MODIFIER_DATA.value(),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,3));
+        return stack;
+    }
+    public static ItemStack getDashVoidModuleItem(){
+        ItemStack stack = new ItemStack(ModItem.DASH_VOID_MODULE.get());
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,7, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,20),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,20))));
         return stack;
     }
     public static void register(IEventBus bus) {
