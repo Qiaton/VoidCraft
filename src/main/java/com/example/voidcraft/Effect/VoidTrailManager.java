@@ -21,23 +21,28 @@ import java.util.Set;
 public final class VoidTrailManager {
     private static final Map<Integer, TrailTracker> TRACKERS = new HashMap<>();
     private static final Map<Integer, TrailTracker> ENTITY_TRACKERS = new HashMap<>();
+    private static final List<VoidTrailInstance> WORLD_TRAILS = new ArrayList<>();
     private static final List<VoidTrailInstance> VISIBLE_TRAILS = new ArrayList<>();
     private static VoidTrailInstance.Preset activePreset = VoidTrailInstance.Preset.DEFAULT;
 
     private VoidTrailManager() {
     }
 
+    // 设置玩家虚空移动拖尾的全局预设；切换预设时重建现有拖尾，避免新旧参数混在一条带子里。
     public static void setActivePreset(VoidTrailInstance.Preset preset) {
         activePreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
         TRACKERS.clear();
         ENTITY_TRACKERS.clear();
+        WORLD_TRAILS.clear();
         VISIBLE_TRAILS.clear();
     }
 
+    // 当前玩家虚空移动拖尾使用的预设。
     public static VoidTrailInstance.Preset getActivePreset() {
         return activePreset;
     }
 
+    // 渲染层每帧读取当前所有可见拖尾：玩家拖尾、实体拖尾、独立世界坐标段都会汇总到这里。
     public static Collection<VoidTrailInstance> getTrails() {
         VISIBLE_TRAILS.clear();
         for (TrailTracker tracker : TRACKERS.values()) {
@@ -50,9 +55,15 @@ public final class VoidTrailManager {
                 VISIBLE_TRAILS.add(tracker.trail);
             }
         }
+        for (VoidTrailInstance trail : WORLD_TRAILS) {
+            if (trail.hasRenderablePoints()) {
+                VISIBLE_TRAILS.add(trail);
+            }
+        }
         return VISIBLE_TRAILS;
     }
 
+    // 快速判断是否还需要启动 trail 渲染路径。
     public static boolean hasActiveTrails() {
         for (TrailTracker tracker : TRACKERS.values()) {
             if (tracker.trail != null && tracker.trail.hasRenderablePoints()) {
@@ -64,13 +75,20 @@ public final class VoidTrailManager {
                 return true;
             }
         }
+        for (VoidTrailInstance trail : WORLD_TRAILS) {
+            if (trail.hasRenderablePoints()) {
+                return true;
+            }
+        }
         return false;
     }
 
+    // 追踪某个实体的位置生成持续拖尾，常用于飞行中的箭或投射物。
     public static void trackEntity(int entityId, float scale, VoidTrailInstance.Preset preset) {
         trackEntity(entityId, scale, preset, null, null);
     }
 
+    // 追踪实体的完整入口；seedStart/seedEnd 可用于注册时先补一段起始轨迹。
     public static void trackEntity(int entityId, float scale, VoidTrailInstance.Preset preset, Vec3 seedStart, Vec3 seedEnd) {
         if (entityId < 0) {
             return;
@@ -94,10 +112,51 @@ public final class VoidTrailManager {
         seedEntityTrail(entityId, tracker, shouldApplySeed ? seedStart : null, shouldApplySeed ? seedEnd : null);
     }
 
+    // 在两个世界坐标之间直接生成一段一次性拖尾，不依赖实体连续移动采样。
+    public static void addTrailSegment(Vec3 from, Vec3 to, float scale, VoidTrailInstance.Preset preset) {
+        if (from == null || to == null || from.distanceToSqr(to) < 1.0E-8D) {
+            return;
+        }
+
+        VoidTrailInstance.Preset actualPreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
+        float actualScale = Math.max(0.01F, scale);
+        VoidTrailInstance trail = new VoidTrailInstance(actualScale, actualPreset);
+        appendInterpolatedPoints(trail, from, to, actualScale, actualPreset);
+        WORLD_TRAILS.add(trail);
+    }
+
+    // 给玩家自己的拖尾补一段坐标轨迹，适合 Blink 这种瞬移行为。
+    public static void seedPlayerTrail(int playerId, float scale, VoidTrailInstance.Preset preset, Vec3 seedStart, Vec3 seedEnd) {
+        if (playerId < 0 || seedStart == null || seedEnd == null) {
+            return;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || !(mc.level.getEntity(playerId) instanceof Player player)) {
+            return;
+        }
+
+        VoidTrailInstance.Preset actualPreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
+        float actualScale = Math.max(0.01F, scale);
+        TrailTracker tracker = TRACKERS.computeIfAbsent(
+                playerId,
+                id -> new TrailTracker(actualScale, actualPreset)
+        );
+
+        if (Math.abs(tracker.scale - actualScale) > 1.0E-3F || !tracker.trail.preset.equals(actualPreset)) {
+            tracker.rebuild(actualScale, actualPreset);
+        }
+
+        applySeedSegment(tracker, seedStart, seedEnd);
+        tracker.lastObservedPos = computeAnchor(player, actualPreset, actualScale);
+    }
+
+    // 是否已经由网络包注册为实体持续拖尾；箭的原版渲染会用它避免重复显示。
     public static boolean isTrackedEntity(int entityId) {
         return ENTITY_TRACKERS.containsKey(entityId);
     }
 
+    // 客户端 tick 入口：推进生命周期、更新玩家拖尾、更新实体拖尾。
     public static void clientTick(Minecraft mc) {
         if (mc.level == null) {
             clear();
@@ -115,6 +174,10 @@ public final class VoidTrailManager {
         for (TrailTracker tracker : ENTITY_TRACKERS.values()) {
             tracker.trail.tick();
         }
+        WORLD_TRAILS.removeIf(trail -> {
+            trail.tick();
+            return trail.isEmpty();
+        });
     }
 
     private static void updateTrackers(Minecraft mc) {
@@ -322,6 +385,7 @@ public final class VoidTrailManager {
     private static void clear() {
         TRACKERS.clear();
         ENTITY_TRACKERS.clear();
+        WORLD_TRAILS.clear();
         VISIBLE_TRAILS.clear();
         activePreset = VoidTrailInstance.Preset.DEFAULT;
     }
@@ -351,6 +415,9 @@ public final class VoidTrailManager {
         }
 
         private void resetMotion(Vec3 anchor) {
+            if (this.lastReleasedPos != null || !this.delayedPoints.isEmpty()) {
+                this.trail.startNewSegment();
+            }
             this.lastObservedPos = anchor;
             this.delayedPoints.clear();
             this.lastReleasedPos = null;

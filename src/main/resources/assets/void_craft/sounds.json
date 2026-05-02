@@ -22,5 +22,13 @@
         "stream": true
       }
     ]
+  },
+  "phase_turret_shot": {
+    "sounds": [
+      {
+        "name": "void_craft:phase_turret_shot",
+        "stream": false
+      }
+    ]
   }
 }

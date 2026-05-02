@@ -1,6 +1,7 @@
 package com.example.voidcraft.Item.custom.ModuleItem.ModuleType;
 
 
+import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.ModuleInputMode;
 import com.example.voidcraft.Custom.Clock.DashClock;
 import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
@@ -43,6 +44,8 @@ public class DashVoidModule extends ModuleItem {
                 ModuleSkillClock.stopChannel(player,slot);
                 VoidClock.STOP_VOID(player);
                 DashClock.CLEAR_DASH(player);
+                player.setDeltaMovement(0,0,0);
+                FlowEffect.fov_effect=0;
             }
             else{
                 if(!ModuleSkillClock.tryUseEnergy(player,offEnergy)){
@@ -109,6 +112,6 @@ public class DashVoidModule extends ModuleItem {
     }
     @Override
     public ModuleInputMode getInputMode(){
-        return ModuleInputMode.HOLD_RELEASE;
+        return ModuleInputMode.CLICK;                                      // Dash 的 CHANNEL 是点按开关，不走 Blink 的长按释放链
     }
 }

@@ -1,6 +1,13 @@
-package com.example.voidcraft.ClientCustom;
+package com.example.voidcraft.ClientCustom.Void;
 
+import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Custom.Clock.VoidClock;
+import com.example.voidcraft.Effect.VoidBlackHoleInstance;
+import com.example.voidcraft.Effect.VoidBlackHoleManager;
+import com.example.voidcraft.Effect.VoidBlackHoleRenderer;
+import com.example.voidcraft.Effect.VoidBeamInstance;
+import com.example.voidcraft.Effect.VoidBeamManager;
+import com.example.voidcraft.Effect.VoidBeamRenderer;
 import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Effect.VoidRingRenderer;
@@ -193,10 +200,12 @@ public class VoidEffect {
     }
     @SubscribeEvent
     public static void CLIENT_TICK(ClientTickEvent.Post event) {
-        Minecraft mc = Minecraft.getInstance();
-        VoidRingManager.clientTick(mc);
-        VoidTrailManager.clientTick(mc);
-    }
+          Minecraft mc = Minecraft.getInstance();
+          VoidRingManager.clientTick(mc);
+          VoidTrailManager.clientTick(mc);
+          VoidBeamManager.clientTick(mc);
+          VoidBlackHoleManager.clientTick(mc);
+      }
     @SubscribeEvent
     public static void VOID_RING(RenderLevelStageEvent.AfterParticles event) {
         Minecraft mc = Minecraft.getInstance();
@@ -207,31 +216,41 @@ public class VoidEffect {
         PoseStack poseStack = event.getPoseStack();   //拿一个姿态栈（前这一帧渲染时，专门用来记录“位置、旋转、缩放”的一叠变换）
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().position(); //获取相机坐标
         float partialTick = mc.gameRenderer.getMainCamera().getPartialTickTime();//获取相机的帧间隔
+        PhaseEmitterClientManager.updateBeforeRender(partialTick);
         boolean firstPerson = mc.options.getCameraType().isFirstPerson();
         boolean localInVoid = mc.player.getData(ModAttachments.IN_VOID.get());
-        var rings = VoidRingManager.getRings();
-        var trails = VoidTrailManager.getTrails();
-        if (!localInVoid && rings.isEmpty() && trails.isEmpty()) {
-            VoidPhasePostProcessor.resetFrame();
-            return;
-        }
+          var rings = VoidRingManager.getRings();
+          var trails = VoidTrailManager.getTrails();
+          var beams = VoidBeamManager.getBeams();
+          var blackHoles = VoidBlackHoleManager.getBlackHoles();
+          if (!localInVoid && rings.isEmpty() && trails.isEmpty() && beams.isEmpty() && blackHoles.isEmpty()) {
+              VoidPhasePostProcessor.resetFrame();
+              return;
+          }
 
         boolean shaderPackActive = isShaderCompatMode();
         VoidPhasePostProcessor.beginFrame(mc, partialTick);
         List<PreparedRingRender> preparedRings = prepareVisibleRings(mc, rings, cameraPos, partialTick, firstPerson);
+        List<PreparedBlackHoleRender> preparedBlackHoles = prepareVisibleBlackHoles(mc, blackHoles, cameraPos, partialTick, firstPerson);
 
         int light = 0x00F000F0; //设定光照颜色亮度
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        if (shaderPackActive) {
-            renderTrailPass(buffers, VOID_TRAIL_WORLD_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_COMPAT);
-            renderRingPass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_COMPAT);
-            renderTrailPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_GLOW);
-        } else {
-            renderTrailPass(buffers, VOID_WORLD_EFFECT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.NORMAL);
-            renderRingPass(buffers, VOID_WORLD_EFFECT, preparedRings, poseStack, light, RingRenderPass.NORMAL);
-        }
+          MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+          if (shaderPackActive) {
+              renderTrailPass(buffers, VOID_TRAIL_WORLD_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_COMPAT);
+              renderBeamPass(buffers, VOID_TRAIL_WORLD_EFFECT_COMPAT, beams, poseStack, cameraPos, partialTick, light, BeamRenderPass.SHADER_COMPAT);
+              renderRingPass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedRings, poseStack, light, RingRenderPass.SHADER_COMPAT);
+              renderBlackHolePass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.SHADER_COMPAT);
+              renderTrailPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_GLOW);
+              renderBeamPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, beams, poseStack, cameraPos, partialTick, light, BeamRenderPass.SHADER_GLOW);
+              renderBlackHolePass(buffers, VOID_RING_BLOOM_EFFECT_COMPAT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.SHADER_GLOW);
+          } else {
+              renderTrailPass(buffers, VOID_WORLD_EFFECT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.NORMAL);
+              renderBeamPass(buffers, VOID_WORLD_EFFECT, beams, poseStack, cameraPos, partialTick, light, BeamRenderPass.NORMAL);
+              renderRingPass(buffers, VOID_WORLD_EFFECT, preparedRings, poseStack, light, RingRenderPass.NORMAL);
+              renderBlackHolePass(buffers, VOID_WORLD_EFFECT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.NORMAL);
+          }
 
-        writeRingEffects(mc, buffers, preparedRings, poseStack, partialTick, shaderPackActive);
+        writeWorldEffects(mc, buffers, preparedRings, preparedBlackHoles, poseStack, partialTick, shaderPackActive);
         VoidPhasePostProcessor.finishFrame();
     }
 
@@ -257,10 +276,35 @@ public class VoidEffect {
                 case SHADER_GLOW -> VoidTrailRenderer.renderShaderGlow(poseStack, buffer, trail, cameraPos, partialTick, light);
             }
         }
-        buffers.endBatch(renderType);
-    }
+          buffers.endBatch(renderType);
+      }
 
-    private static void renderRingPass(
+      private static void renderBeamPass(
+              MultiBufferSource.BufferSource buffers,
+              RenderType renderType,
+              Collection<VoidBeamInstance> beams,
+              PoseStack poseStack,
+              Vec3 cameraPos,
+              float partialTick,
+              int light,
+              BeamRenderPass pass
+      ) {
+          if (beams.isEmpty()) {
+              return;
+          }
+
+          VertexConsumer buffer = buffers.getBuffer(renderType);
+          for (VoidBeamInstance beam : beams) {
+              switch (pass) {
+                  case NORMAL -> VoidBeamRenderer.render(poseStack, buffer, beam, cameraPos, partialTick);
+                  case SHADER_COMPAT -> VoidBeamRenderer.renderShaderCompat(poseStack, buffer, beam, cameraPos, partialTick, light);
+                  case SHADER_GLOW -> VoidBeamRenderer.renderShaderGlow(poseStack, buffer, beam, cameraPos, partialTick, light);
+              }
+          }
+          buffers.endBatch(renderType);
+      }
+
+      private static void renderRingPass(
             MultiBufferSource.BufferSource buffers,
             RenderType renderType,
             List<PreparedRingRender> rings,
@@ -291,15 +335,69 @@ public class VoidEffect {
         buffers.endBatch(renderType);
     }
 
-    private static void writeRingEffects(
+    private static void renderBlackHolePass(
+            MultiBufferSource.BufferSource buffers,
+            RenderType renderType,
+            List<PreparedBlackHoleRender> blackHoles,
+            PoseStack poseStack,
+            int light,
+            BlackHoleRenderPass pass
+    ) {
+        if (blackHoles.isEmpty()) {
+            return;
+        }
+
+        VertexConsumer buffer = buffers.getBuffer(renderType);
+        for (PreparedBlackHoleRender prepared : blackHoles) {
+            poseStack.pushPose();
+            poseStack.translate(
+                    prepared.renderX(),
+                    prepared.renderY(),
+                    prepared.renderZ()
+            );
+            switch (pass) {
+                case NORMAL -> VoidBlackHoleRenderer.render(
+                        poseStack,
+                        buffer,
+                        prepared.blackHole(),
+                        prepared.partialTick(),
+                        prepared.diskFacingData(),
+                        prepared.coreFacingData()
+                );
+                case SHADER_COMPAT -> VoidBlackHoleRenderer.renderShaderCompat(
+                        poseStack,
+                        buffer,
+                        prepared.blackHole(),
+                        prepared.partialTick(),
+                        light,
+                        prepared.diskFacingData(),
+                        prepared.coreFacingData()
+                );
+                case SHADER_GLOW -> VoidBlackHoleRenderer.renderShaderGlow(
+                        poseStack,
+                        buffer,
+                        prepared.blackHole(),
+                        prepared.partialTick(),
+                        light,
+                        prepared.diskFacingData(),
+                        prepared.coreFacingData()
+                );
+            }
+            poseStack.popPose();
+        }
+        buffers.endBatch(renderType);
+    }
+
+    private static void writeWorldEffects(
             Minecraft mc,
             MultiBufferSource.BufferSource buffers,
             List<PreparedRingRender> rings,
+            List<PreparedBlackHoleRender> blackHoles,
             PoseStack poseStack,
             float partialTick,
             boolean shaderPackActive
     ) {
-        if (rings.isEmpty()) {
+        if (rings.isEmpty() && blackHoles.isEmpty()) {
             return;
         }
 
@@ -311,6 +409,9 @@ public class VoidEffect {
 
         int effectIndex = 0;
         for (PreparedRingRender prepared : rings) {
+            if (!prepared.ring().preset.renderStyle().writesWorldEffect()) {
+                continue;
+            }
             if (effectIndex >= VoidPhasePostProcessor.MAX_EFFECTS) {
                 break;
             }
@@ -321,7 +422,7 @@ public class VoidEffect {
                     prepared.renderY(),
                     prepared.renderZ()
             );
-            VoidRingRenderer.applyCameraFacingRotation(poseStack, prepared.ring(), prepared.facingData());
+            VoidRingRenderer.applyDistortionFacingRotation(poseStack, prepared.ring(), prepared.distortionFacingData());
             VoidRingRenderer.ScreenMaskData screenMaskData = null;
             if (shaderPackActive || prepared.ring().preset.occludedByBlocks()) {
                 screenMaskData = VoidRingRenderer.computeScreenMaskData(
@@ -329,7 +430,7 @@ public class VoidEffect {
                         prepared.ring(),
                         prepared.center(),
                         partialTick,
-                        prepared.facingData()
+                        prepared.distortionFacingData()
                 );
             }
             if (shaderPackActive) {
@@ -355,6 +456,60 @@ public class VoidEffect {
                         screenMaskData == null ? -1.0F : screenMaskData.centerDepth()
                 );
                 VoidRingRenderer.renderMask(poseStack, maskBuffer, prepared.ring(), partialTick, effectIndex);
+            }
+            poseStack.popPose();
+            effectIndex++;
+        }
+
+        for (PreparedBlackHoleRender prepared : blackHoles) {
+            if (effectIndex >= VoidPhasePostProcessor.MAX_EFFECTS) {
+                break;
+            }
+
+            poseStack.pushPose();
+            poseStack.translate(
+                    prepared.renderX(),
+                    prepared.renderY(),
+                    prepared.renderZ()
+            );
+            VoidBlackHoleRenderer.applyDistortionFacingRotation(
+                    poseStack,
+                    prepared.blackHole().config,
+                    prepared.distortionFacingData()
+            );
+            VoidBlackHoleRenderer.ScreenMaskData screenMaskData = null;
+            if (shaderPackActive || prepared.blackHole().config.occludedByBlocks()) {
+                screenMaskData = VoidBlackHoleRenderer.computeScreenMaskData(
+                        mc,
+                        prepared.blackHole(),
+                        prepared.center(),
+                        partialTick,
+                        prepared.distortionFacingData()
+                );
+            }
+            if (shaderPackActive) {
+                if (screenMaskData != null) {
+                    VoidPhasePostProcessor.writeBlackHoleEffectRow(
+                            effectIndex,
+                            prepared.blackHole(),
+                            partialTick,
+                            screenMaskData.centerU(),
+                            screenMaskData.centerV(),
+                            screenMaskData.halfWidthU(),
+                            screenMaskData.halfHeightV(),
+                            screenMaskData.centerDepth()
+                    );
+                } else {
+                    VoidPhasePostProcessor.writeBlackHoleEffectRow(effectIndex, prepared.blackHole(), partialTick);
+                }
+            } else {
+                VoidPhasePostProcessor.writeBlackHoleEffectRow(
+                        effectIndex,
+                        prepared.blackHole(),
+                        partialTick,
+                        screenMaskData == null ? -1.0F : screenMaskData.centerDepth()
+                );
+                VoidBlackHoleRenderer.renderMask(poseStack, maskBuffer, prepared.blackHole(), partialTick, effectIndex);
             }
             poseStack.popPose();
             effectIndex++;
@@ -391,19 +546,65 @@ public class VoidEffect {
                     center.y - cameraPos.y,
                     center.z - cameraPos.z,
                     partialTick,
-                    VoidRingRenderer.computeFacingData(ring, center, cameraPos)
+                    VoidRingRenderer.computeFacingData(ring, center, cameraPos),
+                    VoidRingRenderer.computeDistortionFacingData(ring, center, cameraPos)
             ));
         }
         return prepared;
     }
 
-    private enum TrailRenderPass {
+    private static List<PreparedBlackHoleRender> prepareVisibleBlackHoles(
+            Minecraft mc,
+            List<VoidBlackHoleInstance> blackHoles,
+            Vec3 cameraPos,
+            float partialTick,
+            boolean firstPerson
+    ) {
+        if (blackHoles.isEmpty()) {
+            return List.of();
+        }
+
+        List<PreparedBlackHoleRender> prepared = new ArrayList<>(blackHoles.size());
+        for (VoidBlackHoleInstance blackHole : blackHoles) {
+            if (!VoidPhasePostProcessor.shouldRenderBlackHole(mc, blackHole, firstPerson)) {
+                continue;
+            }
+
+            Vec3 center = blackHole.getCenter(partialTick);
+            prepared.add(new PreparedBlackHoleRender(
+                    blackHole,
+                    center,
+                    center.x - cameraPos.x,
+                    center.y - cameraPos.y,
+                    center.z - cameraPos.z,
+                    partialTick,
+                    VoidBlackHoleRenderer.computeDiskFacingData(blackHole.config, center, cameraPos),
+                    VoidBlackHoleRenderer.computeCoreFacingData(blackHole.config, center, cameraPos),
+                    VoidBlackHoleRenderer.computeDistortionFacingData(blackHole.config, center, cameraPos)
+            ));
+        }
+        return prepared;
+    }
+
+      private enum TrailRenderPass {
+          NORMAL,
+          SHADER_COMPAT,
+          SHADER_GLOW
+      }
+
+      private enum BeamRenderPass {
+          NORMAL,
+          SHADER_COMPAT,
+          SHADER_GLOW
+      }
+
+      private enum RingRenderPass {
         NORMAL,
         SHADER_COMPAT,
         SHADER_GLOW
     }
 
-    private enum RingRenderPass {
+    private enum BlackHoleRenderPass {
         NORMAL,
         SHADER_COMPAT,
         SHADER_GLOW
@@ -416,7 +617,21 @@ public class VoidEffect {
             double renderY,
             double renderZ,
             float partialTick,
-            VoidRingRenderer.FacingData facingData
+            VoidRingRenderer.FacingData facingData,
+            VoidRingRenderer.FacingData distortionFacingData
+    ) {
+    }
+
+    private record PreparedBlackHoleRender(
+            VoidBlackHoleInstance blackHole,
+            Vec3 center,
+            double renderX,
+            double renderY,
+            double renderZ,
+            float partialTick,
+            VoidBlackHoleRenderer.FacingData diskFacingData,
+            VoidBlackHoleRenderer.FacingData coreFacingData,
+            VoidBlackHoleRenderer.FacingData distortionFacingData
     ) {
     }
 

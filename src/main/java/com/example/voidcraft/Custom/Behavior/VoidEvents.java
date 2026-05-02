@@ -5,6 +5,7 @@ import com.example.voidcraft.VoidCraft;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.TriState;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -12,6 +13,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityInvulnerabilityCheckEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
@@ -58,6 +60,22 @@ public class VoidEvents {
             );
 
             player.hurtMarked = true;
+        }
+    }
+    @SubscribeEvent
+    public static void NO_ATTACK(AttackEntityEvent event) {
+        Player player = event.getEntity();
+
+        if (player.getData(ModAttachments.IN_VOID.get())) {
+            event.setCanceled(true);
+        }
+    }
+    @SubscribeEvent
+    public static void NO_CLICK_BLOCK(PlayerInteractEvent.LeftClickBlock event) {
+        Player player = event.getEntity();
+
+        if (player.getData(ModAttachments.IN_VOID.get())) {
+            event.setCanceled(true);
         }
     }
     @SubscribeEvent

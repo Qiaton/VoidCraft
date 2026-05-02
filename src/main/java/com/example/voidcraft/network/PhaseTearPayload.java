@@ -15,9 +15,11 @@ public record PhaseTearPayload(
         double centerY,
         double centerZ,
         float scale,
+        VoidRingInstance.Preset.RenderStyle renderStyle,
         int durationTicks,
         float centerYOffset,
         boolean followCameraPitch,
+        boolean distortionFollowCameraPitch,
         float startHalfHeight,
         float peakHalfHeight,
         float endHalfHeight,
@@ -80,9 +82,11 @@ public record PhaseTearPayload(
                 centerY,
                 centerZ,
                 scale,
+                preset.renderStyle(),
                 preset.durationTicks(),
                 preset.centerYOffset(),
                 preset.followCameraPitch(),
+                preset.distortionFollowCameraPitch(),
                 preset.startHalfHeight(),
                 preset.peakHalfHeight(),
                 preset.endHalfHeight(),
@@ -123,9 +127,11 @@ public record PhaseTearPayload(
 
     public VoidRingInstance.Preset toPreset() {
         return VoidRingInstance.Preset.builder()
+                .renderStyle(this.renderStyle)
                 .durationTicks(this.durationTicks)
                 .centerYOffset(this.centerYOffset)
                 .followCameraPitch(this.followCameraPitch)
+                .distortionFollowCameraPitch(this.distortionFollowCameraPitch)
                 .startHalfHeight(this.startHalfHeight)
                 .peakHalfHeight(this.peakHalfHeight)
                 .endHalfHeight(this.endHalfHeight)
@@ -184,9 +190,11 @@ public record PhaseTearPayload(
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerY);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerZ);
         ByteBufCodecs.FLOAT.encode(buffer, payload.scale);
+        ByteBufCodecs.VAR_INT.encode(buffer, payload.renderStyle.id());
         ByteBufCodecs.VAR_INT.encode(buffer, payload.durationTicks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.centerYOffset);
         ByteBufCodecs.BOOL.encode(buffer, payload.followCameraPitch);
+        ByteBufCodecs.BOOL.encode(buffer, payload.distortionFollowCameraPitch);
         ByteBufCodecs.FLOAT.encode(buffer, payload.startHalfHeight);
         ByteBufCodecs.FLOAT.encode(buffer, payload.peakHalfHeight);
         ByteBufCodecs.FLOAT.encode(buffer, payload.endHalfHeight);
@@ -231,9 +239,11 @@ public record PhaseTearPayload(
         double centerY = ByteBufCodecs.DOUBLE.decode(buffer);
         double centerZ = ByteBufCodecs.DOUBLE.decode(buffer);
         float scale = ByteBufCodecs.FLOAT.decode(buffer);
+        VoidRingInstance.Preset.RenderStyle renderStyle = VoidRingInstance.Preset.RenderStyle.byId(ByteBufCodecs.VAR_INT.decode(buffer));
         int durationTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         float centerYOffset = ByteBufCodecs.FLOAT.decode(buffer);
         boolean followCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
+        boolean distortionFollowCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
         float startHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
         float peakHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
         float endHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
@@ -277,9 +287,11 @@ public record PhaseTearPayload(
                 centerY,
                 centerZ,
                 scale,
+                renderStyle,
                 durationTicks,
                 centerYOffset,
                 followCameraPitch,
+                distortionFollowCameraPitch,
                 startHalfHeight,
                 peakHalfHeight,
                 endHalfHeight,

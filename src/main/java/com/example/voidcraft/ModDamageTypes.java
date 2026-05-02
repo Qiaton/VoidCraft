@@ -15,4 +15,14 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE,
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "void_archer_enter_void")
     );
+
+    public static final ResourceKey<DamageType> PHASE_TURRET_SHRED = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_turret_shred")
+    );
+
+    public static final ResourceKey<DamageType> PHASE_TURRET_DISPERSE = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_turret_disperse")
+    );
 }

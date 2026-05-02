@@ -6,27 +6,37 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public class VoidRingInstance {
-    public final Vec3 fallbackCenter;
+    public Vec3 fallbackCenter;
+    private Vec3 previousCenter;
+    private Vec3 targetCenter;
     public final float scale;
     public final Preset preset;
     public final int ownerEntityId;
     public final int trackedEntityId;
+    public final boolean persistent;
     public int age;
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset) {
-        this(center, scale, preset, -1, -1);
+        this(center, scale, preset, -1, -1, false);
     }
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset, int trackedEntityId) {
-        this(center, scale, preset, -1, trackedEntityId);
+        this(center, scale, preset, -1, trackedEntityId, false);
     }
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset, int ownerEntityId, int trackedEntityId) {
+        this(center, scale, preset, ownerEntityId, trackedEntityId, false);
+    }
+
+    public VoidRingInstance(Vec3 center, float scale, Preset preset, int ownerEntityId, int trackedEntityId, boolean persistent) {
         this.fallbackCenter = center;
+        this.previousCenter = center;
+        this.targetCenter = center;
         this.scale = scale;
         this.preset = preset;
         this.ownerEntityId = ownerEntityId;
         this.trackedEntityId = trackedEntityId;
+        this.persistent = persistent;
         this.age = 0;
     }
 
@@ -38,23 +48,101 @@ public class VoidRingInstance {
             }
         }
 
+        if (this.previousCenter != null) {
+            return this.previousCenter.lerp(this.fallbackCenter, Mth.clamp(partialTick, 0.0F, 1.0F));
+        }
+
         return this.fallbackCenter;
     }
 
     public float getProgress(float partialTick) {
+        if (this.persistent) {
+            return 0.35F;
+        }
         return Mth.clamp((this.age + partialTick) / this.preset.durationTicks(), 0.0F, 1.0F);
     }
 
     public boolean isDead() {
+        if (this.persistent) {
+            return false;
+        }
         return this.age >= this.preset.durationTicks();
+    }
+
+    // 设置持续 ring 的目标坐标，实际渲染中心会在 tickPersistent 里平滑追过去。
+    public void setTargetCenter(Vec3 center) {
+        this.targetCenter = center;
+    }
+
+    // 普通瞬时 ring 的移动入口：保留上一 tick 坐标，让渲染层可以做 partialTick 插值。
+    public void moveCenter(Vec3 center) {
+        if (center == null) {
+            return;
+        }
+
+        this.previousCenter = this.fallbackCenter;
+        this.fallbackCenter = center;
+        this.targetCenter = center;
+    }
+
+    // 瞬时 ring 也可能需要短时间贴着别的客户端物体移动，比如炮台球开火闪光。
+    public void snapCenter(Vec3 center) {
+        if (center == null) {
+            return;
+        }
+
+        this.previousCenter = center;
+        this.fallbackCenter = center;
+        this.targetCenter = center;
+    }
+
+    // 持续 ring 的每 tick 平滑更新：只移动中心点，不推进死亡逻辑。
+    public void tickPersistent() {
+        if (!this.persistent || this.targetCenter == null) {
+            return;
+        }
+        this.previousCenter = this.fallbackCenter;
+        this.fallbackCenter = this.fallbackCenter.lerp(this.targetCenter, 0.55D);
     }
 
     public static final class Preset {
         public static final Preset DEFAULT = builder().build();
 
+        public enum RenderStyle {
+            FULL(0, true),
+            FLASH(1, false);
+
+            private final int id;
+            private final boolean writesWorldEffect;
+
+            RenderStyle(int id, boolean writesWorldEffect) {
+                this.id = id;
+                this.writesWorldEffect = writesWorldEffect;
+            }
+
+            public int id() {
+                return this.id;
+            }
+
+            public boolean writesWorldEffect() {
+                return this.writesWorldEffect;
+            }
+
+            public static RenderStyle byId(int id) {
+                for (RenderStyle style : values()) {
+                    if (style.id == id) {
+                        return style;
+                    }
+                }
+                return FULL;
+            }
+        }
+
+        private final RenderStyle renderStyle;
         private final int durationTicks;
         private final float centerYOffset;
         private final boolean followCameraPitch;
+        private final boolean distortionFollowCameraPitch;
         private final float startHalfHeight;
         private final float peakHalfHeight;
         private final float endHalfHeight;
@@ -92,9 +180,11 @@ public class VoidRingInstance {
         private final float noiseScrollSpeed;
 
         private Preset(Builder builder) {
+            this.renderStyle = builder.renderStyle;
             this.durationTicks = builder.durationTicks;
             this.centerYOffset = builder.centerYOffset;
             this.followCameraPitch = builder.followCameraPitch;
+            this.distortionFollowCameraPitch = builder.distortionFollowCameraPitch;
             this.startHalfHeight = builder.startHalfHeight;
             this.peakHalfHeight = builder.peakHalfHeight;
             this.endHalfHeight = builder.endHalfHeight;
@@ -132,6 +222,10 @@ public class VoidRingInstance {
             this.noiseScrollSpeed = builder.noiseScrollSpeed;
         }
 
+        public RenderStyle renderStyle() {
+            return this.renderStyle;
+        }
+
         public int durationTicks() {
             return this.durationTicks;
         }
@@ -142,6 +236,10 @@ public class VoidRingInstance {
 
         public boolean followCameraPitch() {
             return this.followCameraPitch;
+        }
+
+        public boolean distortionFollowCameraPitch() {
+            return this.distortionFollowCameraPitch;
         }
 
         public float startHalfHeight() {
@@ -298,9 +396,11 @@ public class VoidRingInstance {
 
         public static final class Builder {
             // 下面这组默认值就是这套入相位特效的主要调参入口，Builder 的同名方法对应修改这些项。
+            private RenderStyle renderStyle = RenderStyle.FULL; // 渲染档位；高频小闪光可以切到 FLASH 轻量路径。
             private int durationTicks = 5; // 特效总时长，单位 tick。
             private float centerYOffset = 0.98F; // 特效中心相对玩家脚底的上移量，决定白光贴在身体哪一段。
             private boolean followCameraPitch = false; // 是否连 Y 轴俯仰也一起朝向镜头；关掉时只会在 XZ 平面转向镜头。
+            private boolean distortionFollowCameraPitch = false; // 扭曲后处理层是否完整跟随镜头俯仰，默认沿用世界竖直感。
             private float startHalfHeight = 0.88F; // 起始阶段白光半高。
             private float peakHalfHeight = 2.52F; // 爆发阶段白光半高。
             private float endHalfHeight = 0.92F; // 收束阶段白光半高。
@@ -341,9 +441,11 @@ public class VoidRingInstance {
             }
 
             private Builder(Preset preset) {
+                this.renderStyle = preset.renderStyle;
                 this.durationTicks = preset.durationTicks;
                 this.centerYOffset = preset.centerYOffset;
                 this.followCameraPitch = preset.followCameraPitch;
+                this.distortionFollowCameraPitch = preset.distortionFollowCameraPitch;
                 this.startHalfHeight = preset.startHalfHeight;
                 this.peakHalfHeight = preset.peakHalfHeight;
                 this.endHalfHeight = preset.endHalfHeight;
@@ -381,6 +483,11 @@ public class VoidRingInstance {
                 this.noiseScrollSpeed = preset.noiseScrollSpeed;
             }
 
+            public Builder renderStyle(RenderStyle renderStyle) {
+                this.renderStyle = renderStyle == null ? RenderStyle.FULL : renderStyle;
+                return this;
+            }
+
             public Builder durationTicks(int durationTicks) {
                 this.durationTicks = Math.max(1, durationTicks);
                 return this;
@@ -393,6 +500,11 @@ public class VoidRingInstance {
 
             public Builder followCameraPitch(boolean followCameraPitch) {
                 this.followCameraPitch = followCameraPitch;
+                return this;
+            }
+
+            public Builder distortionFollowCameraPitch(boolean distortionFollowCameraPitch) {
+                this.distortionFollowCameraPitch = distortionFollowCameraPitch;
                 return this;
             }
 

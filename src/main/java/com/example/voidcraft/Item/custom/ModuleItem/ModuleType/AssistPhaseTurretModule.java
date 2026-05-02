@@ -1,0 +1,689 @@
+package com.example.voidcraft.Item.custom.ModuleItem.ModuleType;
+
+import com.example.voidcraft.ClientCustom.ModuleInputMode;
+import com.example.voidcraft.Custom.Behavior.Turret.PhaseEmitterSlot;
+import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
+import com.example.voidcraft.Effect.VoidBeamInstance;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleMode;
+import com.example.voidcraft.Item.custom.PhaseWatch;
+import com.example.voidcraft.ModDamageTypes;
+import com.example.voidcraft.ModDataComponents;
+import com.example.voidcraft.Sound.ModSound;
+import com.example.voidcraft.VoidCraft;
+import com.example.voidcraft.network.ModNetworking;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.ACTIVE_DURATION;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.COOLDOWN_REDUCTION;
+
+@EventBusSubscriber(modid = VoidCraft.MODID)
+public class AssistPhaseTurretModule extends ModuleItem {
+    // 辅助炮台的基础数值集中在这里；以后要做配置文件或 UI 调参时，优先替换这些常量/getter。
+    private static final double RANGE = 256.0D;
+    private static final double RANGE_SQR = RANGE * RANGE;
+    private static final float SHOT_DAMAGE = 5.0F;
+    private static final int FIRE_INTERVAL_TICKS = 1;
+    private static final int TARGET_LOCK_TICKS = 20;
+    private static final int RECENT_ATTACK_TARGET_TICKS = 100;
+    private static final int BURST_ACTIVE_TICKS = 50;
+    private static final double LOW_HEALTH_TIE_DISTANCE_SQR = 4.0D;
+    private static final long CHANNEL_ENERGY_COST = 1L;
+    private static final long BURST_ENERGY_COST = 1L;
+    private static final long CHANNEL_COOLDOWN_TICKS = 1L;
+    private static final long BURST_COOLDOWN_TICKS = 1L;
+
+    // 按玩家和模块槽位保存自动炮台运行状态，避免不同槽位的锁定目标和发射顺序互相污染。
+    private static final Map<UUID, Map<Integer, FireState>> FIRE_STATES = new HashMap<>();
+
+    // 玩家最近主动攻击的目标单独记忆，用于“打错非怪物也反击”的优先级。
+    private static final Map<UUID, RecentAttackTarget> RECENT_ATTACK_TARGETS = new HashMap<>();
+
+    private static final VoidBeamInstance.Config SHOT_BEAM = VoidBeamInstance.Config.builder()
+            .lifetimeTicks(6)
+            .coreRadius(0.045F)
+            .glowRadius(0.17F)
+            .startRadiusScale(1.0F)
+            .endRadiusScale(0.62F)
+            .coreAlpha(0.94F)
+            .glowAlpha(0.42F)
+            .crossAlphaScale(0.40F)
+            .fadeInRatio(0.04F)
+            .fadeOutRatio(0.72F)
+            .shaderCompatCoreGain(1.20F)
+            .shaderCompatGlowGain(1.36F)
+            .shaderCompatBloomAlphaScale(0.78F)
+            .shaderCompatBloomWidthScale(1.46F)
+            .coreColor(PhaseTurretModule.VisualColors.SHOT_BEAM_CORE)
+            .glowColor(PhaseTurretModule.VisualColors.SHOT_BEAM_GLOW)
+            .build();
+
+    public AssistPhaseTurretModule(Properties properties) {
+        super(properties);
+    }
+
+    @SubscribeEvent
+    public static void rememberRecentAttackTarget(AttackEntityEvent event) {
+        // 这里只记目标，不直接开火；真正是否可打由后面的距离、视线和锁定规则判断。
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide()) {
+            return;
+        }
+
+        if (!(event.getTarget() instanceof LivingEntity target) || target == player) {
+            return;
+        }
+
+        RECENT_ATTACK_TARGETS.put(
+                player.getUUID(),
+                new RecentAttackTarget(target.getUUID(), player.tickCount + RECENT_ATTACK_TARGET_TICKS)
+        );
+    }
+
+    @SubscribeEvent
+    public static void assistTurretClock(PlayerTickEvent.Post event) {
+        // 辅助炮台不依赖玩家按住左键，所以使用独立服务端 tick 驱动自动射击。
+        if (event.getEntity().level().isClientSide()) {
+            return;
+        }
+
+        if (event.getEntity() instanceof ServerPlayer player) {
+            tickAutoFire(player);
+        }
+    }
+
+    @Override
+    protected void doUseSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
+        Stats stats = getStats(moduleStack);
+        if (stats == null || stats.mode() == null) {
+            return;
+        }
+
+        ModuleMode mode = stats.mode();
+        if (mode == CHANNEL) {
+            // CHANNEL 是开关型自动炮台：启动后由 ModuleSkillClock 负责持续耗能。
+            if (ModuleSkillClock.getChannel(player, slot)) {
+                ModuleSkillClock.stopChannel(player, slot);
+                return;
+            }
+
+            long cooldownTicks = stats.channelCooldownTicks();
+            long energyCost = stats.channelEnergyCost();
+            if (!ModuleSkillClock.checkCooldown(player, slot)) {
+                return;
+            }
+            if (!ModuleSkillClock.tryUseEnergy(player, energyCost)) {
+                return;
+            }
+
+            ModuleSkillClock.setCooldown(player, slot, cooldownTicks);
+            stopOtherTurretChannels(player, slot);
+            stopOtherBurstTurrets(player, slot);
+            ModuleSkillClock.startChannel(player, slot, 0);
+            getFireState(player, slot);
+            ModNetworking.sendAssistTurretState(player, true);
+            fire(player, moduleStack, slot, stats);
+            return;
+        }
+        if (mode == BURST) {
+            long cooldownTicks = stats.burstCooldownTicks();
+            long energyCost = stats.burstEnergyCost();
+            if (!ModuleSkillClock.checkCooldown(player, slot)) {
+                return;
+            }
+            if (!ModuleSkillClock.tryUseEnergy(player, energyCost)) {
+                return;
+            }
+
+            ModuleSkillClock.setCooldown(player, slot, cooldownTicks);
+            startBurst(player, moduleStack, slot, stats);
+        }
+    }
+
+    public static void tickAutoFire(ServerPlayer player) {
+        // 每 tick 重新读取手表里的模块，模块被移走或手表不在副手时会自然停止。
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            if (removeAllFireStates(player)) {
+                ModNetworking.sendAssistTurretState(player, false);
+            }
+            return;
+        }
+
+        NonNullList<ItemStack> items = getWatchModuleStacks(watchStack);
+        for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
+            ItemStack moduleStack = items.get(slot);
+            FireState state = getExistingFireState(player, slot);
+            if (!(moduleStack.getItem() instanceof AssistPhaseTurretModule module)) {
+                if (state != null && !ModuleSkillClock.getChannel(player, slot)) {
+                    removeFireState(player, slot);
+                }
+                continue;
+            }
+
+            Stats stats = getStats(moduleStack);
+            if (stats == null) {
+                continue;
+            }
+
+            boolean channelActive = ModuleSkillClock.getChannel(player, slot);
+            boolean burstActive = isBurstActive(player, state);
+            if (state != null && state.burstUntilTick > 0 && !burstActive) {
+                // BURST 到期后只清 burst 状态；如果同槽 CHANNEL 还开着，继续保留 FireState。
+                state.burstUntilTick = 0;
+                if (!channelActive) {
+                    removeFireState(player, slot);
+                    if (!hasActiveTurret(player, slot)) {
+                        ModNetworking.sendAssistTurretState(player, false);
+                    }
+                    continue;
+                }
+            }
+
+            if (!channelActive && !burstActive) {
+                continue;
+            }
+
+            module.fire(player, moduleStack, slot, stats);
+        }
+    }
+
+    public static boolean hasActiveBurst(ServerPlayer player, int slot) {
+        return isBurstActive(player, getExistingFireState(player, slot));
+    }
+
+    public static boolean hasAnyActive(ServerPlayer player) {
+        return hasActiveTurret(player, -1);
+    }
+
+    public static void onChannelStopped(ServerPlayer player, int slot) {
+        FireState state = getExistingFireState(player, slot);
+        boolean hadFireState = state != null;
+        if (state != null) {
+            if (isBurstActive(player, state)) {
+                // 同槽 burst 还在跑时，不移除 FireState，只清掉 channel 的锁定目标。
+                state.lockedTargetId = null;
+                state.lockUntilTick = 0;
+            } else {
+                removeFireState(player, slot);
+            }
+        }
+        if ((hadFireState || isAssistTurretSlot(player, slot)) && !hasActiveTurret(player, slot)) {
+            ModNetworking.sendAssistTurretState(player, false);
+        }
+    }
+
+    public static void clearPlayerState(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+
+        UUID playerId = player.getUUID();
+        // 登出时清掉自动炮台和最近攻击目标，避免 UUID 状态跨在线会话残留。
+        FIRE_STATES.remove(playerId);
+        RECENT_ATTACK_TARGETS.remove(playerId);
+    }
+
+    private void startBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+        stopOtherTurretChannels(player, slot);
+        stopOtherBurstTurrets(player, slot);
+
+        FireState state = getFireState(player, slot);
+        state.burstUntilTick = player.tickCount + stats.burstActiveTicks();
+        ModNetworking.sendAssistTurretState(player, true);
+        fire(player, moduleStack, slot, stats);
+    }
+
+    private boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+        // 真正开火的统一入口：模式分支只负责算冷却/扣能量，然后进入这里。
+        FireState state = getFireState(player, slot);
+        if (player.tickCount < state.nextFireTick) {
+            return false;
+        }
+
+        LivingEntity target = selectTarget(player, state);
+        if (target == null) {
+            return false;
+        }
+
+        int emitterIndex = state.nextEmitterIndex;
+        state.nextEmitterIndex = (state.nextEmitterIndex + 1) % PhaseEmitterSlot.FIRE_ORDER.length;
+        state.nextFireTick = player.tickCount + getFireIntervalTicks(moduleStack, stats);
+
+        hurtTarget(player, target, getShotDamage(moduleStack, stats, target));
+        Vec3 targetPos = getTargetPos(target);
+        ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
+        ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getShotBeamConfig(moduleStack, stats, target));
+        return true;
+    }
+
+    protected int getFireIntervalTicks(ItemStack moduleStack, Stats stats) {
+        // 射速目前照搬手动炮台；之后按模块词条或配置调射速时只改这里。
+        return Math.max(1, FIRE_INTERVAL_TICKS);
+    }
+
+    protected float getShotDamage(ItemStack moduleStack, Stats stats, LivingEntity target) {
+        // 伤害目前照搬手动炮台；之后按模块词条、目标类型或配置调伤害时只改这里。
+        return SHOT_DAMAGE;
+    }
+
+    protected VoidBeamInstance.Config getShotBeamConfig(ItemStack moduleStack, Stats stats, LivingEntity target) {
+        // 光束视觉独立成入口，方便以后给辅助炮台做颜色、粗细或命中反馈配置。
+        return SHOT_BEAM;
+    }
+
+    private static LivingEntity selectTarget(ServerPlayer player, FireState state) {
+        // 优先级：正在攻击玩家的怪物 > 锁定目标 > 玩家最近攻击的目标 > 最近/低血量怪物。
+        // 玩家正在被怪物攻击时，直接抢占当前锁定目标。
+        LivingEntity attacker = findAttackingHostile(player);
+        if (attacker != null) {
+            lockTarget(player, state, attacker);
+            return attacker;
+        }
+
+        LivingEntity lockedTarget = getLockedTarget(player, state);
+        if (lockedTarget != null) {
+            return lockedTarget;
+        }
+
+        LivingEntity recentAttackTarget = getRecentAttackTarget(player);
+        if (isValidTarget(player, recentAttackTarget, true)) {
+            lockTarget(player, state, recentAttackTarget);
+            return recentAttackTarget;
+        }
+
+        LivingEntity hostile = findBestHostile(player);
+        if (hostile != null) {
+            lockTarget(player, state, hostile);
+            return hostile;
+        }
+
+        return null;
+    }
+
+    private static LivingEntity findAttackingHostile(ServerPlayer player) {
+        LivingEntity best = null;
+        double bestDistanceSqr = Double.MAX_VALUE;
+
+        for (Mob mob : player.level().getEntitiesOfClass(
+                Mob.class,
+                player.getBoundingBox().inflate(RANGE),
+                mob -> mob.getTarget() == player && isHostileTarget(mob)
+        )) {
+            if (!isValidTarget(player, mob, false)) {
+                continue;
+            }
+
+            double distanceSqr = player.distanceToSqr(mob);
+            if (distanceSqr < bestDistanceSqr) {
+                best = mob;
+                bestDistanceSqr = distanceSqr;
+            }
+        }
+
+        return best;
+    }
+
+    private static LivingEntity findBestHostile(ServerPlayer player) {
+        LivingEntity best = null;
+        double bestDistanceSqr = Double.MAX_VALUE;
+        float bestHealth = Float.MAX_VALUE;
+
+        for (Mob mob : player.level().getEntitiesOfClass(
+                Mob.class,
+                player.getBoundingBox().inflate(RANGE)
+        )) {
+            if (!isValidTarget(player, mob, false)) {
+                continue;
+            }
+
+            double distanceSqr = player.distanceToSqr(mob);
+            float health = mob.getHealth();
+            // 默认优先最近；距离很接近时再偏向低血量，避免炮台频繁横跨战场换目标。
+            if (distanceSqr < bestDistanceSqr
+                    || (Math.abs(distanceSqr - bestDistanceSqr) <= LOW_HEALTH_TIE_DISTANCE_SQR && health < bestHealth)) {
+                best = mob;
+                bestDistanceSqr = distanceSqr;
+                bestHealth = health;
+            }
+        }
+
+        return best;
+    }
+
+    private static LivingEntity getLockedTarget(ServerPlayer player, FireState state) {
+        if (state.lockedTargetId == null || player.tickCount >= state.lockUntilTick) {
+            clearLockedTarget(state);
+            return null;
+        }
+
+        Entity entity = getEntity(player, state.lockedTargetId);
+        if (!(entity instanceof LivingEntity target) || !isValidTarget(player, target, true)) {
+            clearLockedTarget(state);
+            return null;
+        }
+
+        return target;
+    }
+
+    private static LivingEntity getRecentAttackTarget(ServerPlayer player) {
+        RecentAttackTarget recentTarget = RECENT_ATTACK_TARGETS.get(player.getUUID());
+        if (recentTarget == null) {
+            return null;
+        }
+
+        if (player.tickCount >= recentTarget.expiresAtTick()) {
+            RECENT_ATTACK_TARGETS.remove(player.getUUID());
+            return null;
+        }
+
+        Entity entity = getEntity(player, recentTarget.targetId());
+        if (!(entity instanceof LivingEntity target)) {
+            RECENT_ATTACK_TARGETS.remove(player.getUUID());
+            return null;
+        }
+
+        return target;
+    }
+
+    private static boolean isValidTarget(ServerPlayer player, LivingEntity target, boolean allowNonMonster) {
+        if (target == null || target == player || target.isRemoved() || !target.isAlive() || !target.isPickable()) {
+            return false;
+        }
+        if (target.level() != player.level()) {
+            return false;
+        }
+        if (!allowNonMonster && !isHostileTarget(target)) {
+            return false;
+        }
+        if (player.distanceToSqr(target) > RANGE_SQR) {
+            return false;
+        }
+
+        return hasLineOfSight(player, target);
+    }
+
+    private static boolean isHostileTarget(LivingEntity target) {
+        // 不用 Monster 类判断，幻翼/恶魂这类 MobCategory.MONSTER 也能被自动索敌覆盖。
+        return target.getType().getCategory() == MobCategory.MONSTER;
+    }
+
+    private static boolean hasLineOfSight(ServerPlayer player, LivingEntity target) {
+        Vec3 start = player.getEyePosition();
+        Vec3 end = getTargetPos(target);
+        BlockHitResult blockHit = player.level().clip(new ClipContext(
+                start,
+                end,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                player
+        ));
+
+        if (blockHit.getType() == HitResult.Type.MISS) {
+            return true;
+        }
+
+        return start.distanceToSqr(blockHit.getLocation()) + 0.25D >= start.distanceToSqr(end);
+    }
+
+    private static Vec3 getTargetPos(LivingEntity target) {
+        return target.getBoundingBox().getCenter();
+    }
+
+    private static Entity getEntity(ServerPlayer player, UUID entityId) {
+        return ((ServerLevel) player.level()).getEntity(entityId);
+    }
+
+    private static void lockTarget(ServerPlayer player, FireState state, LivingEntity target) {
+        state.lockedTargetId = target.getUUID();
+        state.lockUntilTick = player.tickCount + TARGET_LOCK_TICKS;
+    }
+
+    private static void clearLockedTarget(FireState state) {
+        state.lockedTargetId = null;
+        state.lockUntilTick = 0;
+    }
+
+    private static void hurtTarget(ServerPlayer player, LivingEntity target, float damage) {
+        int previousInvulnerableTime = target.invulnerableTime;
+        target.invulnerableTime = 0;
+        target.hurt(buildShotDamageSource(player), damage);
+        target.invulnerableTime = Math.min(target.invulnerableTime, previousInvulnerableTime);
+    }
+
+    private static DamageSource buildShotDamageSource(ServerPlayer player) {
+        return player.damageSources().source(getShotDamageType(player), player, player);
+    }
+
+    private static ResourceKey<DamageType> getShotDamageType(ServerPlayer player) {
+        return player.getRandom().nextBoolean()
+                ? ModDamageTypes.PHASE_TURRET_SHRED
+                : ModDamageTypes.PHASE_TURRET_DISPERSE;
+    }
+
+    private static void stopOtherTurretChannels(ServerPlayer player, int activeSlot) {
+        for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
+            if (slot == activeSlot || !ModuleSkillClock.getChannel(player, slot) || !isTurretSlot(player, slot)) {
+                continue;
+            }
+
+            ModuleSkillClock.stopChannel(player, slot);
+        }
+    }
+
+    public static void stopOtherBurstTurrets(ServerPlayer player, int activeSlot) {
+        // 手动炮台或另一个辅助炮台启动时会调用这里，保证炮台球视觉只有一组主状态。
+        Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
+        if (playerStates == null) {
+            return;
+        }
+
+        playerStates.entrySet().removeIf(entry -> {
+            int slot = entry.getKey();
+            FireState state = entry.getValue();
+            if (slot == activeSlot || !isBurstActive(player, state)) {
+                return false;
+            }
+
+            state.burstUntilTick = 0;
+            return !ModuleSkillClock.getChannel(player, slot);
+        });
+    }
+
+    private static boolean hasActiveTurret(ServerPlayer player, int ignoredSlot) {
+        for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
+            if (slot == ignoredSlot || !isTurretSlot(player, slot)) {
+                continue;
+            }
+
+            if (ModuleSkillClock.getChannel(player, slot) || hasActiveBurst(player, slot)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean isAssistTurretSlot(ServerPlayer player, int slot) {
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
+            return false;
+        }
+
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return false;
+        }
+
+        return getWatchModuleStacks(watchStack).get(slot).getItem() instanceof AssistPhaseTurretModule;
+    }
+
+    private static boolean isTurretSlot(ServerPlayer player, int slot) {
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
+            return false;
+        }
+
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return false;
+        }
+
+        ItemStack moduleStack = getWatchModuleStacks(watchStack).get(slot);
+        return moduleStack.getItem() instanceof PhaseTurretModule
+                || moduleStack.getItem() instanceof AssistPhaseTurretModule;
+    }
+
+    private static NonNullList<ItemStack> getWatchModuleStacks(ItemStack watchStack) {
+        // ItemContainerContents.EMPTY 没有固定槽位，读取前必须复制进手表模块槽大小的列表。
+        ItemContainerContents contents = watchStack.getOrDefault(
+                DataComponents.CONTAINER,
+                ItemContainerContents.EMPTY
+        );
+        NonNullList<ItemStack> items = NonNullList.withSize(
+                PhaseWatch.WATCH_MODULE_SLOT_COUNT,
+                ItemStack.EMPTY
+        );
+        contents.copyInto(items);
+        return items;
+    }
+
+    private static FireState getFireState(ServerPlayer player, int slot) {
+        return FIRE_STATES
+                .computeIfAbsent(player.getUUID(), uuid -> new HashMap<>())
+                .computeIfAbsent(slot, ignored -> new FireState());
+    }
+
+    private static FireState getExistingFireState(ServerPlayer player, int slot) {
+        Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
+        if (playerStates == null) {
+            return null;
+        }
+
+        return playerStates.get(slot);
+    }
+
+    private static boolean isBurstActive(ServerPlayer player, FireState state) {
+        return state != null && state.burstUntilTick > player.tickCount;
+    }
+
+    private static boolean removeFireState(ServerPlayer player, int slot) {
+        Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
+        if (playerStates == null) {
+            return false;
+        }
+
+        boolean removed = playerStates.remove(slot) != null;
+        if (playerStates.isEmpty()) {
+            FIRE_STATES.remove(player.getUUID());
+        }
+
+        return removed;
+    }
+
+    private static boolean removeAllFireStates(ServerPlayer player) {
+        return FIRE_STATES.remove(player.getUUID()) != null;
+    }
+
+    public static Stats getStats(ItemStack moduleStack) {
+        ModuleData data = moduleStack.get(ModDataComponents.MODULE_DATA.get());
+        if (data == null) {
+            return null;
+        }
+
+        float cooldownReduction = 1.0F;
+        float energyEfficiency = 1.0F;
+        float activeDuration = 1.0F;
+        List<ModuleModifierData> modifiers = data.modifiers();
+
+        for (ModuleModifierData modifier : modifiers) {
+            ModuleModifierType modifierType = modifier.type();
+            if (modifierType == null) {
+                continue;
+            }
+            if (modifierType == COOLDOWN_REDUCTION) {
+                cooldownReduction += 0.15F * modifier.level();
+            }
+            if (modifierType == ACTIVE_DURATION) {
+                energyEfficiency += 0.12F * modifier.level();
+                activeDuration += 0.3F * modifier.level();
+            }
+        }
+
+        return new Stats(data.moduleMode(), cooldownReduction, energyEfficiency, activeDuration);
+    }
+
+    @Override
+    public ModuleInputMode getInputMode() {
+        return ModuleInputMode.CLICK;
+    }
+
+    @Override
+    public boolean canUseMode(ModuleMode mode) {
+        return mode == CHANNEL || mode == BURST;
+    }
+
+    public record Stats(ModuleMode mode, float cooldownReduction, float energyEfficiency, float activeDuration) {
+        // Stats 是模块数据到运行数值的边界；UI/配置改动尽量只落在这里或上面的基础 getter。
+        public long channelEnergyCost() {
+            return Math.max(1L, (long) (CHANNEL_ENERGY_COST / energyEfficiency));
+        }
+
+        public long burstEnergyCost() {
+            return Math.max(1L, (long) (BURST_ENERGY_COST / energyEfficiency));
+        }
+
+        public long channelCooldownTicks() {
+            return Math.max(1L, (long) (CHANNEL_COOLDOWN_TICKS / cooldownReduction));
+        }
+
+        public long burstCooldownTicks() {
+            return Math.max(1L, (long) (BURST_COOLDOWN_TICKS / cooldownReduction));
+        }
+
+        public int burstActiveTicks() {
+            return Math.max(1, (int) (BURST_ACTIVE_TICKS * activeDuration));
+        }
+    }
+
+    private static final class FireState {
+        // 自动炮台每槽独立记录发射顺序、冷却、锁定目标和 burst 到期时间。
+        private int nextEmitterIndex;
+        private int nextFireTick;
+        private UUID lockedTargetId;
+        private int lockUntilTick;
+        private int burstUntilTick;
+    }
+
+    private record RecentAttackTarget(UUID targetId, int expiresAtTick) {
+        // 只保存 UUID，避免长期持有实体对象；过期或实体消失时会自动清理。
+    }
+}

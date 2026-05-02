@@ -10,13 +10,15 @@ import com.example.voidcraft.network.ModNetworking;
 import com.example.voidcraft.Sound.ModSound;
 import net.neoforged.bus.api.IEventBus;
 
-import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.common.Mod;
 
 @Mod(VoidCraft.MODID)
 public class VoidCraft {
     public static final String MODID = "void_craft";
-    public VoidCraft(IEventBus bus) {        //初始化类
+    public VoidCraft(IEventBus bus, ModContainer modContainer) {        //初始化类
+        modContainer.registerConfig(ModConfig.Type.CLIENT, Config.SPEC);
         CreativeModeTabs.register(bus);
         ModBlock.register(bus);
         ModBlockItem.register(bus);
@@ -29,4 +31,3 @@ public class VoidCraft {
         ModLootTables.register();
         }
     }
-

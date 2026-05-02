@@ -1,12 +1,20 @@
 package com.example.voidcraft;
 
+import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.ClientCustom.FlowEffect;
+import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Gui.ModuleScreen;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
@@ -27,8 +35,34 @@ public class VoidCraftClient {
         }
     }
     @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        PhaseEmitterClientManager.tick();
+        PhaseEmitterClientManager.tickLocalAttackInput();
+    }
+    @SubscribeEvent
+    public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (PhaseEmitterClientManager.handleMouseButton(event.getButton(), event.getAction())) {
+            event.setCanceled(true);
+        }
+    }
+    @SubscribeEvent
+    public static void onRenderHand(RenderHandEvent event) {
+        if (PhaseEmitterClientManager.shouldHideLocalHands()) {
+            event.setCanceled(true);
+        }
+    }
+    @SubscribeEvent
     public static void MODULE_MENU(RegisterMenuScreensEvent event){
         event.register(ModMenuType.MODULE_MENU.get(), ModuleScreen::new);
+    }
+
+    @SubscribeEvent
+    public static void ENERGY_HUD(RegisterGuiLayersEvent event) {
+        event.registerAbove(
+                VanillaGuiLayers.HOTBAR,
+                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
+                EnergyHud::render
+        );
     }
 
 }

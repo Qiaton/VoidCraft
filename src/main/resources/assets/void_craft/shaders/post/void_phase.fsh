@@ -10,10 +10,10 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
-const int MAX_EFFECTS = 8;
+const int MAX_EFFECTS = 16;
 
-float decodeU16(vec2 packed) {
-    vec2 bytes = round(clamp(packed, 0.0, 1.0) * 255.0);
+float decodeU16(vec2 packedBytes) {
+    vec2 bytes = round(clamp(packedBytes, 0.0, 1.0) * 255.0);
     return (bytes.x * 256.0 + bytes.y) / 65535.0;
 }
 
@@ -63,6 +63,85 @@ vec3 applyFullScreenPhase(vec3 baseColor) {
     return clamp(phase * 2.0, 0.0, 1.0);
 }
 
+void accumulateBlackHoleEffect(
+    vec2 normalized,
+    float maskAlpha,
+    float progress,
+    float amplitude,
+    float thickness,
+    float alpha,
+    vec2 detail,
+    float swirlStrength,
+    float suctionStrength,
+    float centerShadowScale,
+    float time,
+    inout vec2 totalOffset,
+    inout float strongestEdge,
+    inout float membranePresence,
+    inout float blackHoleShadow,
+    inout float accretionPresence
+) {
+    float dist = length(normalized);
+    float collapse = smoothstep(0.20, 1.0, progress);
+    float expand = smoothstep(0.0, 0.18, progress);
+    float fade = (1.0 - smoothstep(0.78, 1.0, progress)) * alpha;
+    if (fade <= 0.0001) {
+        return;
+    }
+
+    float noiseFrequency = mix(3.0, 18.0, detail.x);
+    float noiseSpeed = mix(0.16, 3.20, detail.y);
+    float angle = atan(normalized.y, normalized.x);
+    float flowNoise = noise(normalized * noiseFrequency + vec2(time * 0.48 * noiseSpeed, -time * 0.30 * noiseSpeed));
+    float foldNoise = noise((normalized + vec2(4.1, -2.7)) * (noiseFrequency * 0.62 + thickness * 4.2)
+            + vec2(-time * 0.34 * noiseSpeed, time * 0.42 * noiseSpeed));
+    float spiralFlow = fract(angle * 0.15915494 + dist * 0.44 - time * (0.10 + noiseSpeed * 0.035));
+    float spiralBand = smoothstep(0.0, 0.22, spiralFlow) * (1.0 - smoothstep(0.52, 1.0, spiralFlow));
+
+    vec2 radial = dist > 0.0001 ? normalize(normalized) : vec2(0.0, 1.0);
+    vec2 tangent = vec2(-radial.y, radial.x);
+    float diskWave = (flowNoise - 0.5) * 0.018 + (spiralBand - 0.5) * 0.010;
+    float diskY = abs(normalized.y + diskWave);
+    float diskX = abs(normalized.x);
+
+    float horizonMask = (1.0 - smoothstep(0.18, 0.56, dist)) * maskAlpha;
+    float horizonEdge = smoothstep(0.34, 0.58, dist) * (1.0 - smoothstep(0.58, 0.76, dist)) * maskAlpha;
+    float lensRing = smoothstep(0.38, 0.74, dist) * (1.0 - smoothstep(0.92, 1.14, dist)) * maskAlpha;
+    float outerSwirlMask = smoothstep(0.46, 0.90, dist) * (1.0 - smoothstep(0.98, 1.16, dist)) * maskAlpha;
+    float diskMask = (1.0 - smoothstep(0.045, 0.24, diskY))
+            * smoothstep(0.22, 0.42, diskX)
+            * (1.0 - smoothstep(0.86, 1.18, diskX))
+            * (0.70 + 0.22 * flowNoise + 0.08 * spiralBand)
+            * maskAlpha;
+
+    float baseStrength = amplitude
+            * fade
+            * (0.60 + 0.40 * expand)
+            * (1.0 - collapse * 0.22);
+    float lensStrength = baseStrength
+            * lensRing
+            * (0.026 + 0.018 * thickness)
+            * (0.72 + 0.28 * foldNoise);
+    float horizonPullStrength = baseStrength
+            * suctionStrength
+            * (horizonEdge * 0.72 + lensRing * 0.62 + outerSwirlMask * 0.44)
+            * (0.016 + 0.018 * horizonMask);
+    float swirlPullStrength = baseStrength
+            * swirlStrength
+            * (outerSwirlMask + diskMask * 0.42)
+            * (0.012 + 0.018 * thickness)
+            * (0.84 + 0.16 * spiralBand);
+
+    totalOffset += radial * (lensStrength + horizonPullStrength);
+    totalOffset += tangent * swirlPullStrength;
+    totalOffset += normalize(tangent * 0.68 + radial * 0.46) * diskMask * baseStrength * 0.006 * (0.70 + 0.30 * flowNoise);
+
+    strongestEdge = max(strongestEdge, max(horizonEdge, lensRing * 0.48) * fade);
+    membranePresence = max(membranePresence, lensRing * fade * 0.32);
+    blackHoleShadow = max(blackHoleShadow, horizonMask * fade * (0.86 + 0.14 * expand) * centerShadowScale);
+    accretionPresence = max(accretionPresence, (diskMask + horizonEdge * 0.28) * fade);
+}
+
 void accumulatePhaseEffect(
     int row,
     vec2 normalized,
@@ -70,13 +149,16 @@ void accumulatePhaseEffect(
     float time,
     inout vec2 totalOffset,
     inout float strongestEdge,
-    inout float membranePresence
+    inout float membranePresence,
+    inout float blackHoleShadow,
+    inout float accretionPresence
 ) {
     vec2 state = decodePair(ivec2(0, row));
     vec2 style = decodePair(ivec2(1, row));
     vec2 detail = decodePair(ivec2(2, row));
     vec2 pull = decodePair(ivec2(5, row));
     vec2 occlusion = decodePair(ivec2(6, row));
+    vec2 shape = decodePair(ivec2(7, row));
 
     float progress = state.x;
     float amplitude = state.y;
@@ -86,6 +168,7 @@ void accumulatePhaseEffect(
     float suctionStrength = pull.y;
     float occlusionEnabled = occlusion.x;
     float effectDepth = occlusion.y;
+    float centerShadowScale = clamp(shape.y, 0.0, 1.0);
     float dist = length(normalized);
 
     if (progress <= 0.0001 || alpha <= 0.0001 || maskAlpha <= 0.0001) {
@@ -99,6 +182,28 @@ void accumulatePhaseEffect(
         if (maskAlpha <= 0.0001) {
             return;
         }
+    }
+
+    if (shape.x > 0.5) {
+        accumulateBlackHoleEffect(
+            normalized,
+            maskAlpha,
+            progress,
+            amplitude,
+            thickness,
+            alpha,
+            detail,
+            swirlStrength,
+            suctionStrength,
+            centerShadowScale,
+            time,
+            totalOffset,
+            strongestEdge,
+            membranePresence,
+            blackHoleShadow,
+            accretionPresence
+        );
+        return;
     }
 
     float collapse = smoothstep(0.20, 1.0, progress);
@@ -178,7 +283,9 @@ void accumulateAnalyticPhaseEffects(
     float time,
     inout vec2 totalOffset,
     inout float strongestEdge,
-    inout float membranePresence
+    inout float membranePresence,
+    inout float blackHoleShadow,
+    inout float accretionPresence
 ) {
     for (int row = 1; row <= MAX_EFFECTS; row++) {
         vec2 screenCenter = decodePair(ivec2(3, row));
@@ -194,7 +301,17 @@ void accumulateAnalyticPhaseEffects(
             continue;
         }
 
-        accumulatePhaseEffect(row, normalized, maskAlpha, time, totalOffset, strongestEdge, membranePresence);
+        accumulatePhaseEffect(
+            row,
+            normalized,
+            maskAlpha,
+            time,
+            totalOffset,
+            strongestEdge,
+            membranePresence,
+            blackHoleShadow,
+            accretionPresence
+        );
     }
 }
 
@@ -207,6 +324,8 @@ void main() {
     vec2 totalOffset = vec2(0.0);
     float strongestEdge = 0.0;
     float membranePresence = 0.0;
+    float blackHoleShadow = 0.0;
+    float accretionPresence = 0.0;
 
     vec4 maskSample = texture(PhaseTearMaskSampler, texCoord);
     int effectIndex = int(round(maskSample.b * 255.0)) - 1;
@@ -217,12 +336,29 @@ void main() {
         float maskAlpha = 1.0 - smoothstep(0.62, 1.0, dist);
         if (maskAlpha > 0.0001) {
             usedRasterMask = true;
-            accumulatePhaseEffect(effectIndex + 1, normalized, maskAlpha, time, totalOffset, strongestEdge, membranePresence);
+            accumulatePhaseEffect(
+                effectIndex + 1,
+                normalized,
+                maskAlpha,
+                time,
+                totalOffset,
+                strongestEdge,
+                membranePresence,
+                blackHoleShadow,
+                accretionPresence
+            );
         }
     }
 
     if (!usedRasterMask) {
-        accumulateAnalyticPhaseEffects(time, totalOffset, strongestEdge, membranePresence);
+        accumulateAnalyticPhaseEffects(
+            time,
+            totalOffset,
+            strongestEdge,
+            membranePresence,
+            blackHoleShadow,
+            accretionPresence
+        );
     }
 
     vec2 uv = clamp(texCoord + totalOffset, pixelSize * 0.5, vec2(1.0) - pixelSize * 0.5);
@@ -232,6 +368,8 @@ void main() {
         color = mix(color, applyFullScreenPhase(color), 0.84);
     }
 
+    color = mix(color, color * vec3(0.024, 0.028, 0.060), clamp(blackHoleShadow, 0.0, 1.0));
+    color += clamp(accretionPresence, 0.0, 1.0) * vec3(0.026, 0.034, 0.080);
     color += strongestEdge * vec3(0.020, 0.028, 0.040);
     color = mix(color, color + vec3(0.032, 0.046, 0.062), membranePresence * 0.12);
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);

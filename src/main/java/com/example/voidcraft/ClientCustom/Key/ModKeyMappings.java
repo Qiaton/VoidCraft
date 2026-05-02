@@ -29,9 +29,17 @@ public class ModKeyMappings {
             KeyMapping.Category.GAMEPLAY
     );
 
+    public static final KeyMapping CANCEL_HOLD_RELEASE_KEY = new KeyMapping(
+            "key.voidcraft.cancel_hold_release",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_Q,
+            KeyMapping.Category.GAMEPLAY
+    );
+
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(SKILL_KEY_1);
         event.register(SKILL_KEY_2);
+        event.register(CANCEL_HOLD_RELEASE_KEY);
     }
 }
