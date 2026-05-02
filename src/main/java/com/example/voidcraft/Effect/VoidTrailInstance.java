@@ -13,11 +13,13 @@ public class VoidTrailInstance {
     public final float scale;
     public final Preset preset;
     private int tickCount;
+    private int segmentId;
 
     public VoidTrailInstance(float scale, Preset preset) {
         this.scale = Math.max(0.01F, scale);
         this.preset = preset;
         this.tickCount = 0;
+        this.segmentId = 0;
     }
 
     public void addPoint(Vec3 position) {
@@ -27,7 +29,11 @@ public class VoidTrailInstance {
         if (!this.points.isEmpty() && this.points.get(this.points.size() - 1).position.distanceToSqr(position) < 1.0E-8D) {
             return;
         }
-        this.points.add(new TrailPoint(position, this.tickCount));
+        this.points.add(new TrailPoint(position, this.tickCount, this.segmentId));
+    }
+
+    public void startNewSegment() {
+        this.segmentId++;
     }
 
     public void tick() {
@@ -44,7 +50,12 @@ public class VoidTrailInstance {
     }
 
     public boolean hasRenderablePoints() {
-        return this.points.size() >= 2;
+        for (int i = 0; i < this.points.size() - 1; i++) {
+            if (this.points.get(i).segmentId == this.points.get(i + 1).segmentId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isEmpty() {
@@ -70,10 +81,16 @@ public class VoidTrailInstance {
     public static final class TrailPoint {
         public final Vec3 position;
         private final int birthTick;
+        private final int segmentId;
 
-        private TrailPoint(Vec3 position, int birthTick) {
+        private TrailPoint(Vec3 position, int birthTick, int segmentId) {
             this.position = position;
             this.birthTick = birthTick;
+            this.segmentId = segmentId;
+        }
+
+        public int segmentId() {
+            return this.segmentId;
         }
 
         public float getLife(float partialTick, int lifetimeTicks, int currentTick) {

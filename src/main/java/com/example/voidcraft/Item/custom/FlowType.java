@@ -25,18 +25,18 @@ public class FlowType extends Item {
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (!level.isClientSide()){
-            VoidClock.VOID_TICKS.put(player.getUUID(),30);
-            DashClock.SET_DASH(player,30,8);
-            itemStack.hurtAndBreak(1,player,hand);
-            ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
-            ModSound.playEnterVoid(level, player);
+//            VoidClock.VOID_TICKS.put(player.getUUID(),30);
+//            DashClock.SET_DASH(player,30,8);
+//            itemStack.hurtAndBreak(1,player,hand);
+//            ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
+//            ModSound.playEnterVoid(level, player);
 
         }
         else{
-            Clock.addClock(30,()->{
-                FlowEffect.fov_effect=0.1f;
-            });
-                FlowEffect.fov_effect=1.5F;
+//            Clock.addClock(30,()->{
+//                FlowEffect.fov_effect=0.1f;
+//            });
+//                FlowEffect.fov_effect=1.5F;
         }
         return InteractionResult.SUCCESS;
     }

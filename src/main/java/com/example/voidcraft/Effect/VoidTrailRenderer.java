@@ -26,6 +26,7 @@ public final class VoidTrailRenderer {
     private static double[] sideZ = new double[0];
     private static float[] pointLife = new float[0];
     private static float[] pointAlong = new float[0];
+    private static int[] segmentIds = new int[0];
 
     private VoidTrailRenderer() {
     }
@@ -85,11 +86,14 @@ public final class VoidTrailRenderer {
         double previousSideY = WORLD_RIGHT_Y;
         double previousSideZ = WORLD_RIGHT_Z;
         for (int i = 0; i < pointCount; i++) {
+            if (i == 0 || segmentIds[i] != segmentIds[i - 1]) {
+                hasPreviousSide = false;
+            }
             double backwardX = 0.0D;
             double backwardY = 0.0D;
             double backwardZ = 0.0D;
             boolean hasBackward = false;
-            if (i > 0) {
+            if (i > 0 && segmentIds[i] == segmentIds[i - 1]) {
                 backwardX = positionX[i] - positionX[i - 1];
                 backwardY = positionY[i] - positionY[i - 1];
                 backwardZ = positionZ[i] - positionZ[i - 1];
@@ -107,7 +111,7 @@ public final class VoidTrailRenderer {
             double forwardY = 0.0D;
             double forwardZ = 0.0D;
             boolean hasForward = false;
-            if (i + 1 < pointCount) {
+            if (i + 1 < pointCount && segmentIds[i] == segmentIds[i + 1]) {
                 forwardX = positionX[i + 1] - positionX[i];
                 forwardY = positionY[i + 1] - positionY[i];
                 forwardZ = positionZ[i + 1] - positionZ[i];
@@ -202,6 +206,9 @@ public final class VoidTrailRenderer {
         }
 
         for (int i = 0; i < pointCount - 1; i++) {
+            if (segmentIds[i] != segmentIds[i + 1]) {
+                continue;
+            }
             double startX = positionX[i];
             double startY = positionY[i];
             double startZ = positionZ[i];
@@ -670,14 +677,27 @@ public final class VoidTrailRenderer {
 
         int lifetimeTicks = trail.preset.lifetimeTicks();
         int currentTick = trail.currentTick();
-        int lastPointIndex = pointCount - 1;
         for (int i = 0; i < pointCount; i++) {
             VoidTrailInstance.TrailPoint point = points.get(i);
             positionX[i] = point.position.x - cameraPos.x;
             positionY[i] = point.position.y - cameraPos.y;
             positionZ[i] = point.position.z - cameraPos.z;
             pointLife[i] = shapedLife(point.getLife(partialTick, lifetimeTicks, currentTick));
-            pointAlong[i] = (float) i / lastPointIndex;
+            segmentIds[i] = point.segmentId();
+        }
+
+        int segmentStart = 0;
+        while (segmentStart < pointCount) {
+            int segmentEnd = segmentStart;
+            while (segmentEnd + 1 < pointCount && segmentIds[segmentEnd + 1] == segmentIds[segmentStart]) {
+                segmentEnd++;
+            }
+
+            int segmentLength = segmentEnd - segmentStart;
+            for (int i = segmentStart; i <= segmentEnd; i++) {
+                pointAlong[i] = segmentLength <= 0 ? 0.0F : (float) (i - segmentStart) / segmentLength;
+            }
+            segmentStart = segmentEnd + 1;
         }
 
         return pointCount;
@@ -697,6 +717,7 @@ public final class VoidTrailRenderer {
         sideZ = new double[newSize];
         pointLife = new float[newSize];
         pointAlong = new float[newSize];
+        segmentIds = new int[newSize];
     }
 
     private static void renderRibbonWithEdgeFadeRaw(

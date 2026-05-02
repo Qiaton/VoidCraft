@@ -3,9 +3,12 @@ package com.example.voidcraft.Item;
 import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.DashVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Item.custom.SpatialSword;
@@ -70,6 +73,24 @@ public class ModItem {
     public static final DeferredItem<Item> BLINK_VOID_MODULE = ITEMS.registerItem(
             "blink_void_module_item",
             BlinkVoidModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> SAFE_BLINK_VOID_MODULE = ITEMS.registerItem(
+            "safe_blink_void_module_item",
+            SafeBlinkVoidModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> PHASE_TURRET_MODULE = ITEMS.registerItem(
+            "phase_turret_module_item",
+            PhaseTurretModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> ASSIST_PHASE_TURRET_MODULE = ITEMS.registerItem(
+            "assist_phase_turret_module_item",
+            AssistPhaseTurretModule::new,
             props-> props
 
     );

@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "void_craft:item/assist_phase_turret_module_item"
+  }
+}

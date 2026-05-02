@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "void_craft:phase_turret_shred",
+    "void_craft:phase_turret_disperse"
+  ]
+}

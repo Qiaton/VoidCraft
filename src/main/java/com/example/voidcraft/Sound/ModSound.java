@@ -26,6 +26,10 @@ public class ModSound {
             "in_void_long",
             SoundEvent::createVariableRangeEvent
     );
+    public static final DeferredHolder<SoundEvent, SoundEvent> PHASE_TURRET_SHOT = SOUND_EVENTS.register(
+            "phase_turret_shot",
+            SoundEvent::createVariableRangeEvent
+    );
 
     // 虚空音效统一配置入口
     public static final SoundSource VOID_SOUND_SOURCE = SoundSource.PLAYERS;
@@ -38,6 +42,7 @@ public class ModSound {
     public static final int LOOP_VOID_START_DELAY_TICKS = 4;
     public static final int LOOP_VOID_FADE_IN_TICKS = 8;
     public static final int LOOP_VOID_FADE_OUT_TICKS = -3;
+    public static final float PHASE_TURRET_SHOT_VOLUME = 1.0F;
 
     public static void register(IEventBus bus) {
         SOUND_EVENTS.register(bus);
@@ -49,6 +54,16 @@ public class ModSound {
 
     public static void playOutVoid(Level level, Player player) {
         playAtPlayer(level, player, OUT_VOID.get(), OUT_VOID_VOLUME, OUT_VOID_PITCH);
+    }
+
+    public static void playPhaseTurretShot(Level level, Player player, int emitterIndex) {
+        float pitch = switch (Math.floorMod(emitterIndex, 4)) {
+            case 0 -> 0.96F;
+            case 1 -> 1.03F;
+            case 2 -> 0.99F;
+            default -> 1.06F;
+        };
+        playAtPlayer(level, player, PHASE_TURRET_SHOT.get(), PHASE_TURRET_SHOT_VOLUME, pitch);
     }
 
     private static void playAtPlayer(Level level, Player player, SoundEvent event, float volume, float pitch) {

@@ -1,6 +1,7 @@
-package com.example.voidcraft.ClientCustom;
+package com.example.voidcraft.ClientCustom.Void;
 
 import com.example.voidcraft.Effect.VoidRingManager;
+import com.example.voidcraft.Effect.VoidBlackHoleManager;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.Item.custom.SpatialSword;
@@ -30,27 +31,28 @@ public class VoidPhaseClient {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();         //拿到mc游戏本体的实例
-        VoidPhasePostProcessor.ensureTextureRegistered(mc);
-
-        if (mc.isPaused()) {                            //如果当前是暂停状态
-            return;
-        }
-
         LocalPlayer player = mc.player;                 //拿到玩家本体
         if (player == null || mc.level == null) {       //如果玩家没生成 或者没有在任何一个世界里（加载状态）
             clearPostEffect(mc);
-            VoidPhasePostProcessor.resetFrame();
+            VoidPhasePostProcessor.releaseResources();
             stopLoopSound(mc);                          //停止播放声音
             lastResolvedInVoid = false;                 //清空缓存的虚空状态
             lastAttachmentInVoid = false;               //同上
             return;
         }
 
+        if (mc.isPaused()) {                            //如果当前是暂停状态
+            return;
+        }
+
+        VoidPhasePostProcessor.ensureTextureRegistered(mc);
+
         boolean attachmentInVoid = player.getData(ModAttachments.IN_VOID.get());
         boolean usingSpatialSword = player.isUsingItem() && player.getUseItem().getItem() instanceof SpatialSword;
         boolean inVoid = attachmentInVoid || usingSpatialSword;      //根据条件判断是否在虚空
         boolean hasNearbyTears = VoidRingManager.hasActiveRings();
-        boolean shouldApplyPost = inVoid || hasNearbyTears;
+        boolean hasActiveBlackHoles = VoidBlackHoleManager.hasActiveBlackHoles();
+        boolean shouldApplyPost = inVoid || hasNearbyTears || hasActiveBlackHoles;
 
         if (attachmentInVoid != lastAttachmentInVoid) {             //如果附件虚空状态发生改变 发送一条改变状态的日志
             LOGGER.debug("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);

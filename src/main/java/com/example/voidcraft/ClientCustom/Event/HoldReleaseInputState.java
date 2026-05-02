@@ -7,6 +7,8 @@ public final class HoldReleaseInputState {
 
     private static final boolean[] wasDown = new boolean[SLOT_COUNT];
     private static final boolean[] charging = new boolean[SLOT_COUNT];
+    // Q 取消后进入等待松开状态，防止技能键还按着时下一 tick 又重新开始蓄力。
+    private static final boolean[] waitingForRelease = new boolean[SLOT_COUNT];
     private static final int[] chargeTicks = new int[SLOT_COUNT];
 
     // 松手那一刻保存最终蓄力 tick
@@ -21,6 +23,14 @@ public final class HoldReleaseInputState {
 
     public static Phase update(int slot, boolean isDown) {
         if (!isValidSlot(slot)) {
+            return Phase.NONE;
+        }
+
+        if (waitingForRelease[slot]) {                                    // 已取消但技能键未松开时，不产生 PRESS/HOLD/RELEASE 阶段
+            if (!isDown) {
+                waitingForRelease[slot] = false;
+                wasDown[slot] = false;
+            }
             return Phase.NONE;
         }
 
@@ -85,8 +95,19 @@ public final class HoldReleaseInputState {
 
         wasDown[slot] = false;
         charging[slot] = false;
+        waitingForRelease[slot] = false;
         chargeTicks[slot] = 0;
         lastReleasedTicks[slot] = 0;
+    }
+
+    public static void cancelUntilReleased(int slot) {
+        if (!isValidSlot(slot)) {
+            return;
+        }
+
+        // 取消当前蓄力，并要求玩家先松开技能键，避免取消后立刻重新进入蓄力。
+        cancel(slot);
+        waitingForRelease[slot] = true;
     }
 
     public static void cancelAll() {

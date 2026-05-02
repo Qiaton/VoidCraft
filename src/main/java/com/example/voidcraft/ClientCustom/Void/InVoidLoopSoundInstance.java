@@ -1,4 +1,4 @@
-package com.example.voidcraft.ClientCustom;
+package com.example.voidcraft.ClientCustom.Void;
 
 import com.example.voidcraft.Sound.ModSound;
 import net.minecraft.client.player.LocalPlayer;

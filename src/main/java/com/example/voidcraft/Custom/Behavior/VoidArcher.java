@@ -1,6 +1,7 @@
 package com.example.voidcraft.Custom.Behavior; // 这个类属于虚空射手附魔的主要逻辑入口。
 
 import com.example.voidcraft.Custom.Behavior.Mixin.AbstractArrowAccessor; // 用来读取和回写箭的基础伤害。
+import com.example.voidcraft.Effect.VoidBlackHoleInstance; // 黑洞特效实例配置类型。
 import com.example.voidcraft.Effect.VoidRingInstance; // 白光特效预设类型。
 import com.example.voidcraft.Effect.VoidTrailInstance; // 拉丝特效预设类型。
 import com.example.voidcraft.ModDamageTypes;
@@ -51,12 +52,12 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     // ===== 调参入口：飞行 =====
     private static final float SPEED_MULTIPLIER_PER_LEVEL = 2.0F; // 每级附魔给箭带来的速度倍率。
     private static final int TRAIL_PRIME_TICKS = 10; // 前几 tick 重复补发拉丝包，避免高速箭来不及接上。
+    private static final double TRAIL_SEED_LENGTH = 0.5D; // 初始补点只回退一小段，避免高速箭从玩家身后拉出光带。
     private static final int MAX_ARROW_LIFETIME_TICKS = 80; // 虚空箭最长飞行多久，超时后直接自清。
 
     // ===== 调参入口：命中 =====
     private static final float LIGHT_SIZE_MULTIPLIER_PER_LEVEL = 3.5F; // 白光每升一级的尺寸倍率。
     private static final float AOE_DAMAGE_MULTIPLIER = 0.9F; // 普通范围目标吃到的 AOE 伤害倍率。
-    private static final float DIRECT_HIT_AOE_MULTIPLIER = 0.0F; // 直击目标额外吃到的 AOE 伤害倍率。
     private static final int MAX_AOE_TARGETS = 48; // 防止怪堆里一箭触发过多伤害结算。
     private static final int TRAIL_PRIME_RESEND_INTERVAL_TICKS = 4; // 高速箭补发拉丝包的最小间隔。
     private static final int AOE_TARGETS_PER_BATCH = 12; // 单次 AOE 最多处理多少个目标，剩下的分批做。
@@ -74,6 +75,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     // ===== 视觉预设入口 =====
     private static final VoidTrailInstance.Preset RAY = buildRayPreset(); // 箭飞行时用的拉丝预设。
     private static final VoidRingInstance.Preset LIGHT = buildBaseLightPreset(); // 箭命中时用的基础白光预设。
+    private static final VoidBlackHoleInstance.Config BLACK_HOLE_CONFIG = VoidBlackHoleInstance.Config.DEFAULT; // 箭命中时播放的黑洞球体配置。
 
     @SubscribeEvent // 实体进世界时，尽快尝试给箭挂上虚空射手效果。
     public static void onArrowJoinLevel(EntityJoinLevelEvent event) {
@@ -170,10 +172,12 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         Vec3 impactPosition = hitResult.getLocation();
         float impactScale = getImpactScale(arrow);
         VoidRingInstance.Preset lightPreset = buildLightForLevel(level);
+        VoidBlackHoleInstance.Config blackHoleConfig = buildBlackHoleForLevel(level);
 
         sendImpactTrailSeed(arrow); // 命中这一帧再补一次带种子段的拉丝，专门兜住“高速箭刚生成就命中”的情况。
         scheduleImpactAreaDamage(serverLevel, arrow, hitResult, impactPosition, impactScale, lightPreset, level); // 先结算 AOE 伤害。
-        ModNetworking.sendPhaseTearAt(serverLevel, impactPosition, impactScale, lightPreset); // 再在落点播放白光。
+        // ModNetworking.sendPhaseTearAt(serverLevel, impactPosition, impactScale, lightPreset); // 原虚空射手命中白光效果。
+        ModNetworking.sendBlackHoleAt(serverLevel, impactPosition, impactScale, blackHoleConfig); // 再在落点播放新黑洞实例。
 
         if (hitResult.getType() == HitResult.Type.ENTITY) {
             return false; // 实体直击交回原版处理，这样直击伤害、火矢、击退、清箭都只跑一次。
@@ -244,12 +248,12 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         boolean primeResend = arrow.tickCount <= TRAIL_PRIME_TICKS
                 && arrow.tickCount % TRAIL_PRIME_RESEND_INTERVAL_TICKS == 0;
         if (firstSend || primeResend) {
-            ModNetworking.sendEntityTrail(arrow, RAY);
+            ModNetworking.sendEntityTrail(arrow, RAY, 1.0F, TRAIL_SEED_LENGTH);
         }
     }
 
     private static void sendImpactTrailSeed(AbstractArrow arrow) {
-        ModNetworking.sendEntityTrail(arrow, RAY);
+        ModNetworking.sendEntityTrail(arrow, RAY, 1.0F, TRAIL_SEED_LENGTH);
     }
 
     private static VoidTrailInstance.Preset buildRayPreset() { // 以后要调箭尾拉丝，优先改这里。
@@ -340,6 +344,22 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .build();
     }
 
+    private static VoidBlackHoleInstance.Config buildBlackHoleForLevel(int level) { // 按附魔等级放大黑洞视觉尺寸。
+        if (level <= 1) {
+            return BLACK_HOLE_CONFIG;
+        }
+
+        float sizeMultiplier = (float) Math.pow(LIGHT_SIZE_MULTIPLIER_PER_LEVEL, level - 1);
+        return BLACK_HOLE_CONFIG.copy()
+                .startHalfHeight(BLACK_HOLE_CONFIG.startHalfHeight() * sizeMultiplier)
+                .peakHalfHeight(BLACK_HOLE_CONFIG.peakHalfHeight() * sizeMultiplier)
+                .endHalfHeight(BLACK_HOLE_CONFIG.endHalfHeight() * sizeMultiplier)
+                .startHalfWidth(BLACK_HOLE_CONFIG.startHalfWidth() * sizeMultiplier)
+                .peakHalfWidth(BLACK_HOLE_CONFIG.peakHalfWidth() * sizeMultiplier)
+                .endHalfWidth(BLACK_HOLE_CONFIG.endHalfWidth() * sizeMultiplier)
+                .build();
+    }
+
     private static void scheduleImpactAreaDamage( // 命中后，在白光附近打一段 AOE。
             ServerLevel serverLevel,
             AbstractArrow arrow,
@@ -351,7 +371,8 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     ) {
         ImpactAreaProfile areaProfile = buildImpactAreaProfile(impactPosition, impactScale, lightPreset);
         Entity directHitEntity = resolveDirectHitEntity(hitResult);
-        List<PendingAreaTarget> targets = collectImpactTargets(serverLevel, areaProfile, directHitEntity, arrow.getOwner());
+        Set<UUID> excludedEntityIds = buildExcludedAreaTargetIds(directHitEntity, arrow.getOwner());
+        List<PendingAreaTarget> targets = collectImpactTargets(serverLevel, areaProfile, excludedEntityIds);
         if (targets.isEmpty()) {
             return;
         }
@@ -396,29 +417,34 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return owner != null && directHitEntity != null && directHitEntity.is(owner);
     }
 
-    private static float getAreaDamageMultiplier(Entity target, Entity directHitEntity) { // 统一管理 AOE 对直击目标和普通目标的倍率。
-        return target == directHitEntity ? DIRECT_HIT_AOE_MULTIPLIER : AOE_DAMAGE_MULTIPLIER;
+    private static Set<UUID> buildExcludedAreaTargetIds(Entity... entities) {
+        Set<UUID> excludedEntityIds = new HashSet<>();
+        for (Entity entity : entities) {
+            if (entity != null) {
+                excludedEntityIds.add(entity.getUUID());
+            }
+        }
+        return excludedEntityIds;
     }
 
     private static List<PendingAreaTarget> collectImpactTargets(
             ServerLevel serverLevel,
             ImpactAreaProfile areaProfile,
-            Entity directHitEntity,
-            Entity immuneEntity
+            Set<UUID> excludedEntityIds
     ) {
         List<LivingEntity> candidates = serverLevel.getEntitiesOfClass(LivingEntity.class, areaProfile.damageBox(), LivingEntity::isAlive);
         List<PendingAreaTarget> targets = new ArrayList<>(candidates.size());
         for (LivingEntity target : candidates) {
-            if (immuneEntity != null && target.is(immuneEntity)) {
+            // 直击目标会继续交给原版箭伤害处理，射手本人也不吃自己的 AOE。
+            if (excludedEntityIds.contains(target.getUUID())) {
                 continue;
             }
 
-            float damageMultiplier = getAreaDamageMultiplier(target, directHitEntity);
-            if (damageMultiplier <= 0.0F || !isInsideImpactShape(target, areaProfile)) {
+            if (!isInsideImpactShape(target, areaProfile)) {
                 continue;
             }
 
-            targets.add(new PendingAreaTarget(target, damageMultiplier, getImpactDistanceSqr(target, areaProfile.center())));
+            targets.add(new PendingAreaTarget(target, AOE_DAMAGE_MULTIPLIER, getImpactDistanceSqr(target, areaProfile.center())));
         }
 
         if (targets.isEmpty()) {

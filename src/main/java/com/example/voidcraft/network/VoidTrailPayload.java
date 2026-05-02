@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3;
 
 public record VoidTrailPayload(
         int entityId,
+        boolean trackEntity,
         float scale,
         boolean hasSeedSegment,
         double seedStartX,
@@ -62,9 +63,25 @@ public record VoidTrailPayload(
     }
 
     public static VoidTrailPayload fromPreset(int entityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
+        return fromPreset(entityId, true, scale, seedStart, seedEnd, preset);
+    }
+
+    public static VoidTrailPayload fromSegment(int ownerEntityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
+        return fromPreset(ownerEntityId, false, scale, seedStart, seedEnd, preset);
+    }
+
+    private static VoidTrailPayload fromPreset(
+            int entityId,
+            boolean trackEntity,
+            float scale,
+            Vec3 seedStart,
+            Vec3 seedEnd,
+            VoidTrailInstance.Preset preset
+    ) {
         boolean hasSeedSegment = seedStart != null && seedEnd != null && seedStart.distanceToSqr(seedEnd) >= 1.0E-8D;
         return new VoidTrailPayload(
                 entityId,
+                trackEntity,
                 scale,
                 hasSeedSegment,
                 hasSeedSegment ? seedStart.x : 0.0D,
@@ -154,6 +171,7 @@ public record VoidTrailPayload(
 
     private static void encode(RegistryFriendlyByteBuf buffer, VoidTrailPayload payload) {
         ByteBufCodecs.VAR_INT.encode(buffer, payload.entityId);
+        ByteBufCodecs.BOOL.encode(buffer, payload.trackEntity);
         ByteBufCodecs.FLOAT.encode(buffer, payload.scale);
         ByteBufCodecs.BOOL.encode(buffer, payload.hasSeedSegment);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.seedStartX);
@@ -196,6 +214,7 @@ public record VoidTrailPayload(
     private static VoidTrailPayload decode(RegistryFriendlyByteBuf buffer) {
         return new VoidTrailPayload(
                 ByteBufCodecs.VAR_INT.decode(buffer),
+                ByteBufCodecs.BOOL.decode(buffer),
                 ByteBufCodecs.FLOAT.decode(buffer),
                 ByteBufCodecs.BOOL.decode(buffer),
                 ByteBufCodecs.DOUBLE.decode(buffer),
