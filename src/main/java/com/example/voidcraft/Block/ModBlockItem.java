@@ -12,8 +12,15 @@ public class ModBlockItem {
             "black_block",//BlockItem名字
             ModBlock.BLACK_BLOCK //绑定的Block
     );
+    public static final DeferredItem<BlockItem> VOID_ORE_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
+            "void_ore_block",
+            ModBlock.VOID_ORE_BLOCK
+    );
+    public static final DeferredItem<BlockItem> BATTERY_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
+            "battery_block",
+            ModBlock.BATTERY_BLOCK
+    );
     public static void register(IEventBus bus) {
         BLOCK_ITEMS.register(bus);
     }
 }
-

@@ -6,22 +6,22 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 
-import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_MODULE_SLOT_COUNT;
+import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_CONTAINER_SLOT_COUNT;
 
 public class WatchModuleContainer extends SimpleContainer {
     private final ItemStack watchStack;
 
     public WatchModuleContainer(ItemStack watchStack) {
-        super(WATCH_MODULE_SLOT_COUNT);
+        super(WATCH_CONTAINER_SLOT_COUNT);
         this.watchStack = watchStack;
 
         ItemContainerContents contents = watchStack.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
 
         NonNullList<ItemStack> items =
-                NonNullList.withSize(WATCH_MODULE_SLOT_COUNT, ItemStack.EMPTY);
+                NonNullList.withSize(WATCH_CONTAINER_SLOT_COUNT, ItemStack.EMPTY);
         contents.copyInto(items);
 
-        for (int i = 0; i < WATCH_MODULE_SLOT_COUNT; i++) {
+        for (int i = 0; i < WATCH_CONTAINER_SLOT_COUNT; i++) {
             this.setItem(i, items.get(i));
         }
     }
@@ -33,7 +33,7 @@ public class WatchModuleContainer extends SimpleContainer {
         NonNullList<ItemStack> items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
 
         // 获取当前槽位的数据
-        for (int i = 0; i < WATCH_MODULE_SLOT_COUNT; i++) {
+        for (int i = 0; i < WATCH_CONTAINER_SLOT_COUNT; i++) {
             items.set(i, this.getItem(i).copy());
         }
 

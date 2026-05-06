@@ -48,11 +48,16 @@ public class ModuleItem extends Item {
         for(ModuleModifierData modifierData : data.modifiers()){
             tooltipAdder.accept(Component.translatable(
                     "tooltip.void_craft.module.modifier_entry",
-                    modifierData.type().getDisplayName(),
+                    getModifierDisplayName(modifierData),
                     modifierData.level()
             ));
         }
     }
+
+    protected Component getModifierDisplayName(ModuleModifierData modifierData) {
+        return modifierData.type().getDisplayName();
+    }
+
     public void useSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
         if(watchStack.isEmpty()) return;
         if(player == null) return;

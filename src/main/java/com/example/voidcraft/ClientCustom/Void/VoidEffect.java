@@ -16,6 +16,7 @@ import com.example.voidcraft.Effect.VoidTrailManager;
 import com.example.voidcraft.Effect.VoidTrailRenderer;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
+import com.example.voidcraft.world.PhaseDimensions;
 import com.google.common.reflect.TypeToken;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -101,6 +102,8 @@ public class VoidEffect {
             RenderTypes.eyes(VOID_SOFT_GLOW_TEXTURE);
     private static final RenderType VOID_RING_BLOOM_EFFECT_COMPAT =
             RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
+    private static final RenderType PHASE_EMITTER_ORB_EFFECT_COMPAT =
+            RenderTypes.eyes(VOID_FLAT_WHITE_TEXTURE);
 
     public static boolean isShaderCompatMode() {
         if (!IRIS_LOADED || IRIS_GET_INSTANCE_METHOD == null || IRIS_IS_SHADERPACK_IN_USE_METHOD == null) {
@@ -205,6 +208,10 @@ public class VoidEffect {
           VoidTrailManager.clientTick(mc);
           VoidBeamManager.clientTick(mc);
           VoidBlackHoleManager.clientTick(mc);
+          if (mc.level != null && mc.player != null) {
+              PhaseWorldTransitionOverlay.prepare(mc);
+          }
+          PhaseWorldTransitionClient.clientTick();
       }
     @SubscribeEvent
     public static void VOID_RING(RenderLevelStageEvent.AfterParticles event) {
@@ -219,16 +226,23 @@ public class VoidEffect {
         PhaseEmitterClientManager.updateBeforeRender(partialTick);
         boolean firstPerson = mc.options.getCameraType().isFirstPerson();
         boolean localInVoid = mc.player.getData(ModAttachments.IN_VOID.get());
+        boolean localInPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
+        boolean phaseTransitionActive = PhaseWorldTransitionClient.isActive();
+        boolean shaderPackActive = isShaderCompatMode();
           var rings = VoidRingManager.getRings();
           var trails = VoidTrailManager.getTrails();
           var beams = VoidBeamManager.getBeams();
           var blackHoles = VoidBlackHoleManager.getBlackHoles();
-          if (!localInVoid && rings.isEmpty() && trails.isEmpty() && beams.isEmpty() && blackHoles.isEmpty()) {
+          boolean hasVisibleEmitters = PhaseEmitterClientManager.hasVisibleEmitters();
+          if (!localInVoid
+                  && !localInPhaseDimension
+                  && !phaseTransitionActive
+                  && rings.isEmpty() && trails.isEmpty() && beams.isEmpty() && blackHoles.isEmpty()
+                  && !hasVisibleEmitters) {
               VoidPhasePostProcessor.resetFrame();
               return;
           }
 
-        boolean shaderPackActive = isShaderCompatMode();
         VoidPhasePostProcessor.beginFrame(mc, partialTick);
         List<PreparedRingRender> preparedRings = prepareVisibleRings(mc, rings, cameraPos, partialTick, firstPerson);
         List<PreparedBlackHoleRender> preparedBlackHoles = prepareVisibleBlackHoles(mc, blackHoles, cameraPos, partialTick, firstPerson);
@@ -242,12 +256,14 @@ public class VoidEffect {
               renderBlackHolePass(buffers, VOID_RING_WORLD_EFFECT_COMPAT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.SHADER_COMPAT);
               renderTrailPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.SHADER_GLOW);
               renderBeamPass(buffers, VOID_TRAIL_GLOW_EFFECT_COMPAT, beams, poseStack, cameraPos, partialTick, light, BeamRenderPass.SHADER_GLOW);
-              renderBlackHolePass(buffers, VOID_RING_BLOOM_EFFECT_COMPAT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.SHADER_GLOW);
+              PhaseEmitterClientManager.renderEmitters(buffers, PHASE_EMITTER_ORB_EFFECT_COMPAT, poseStack, cameraPos, partialTick, light, true);
+              // 光影兼容模式先关闭黑洞额外亮环，避免光影管线把亮边切成局部弧段。
           } else {
               renderTrailPass(buffers, VOID_WORLD_EFFECT, trails, poseStack, cameraPos, partialTick, light, TrailRenderPass.NORMAL);
               renderBeamPass(buffers, VOID_WORLD_EFFECT, beams, poseStack, cameraPos, partialTick, light, BeamRenderPass.NORMAL);
               renderRingPass(buffers, VOID_WORLD_EFFECT, preparedRings, poseStack, light, RingRenderPass.NORMAL);
               renderBlackHolePass(buffers, VOID_WORLD_EFFECT, preparedBlackHoles, poseStack, light, BlackHoleRenderPass.NORMAL);
+              PhaseEmitterClientManager.renderEmitters(buffers, VOID_WORLD_EFFECT, poseStack, cameraPos, partialTick, light, false);
           }
 
         writeWorldEffects(mc, buffers, preparedRings, preparedBlackHoles, poseStack, partialTick, shaderPackActive);

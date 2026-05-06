@@ -1,6 +1,7 @@
 package com.example.voidcraft.network;
 
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
+import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionClient;
 import com.example.voidcraft.Custom.Clock.VoidClock;
 import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.Effect.VoidBeamInstance;
@@ -12,17 +13,20 @@ import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
@@ -32,7 +36,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "23";
+    private static final String NETWORK_VERSION = "29";
 
     private ModNetworking() {
     }
@@ -45,9 +49,24 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayer(player, new EnergyHudPayload(percent, visible));
     }
 
+    public static void sendPhaseWorldTransition(
+            ServerPlayer player,
+            ResourceKey<Level> sourceDimension,
+            ResourceKey<Level> targetDimension
+    ) {
+        PacketDistributor.sendToPlayer(
+                player,
+                new PhaseWorldTransitionPayload(sourceDimension.identifier(), targetDimension.identifier())
+        );
+    }
+
     // 手动炮台：显示炮台球，同时让客户端把左键交给炮台射击。
     public static void sendTurretState(ServerPlayer player, boolean active) {
         sendTurretState(player, active, true);
+    }
+
+    public static void sendTurretState(ServerPlayer player, boolean active, ItemStack moduleStack) {
+        sendTurretState(player, active, true, PhaseTurretModule.getEmitterCount(moduleStack));
     }
 
     // 辅助炮台：只显示炮台球和光束，不隐藏手、不吞掉左右键。
@@ -55,10 +74,18 @@ public final class ModNetworking {
         sendTurretState(player, active, false);
     }
 
+    public static void sendAssistTurretState(ServerPlayer player, boolean active, ItemStack moduleStack) {
+        sendTurretState(player, active, false, PhaseTurretModule.getEmitterCount(moduleStack));
+    }
+
     private static void sendTurretState(ServerPlayer player, boolean active, boolean blocksInput) {
+        sendTurretState(player, active, blocksInput, PhaseTurretModule.getEmitterCount());
+    }
+
+    private static void sendTurretState(ServerPlayer player, boolean active, boolean blocksInput, int emitterCount) {
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(
                 player,
-                new TurretStatePayload(player.getId(), active, blocksInput)
+                new TurretStatePayload(player.getId(), active, blocksInput, emitterCount)
         );
     }
 
@@ -274,11 +301,13 @@ public final class ModNetworking {
         registrar.playToClient(VoidTrailPayload.TYPE, VoidTrailPayload.STREAM_CODEC, ModNetworking::handleVoidTrailClient);
         registrar.playToClient(VoidBlackHolePayload.TYPE, VoidBlackHolePayload.STREAM_CODEC, ModNetworking::handleVoidBlackHoleClient);
         registrar.playToClient(EnergyHudPayload.TYPE, EnergyHudPayload.STREAM_CODEC, ModNetworking::handleEnergyHudClient);
+        registrar.playToClient(PhaseWorldTransitionPayload.TYPE, PhaseWorldTransitionPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionClient);
         registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::handleTurretStateClient);
         registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::handleTurretShotFxClient);
         registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::handleUseWatchModuleServer);
         registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::handleReleaseBlinkModuleServer);
         registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::handleUseTurretShotServer);
+        registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionReadyServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
         ClientPacketDistributor.sendToServer(payload);
@@ -361,12 +390,20 @@ public final class ModNetworking {
         context.enqueueWork(() -> EnergyHud.update(payload.percent(), payload.visible()));
     }
 
+    private static void handlePhaseWorldTransitionClient(PhaseWorldTransitionPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> PhaseWorldTransitionClient.beginLoadingTransition(
+                payload.sourceDimension(),
+                payload.targetDimension()
+        ));
+    }
+
     private static void handleTurretStateClient(TurretStatePayload payload, IPayloadContext context) {
         // blocksInput 是手动/辅助炮台的客户端边界，不能只用 active 推断。
         context.enqueueWork(() -> PhaseEmitterClientManager.syncState(
                 payload.playerId(),
                 payload.active(),
-                payload.blocksInput()
+                payload.blocksInput(),
+                payload.emitterCount()
         ));
     }
 
@@ -449,6 +486,19 @@ public final class ModNetworking {
             return;
         }
 
-        PhaseTurretModule.setShooting(serverPlayer, payload.shooting());
+        PhaseTurretModule.setInputState(serverPlayer, payload.shooting(), payload.volleyShooting());
+    }
+
+    private static void handlePhaseWorldTransitionReadyServer(
+            PhaseWorldTransitionReadyPayload payload,
+            IPayloadContext context
+    ) {
+        Player player = context.player();
+
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+
+        WorldModule.completePendingTransition(serverPlayer);
     }
 }

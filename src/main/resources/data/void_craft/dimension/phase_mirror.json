@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:overworld",
+  "generator": {
+    "type": "void_craft:phase_shallows",
+    "biome": "minecraft:plains"
+  }
+}

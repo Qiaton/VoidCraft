@@ -5,6 +5,7 @@ import com.example.voidcraft.Effect.VoidBlackHoleManager;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.Item.custom.SpatialSword;
+import com.example.voidcraft.world.PhaseDimensions;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -33,8 +34,10 @@ public class VoidPhaseClient {
         Minecraft mc = Minecraft.getInstance();         //拿到mc游戏本体的实例
         LocalPlayer player = mc.player;                 //拿到玩家本体
         if (player == null || mc.level == null) {       //如果玩家没生成 或者没有在任何一个世界里（加载状态）
-            clearPostEffect(mc);
-            VoidPhasePostProcessor.releaseResources();
+            if (!PhaseWorldTransitionClient.isActive()) {
+                clearPostEffect(mc);
+                VoidPhasePostProcessor.releaseResources();
+            }
             stopLoopSound(mc);                          //停止播放声音
             lastResolvedInVoid = false;                 //清空缓存的虚空状态
             lastAttachmentInVoid = false;               //同上
@@ -45,14 +48,17 @@ public class VoidPhaseClient {
             return;
         }
 
-        VoidPhasePostProcessor.ensureTextureRegistered(mc);
-
         boolean attachmentInVoid = player.getData(ModAttachments.IN_VOID.get());
         boolean usingSpatialSword = player.isUsingItem() && player.getUseItem().getItem() instanceof SpatialSword;
         boolean inVoid = attachmentInVoid || usingSpatialSword;      //根据条件判断是否在虚空
+        boolean inPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
         boolean hasNearbyTears = VoidRingManager.hasActiveRings();
         boolean hasActiveBlackHoles = VoidBlackHoleManager.hasActiveBlackHoles();
-        boolean shouldApplyPost = inVoid || hasNearbyTears || hasActiveBlackHoles;
+        boolean shouldApplyPost = inVoid
+                || inPhaseDimension
+                || hasNearbyTears
+                || hasActiveBlackHoles
+                || PhaseWorldTransitionClient.isActive();
 
         if (attachmentInVoid != lastAttachmentInVoid) {             //如果附件虚空状态发生改变 发送一条改变状态的日志
             LOGGER.debug("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);
@@ -71,8 +77,10 @@ public class VoidPhaseClient {
         }
 
         if (shouldApplyPost) {
+            VoidPhasePostProcessor.ensureTextureRegistered(mc);
             Identifier desiredEffectId = VOID_PHASE_IDLE_EFFECT;    //初始化期望相位效果
-            if (!postEffectApplied) {                               //如果当前没有启动相位效果
+            Identifier currentEffectId = mc.gameRenderer.currentPostEffect();
+            if (!desiredEffectId.equals(currentEffectId)) {         //维度切换会清后处理，这里按真实 renderer 状态重新挂载
                 try {
                     mc.gameRenderer.setPostEffect(desiredEffectId); //把渲染设置的相位效果设置成期望相位效果
                     postEffectApplied = true;                       //开启相位效果
@@ -81,14 +89,9 @@ public class VoidPhaseClient {
                 } catch (RuntimeException e) {
                     LOGGER.error("[VoidPhase] failed to enable post effect {}", desiredEffectId, e);
                 }
-            } else if (!desiredEffectId.equals(activePostEffectId)) {       //如果当前相位效果不是期望的相位效果
-                try {
-                    mc.gameRenderer.setPostEffect(desiredEffectId);         //改成期望的效果
-                    activePostEffectId = desiredEffectId;                   //同上
-                    LOGGER.debug("[VoidPhase] post effect switched: {}", desiredEffectId);
-                } catch (RuntimeException e) {
-                    LOGGER.error("[VoidPhase] failed to switch post effect {}", desiredEffectId, e);
-                }
+            } else {
+                postEffectApplied = true;
+                activePostEffectId = desiredEffectId;
             }
         } else {
             clearPostEffect(mc);

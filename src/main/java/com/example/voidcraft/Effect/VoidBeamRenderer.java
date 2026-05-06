@@ -77,7 +77,7 @@ public final class VoidBeamRenderer {
 
         if (shaderCompat && glowPass) {
             float radius = config.glowRadius() * scale * config.shaderCompatBloomWidthScale();
-            int color = towardWhite(config.glowColor(), 0.62F);
+            int color = towardWhite(config.glowColor(), 0.18F);
             float alpha = config.glowAlpha() * fade * config.shaderCompatBloomAlphaScale();
             renderBeamRibbon(buffer, matrix4f, frame, frame.billboardAxis(), radius * 1.55F, radius * 1.18F, startScale, endScale, color, alpha * 0.44F, true, light);
             renderBeamRibbon(buffer, matrix4f, frame, frame.crossAxis(), radius * 1.12F, radius * 0.86F, startScale, endScale, color, alpha * 0.24F * config.crossAlphaScale(), true, light);

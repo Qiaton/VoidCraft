@@ -10,22 +10,25 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.NonNull;
 
+import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_CONTAINER_SLOT_COUNT;
+import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_CORE_SLOT;
 import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_MODULE_SLOT_COUNT;
 
 
 public class ModuleMenu extends AbstractContainerMenu{
     public ModuleMenu(int id, Inventory inventory) {
-        this(id,inventory,new SimpleContainer(WATCH_MODULE_SLOT_COUNT));
+        this(id,inventory,new SimpleContainer(WATCH_CONTAINER_SLOT_COUNT));
     }
     public ModuleMenu(int id, Inventory playerInventory,Container moduleContainer) {
         super(ModMenuType.MODULE_MENU.get(), id);
-        checkContainerSize(moduleContainer, WATCH_MODULE_SLOT_COUNT);
+        checkContainerSize(moduleContainer, WATCH_CONTAINER_SLOT_COUNT);
         int startX = 70;
         int y = 20;
 
         for (int slot = 0; slot < WATCH_MODULE_SLOT_COUNT; slot++) {
             this.addSlot(new ModuleSlot(moduleContainer, slot, startX + slot * 18, y));
         }
+        this.addSlot(new EnergyCoreSlot(moduleContainer, WATCH_CORE_SLOT, startX + WATCH_CORE_SLOT * 18, y));
 
         addPlayerInventory(playerInventory);
         addPlayerHotbar(playerInventory);

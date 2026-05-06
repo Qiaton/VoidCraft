@@ -1,7 +1,6 @@
 package com.example.voidcraft.Item.custom.ModuleItem.ModuleType;
 
 import com.example.voidcraft.ClientCustom.ModuleInputMode;
-import com.example.voidcraft.Custom.Behavior.Turret.PhaseEmitterSlot;
 import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
 import com.example.voidcraft.Effect.VoidBeamInstance;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
@@ -45,24 +44,30 @@ import java.util.UUID;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.ACTIVE_DURATION;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.COOLDOWN_REDUCTION;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 
 @EventBusSubscriber(modid = VoidCraft.MODID)
 public class AssistPhaseTurretModule extends ModuleItem {
     // 辅助炮台的基础数值集中在这里；以后要做配置文件或 UI 调参时，优先替换这些常量/getter。
-    private static final double RANGE = 256.0D;
-    private static final double RANGE_SQR = RANGE * RANGE;
-    private static final float SHOT_DAMAGE = 5.0F;
-    private static final int FIRE_INTERVAL_TICKS = 1;
+    private static  double RANGE = 512.0D;
+    private static double RANGE_SQR = RANGE * RANGE;
+    private static final double SAFE_DISTANCE = 4.0D;
+    private static final double SAFE_DISTANCE_SQR = SAFE_DISTANCE * SAFE_DISTANCE;
+    private static final int BASE_MODULE_LEVEL = 1;
+    private static final int BASE_EMITTER_COUNT = 1;
+    private static final float SHOT_DAMAGE = 1.0F;
+    private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
+    private static final int FIRE_INTERVAL_TICKS = 5;
+    private static final float SPEED_BOOST_PER_LEVEL = 0.25F;
     private static final int TARGET_LOCK_TICKS = 20;
     private static final int RECENT_ATTACK_TARGET_TICKS = 100;
-    private static final int BURST_ACTIVE_TICKS = 50;
+    private static final int BURST_ACTIVE_TICKS = 5*20;
     private static final double LOW_HEALTH_TIE_DISTANCE_SQR = 4.0D;
-    private static final long CHANNEL_ENERGY_COST = 1L;
-    private static final long BURST_ENERGY_COST = 1L;
-    private static final long CHANNEL_COOLDOWN_TICKS = 1L;
-    private static final long BURST_COOLDOWN_TICKS = 1L;
+    private static final long CHANNEL_ENERGY_COST = 10L;
+    private static final long BURST_ENERGY_COST = 800L;
+    private static final long BURST_COOLDOWN_TICKS = 45*20L;
+    private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.50F;
+    private static final float BURST_COOLDOWN_REDUCTION_PER_LEVEL = 0.10F;
 
     // 按玩家和模块槽位保存自动炮台运行状态，避免不同槽位的锁定目标和发射顺序互相污染。
     private static final Map<UUID, Map<Integer, FireState>> FIRE_STATES = new HashMap<>();
@@ -70,24 +75,31 @@ public class AssistPhaseTurretModule extends ModuleItem {
     // 玩家最近主动攻击的目标单独记忆，用于“打错非怪物也反击”的优先级。
     private static final Map<UUID, RecentAttackTarget> RECENT_ATTACK_TARGETS = new HashMap<>();
 
-    private static final VoidBeamInstance.Config SHOT_BEAM = VoidBeamInstance.Config.builder()
+    private static final VoidBeamInstance.Config SHOT_BEAM = buildShotBeamConfig(
+            PhaseTurretModule.VisualColors.SHOT_BEAM_CORE,
+            PhaseTurretModule.VisualColors.SHOT_BEAM_GLOW
+    );
+
+    private static VoidBeamInstance.Config buildShotBeamConfig(int coreColor, int glowColor) {
+        return VoidBeamInstance.Config.builder()
             .lifetimeTicks(6)
             .coreRadius(0.045F)
             .glowRadius(0.17F)
             .startRadiusScale(1.0F)
             .endRadiusScale(0.62F)
             .coreAlpha(0.94F)
-            .glowAlpha(0.42F)
+            .glowAlpha(0.24F)
             .crossAlphaScale(0.40F)
             .fadeInRatio(0.04F)
             .fadeOutRatio(0.72F)
-            .shaderCompatCoreGain(1.20F)
-            .shaderCompatGlowGain(1.36F)
-            .shaderCompatBloomAlphaScale(0.78F)
-            .shaderCompatBloomWidthScale(1.46F)
-            .coreColor(PhaseTurretModule.VisualColors.SHOT_BEAM_CORE)
-            .glowColor(PhaseTurretModule.VisualColors.SHOT_BEAM_GLOW)
+            .shaderCompatCoreGain(0.78F)
+            .shaderCompatGlowGain(0.42F)
+            .shaderCompatBloomAlphaScale(0.12F)
+            .shaderCompatBloomWidthScale(0.82F)
+            .coreColor(coreColor)
+            .glowColor(glowColor)
             .build();
+    }
 
     public AssistPhaseTurretModule(Properties properties) {
         super(properties);
@@ -137,35 +149,32 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 return;
             }
 
-            long cooldownTicks = stats.channelCooldownTicks();
             long energyCost = stats.channelEnergyCost();
-            if (!ModuleSkillClock.checkCooldown(player, slot)) {
-                return;
-            }
             if (!ModuleSkillClock.tryUseEnergy(player, energyCost)) {
                 return;
             }
 
-            ModuleSkillClock.setCooldown(player, slot, cooldownTicks);
             stopOtherTurretChannels(player, slot);
             stopOtherBurstTurrets(player, slot);
-            ModuleSkillClock.startChannel(player, slot, 0);
+            ModuleSkillClock.startChannel(player, slot, energyCost);
             getFireState(player, slot);
-            ModNetworking.sendAssistTurretState(player, true);
+            ModNetworking.sendAssistTurretState(player, true, moduleStack);
             fire(player, moduleStack, slot, stats);
             return;
         }
         if (mode == BURST) {
-            long cooldownTicks = stats.burstCooldownTicks();
-            long energyCost = stats.burstEnergyCost();
-            if (!ModuleSkillClock.checkCooldown(player, slot)) {
-                return;
-            }
-            if (!ModuleSkillClock.tryUseEnergy(player, energyCost)) {
+            if (ModuleSkillClock.getChannel(player, slot)) {
+                ModuleSkillClock.stopChannel(player, slot);
                 return;
             }
 
-            ModuleSkillClock.setCooldown(player, slot, cooldownTicks);
+            boolean cooldownReady = ModuleSkillClock.checkCooldown(player, slot);
+            if (cooldownReady) {
+                ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
+            } else if (!ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
+                return;
+            }
+
             startBurst(player, moduleStack, slot, stats);
         }
     }
@@ -260,7 +269,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
 
         FireState state = getFireState(player, slot);
         state.burstUntilTick = player.tickCount + stats.burstActiveTicks();
-        ModNetworking.sendAssistTurretState(player, true);
+        ModNetworking.sendAssistTurretState(player, true, moduleStack);
         fire(player, moduleStack, slot, stats);
     }
 
@@ -276,9 +285,10 @@ public class AssistPhaseTurretModule extends ModuleItem {
             return false;
         }
 
-        int emitterIndex = state.nextEmitterIndex;
-        state.nextEmitterIndex = (state.nextEmitterIndex + 1) % PhaseEmitterSlot.FIRE_ORDER.length;
-        state.nextFireTick = player.tickCount + getFireIntervalTicks(moduleStack, stats);
+        int emitterCount = PhaseTurretModule.getEmitterCount(moduleStack);
+        int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
+        state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
+        scheduleNextFire(player, state, getFireIntervalTicks(moduleStack, stats));
 
         hurtTarget(player, target, getShotDamage(moduleStack, stats, target));
         Vec3 targetPos = getTargetPos(target);
@@ -287,23 +297,46 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return true;
     }
 
-    protected int getFireIntervalTicks(ItemStack moduleStack, Stats stats) {
-        // 射速目前照搬手动炮台；之后按模块词条或配置调射速时只改这里。
-        return Math.max(1, FIRE_INTERVAL_TICKS);
+    private static void scheduleNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
+        double interval = Math.max(0.05D, fireIntervalTicks);
+        double nextFireTick = state.nextFireTick <= 0.0D
+                ? player.tickCount + interval
+                : state.nextFireTick + interval;
+        if (nextFireTick <= player.tickCount) {
+            nextFireTick = player.tickCount + interval;
+        }
+
+        state.nextFireTick = nextFireTick;
+    }
+
+    protected float getFireIntervalTicks(ItemStack moduleStack, Stats stats) {
+        return stats == null ? Math.max(1, FIRE_INTERVAL_TICKS) : stats.fireIntervalTicks();
     }
 
     protected float getShotDamage(ItemStack moduleStack, Stats stats, LivingEntity target) {
-        // 伤害目前照搬手动炮台；之后按模块词条、目标类型或配置调伤害时只改这里。
-        return SHOT_DAMAGE;
+        return stats == null ? SHOT_DAMAGE : stats.shotDamage();
     }
 
     protected VoidBeamInstance.Config getShotBeamConfig(ItemStack moduleStack, Stats stats, LivingEntity target) {
-        // 光束视觉独立成入口，方便以后给辅助炮台做颜色、粗细或命中反馈配置。
-        return SHOT_BEAM;
+        int level = stats == null ? BASE_MODULE_LEVEL : stats.emitterCount();
+        if (level <= BASE_MODULE_LEVEL) {
+            return SHOT_BEAM;
+        }
+
+        return buildShotBeamConfig(
+                PhaseTurretModule.VisualColors.shotBeamCoreForLevel(level),
+                PhaseTurretModule.VisualColors.shotBeamGlowForLevel(level)
+        );
     }
 
     private static LivingEntity selectTarget(ServerPlayer player, FireState state) {
-        // 优先级：正在攻击玩家的怪物 > 锁定目标 > 玩家最近攻击的目标 > 最近/低血量怪物。
+        // 优先级：安全距离内的怪物 > 正在攻击玩家的怪物 > 锁定目标 > 玩家最近攻击的目标 > 最近/低血量怪物。
+        LivingEntity safetyThreat = findSafetyThreat(player);
+        if (safetyThreat != null) {
+            lockTarget(player, state, safetyThreat);
+            return safetyThreat;
+        }
+
         // 玩家正在被怪物攻击时，直接抢占当前锁定目标。
         LivingEntity attacker = findAttackingHostile(player);
         if (attacker != null) {
@@ -329,6 +362,34 @@ public class AssistPhaseTurretModule extends ModuleItem {
         }
 
         return null;
+    }
+
+    private static LivingEntity findSafetyThreat(ServerPlayer player) {
+        LivingEntity best = null;
+        double bestDistanceSqr = Double.MAX_VALUE;
+
+        for (Mob mob : player.level().getEntitiesOfClass(
+                Mob.class,
+                player.getBoundingBox().inflate(SAFE_DISTANCE),
+                AssistPhaseTurretModule::isHostileTarget
+        )) {
+            if (!isValidTarget(player, mob, false)) {
+                continue;
+            }
+
+            double distanceSqr = player.distanceToSqr(mob);
+            if (distanceSqr > SAFE_DISTANCE_SQR) {
+                continue;
+            }
+
+            // 安全距离内只看谁离玩家最近，先打掉最可能贴脸的威胁。
+            if (distanceSqr < bestDistanceSqr) {
+                best = mob;
+                bestDistanceSqr = distanceSqr;
+            }
+        }
+
+        return best;
     }
 
     private static LivingEntity findAttackingHostile(ServerPlayer player) {
@@ -619,9 +680,13 @@ public class AssistPhaseTurretModule extends ModuleItem {
             return null;
         }
 
-        float cooldownReduction = 1.0F;
+        int moduleLevel = Math.max(BASE_MODULE_LEVEL, data.level());
         float energyEfficiency = 1.0F;
-        float activeDuration = 1.0F;
+        float fireRate = 1.0F;
+        float shotDamage = SHOT_DAMAGE + (moduleLevel - BASE_MODULE_LEVEL) * SHOT_DAMAGE_PER_LEVEL;
+        int emitterCount = PhaseTurretModule.getEmitterCount(moduleStack);
+        int cooldownReductionLevel = 0;
+        int activeDurationLevel = 0;
         List<ModuleModifierData> modifiers = data.modifiers();
 
         for (ModuleModifierData modifier : modifiers) {
@@ -630,15 +695,34 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 continue;
             }
             if (modifierType == COOLDOWN_REDUCTION) {
-                cooldownReduction += 0.15F * modifier.level();
+                energyEfficiency += 0.20F * modifier.level();
+                cooldownReductionLevel += modifier.level();
             }
             if (modifierType == ACTIVE_DURATION) {
-                energyEfficiency += 0.12F * modifier.level();
-                activeDuration += 0.3F * modifier.level();
+                energyEfficiency += 0.20F * modifier.level();
+                activeDurationLevel += modifier.level();
+            }
+            if (modifierType == SPEED_BOOST) {
+                fireRate += SPEED_BOOST_PER_LEVEL * modifier.level() * data.level();
             }
         }
 
-        return new Stats(data.moduleMode(), cooldownReduction, energyEfficiency, activeDuration);
+        float fireIntervalTicks = FIRE_INTERVAL_TICKS / Math.max(0.01F, fireRate);
+        float burstCooldownMultiplier = Math.max(
+                0.0F,
+                1.0F - BURST_COOLDOWN_REDUCTION_PER_LEVEL * Math.max(0, cooldownReductionLevel)
+        );
+        float burstActiveDuration = 1.0F
+                + BURST_ACTIVE_DURATION_PER_LEVEL * Math.max(0, activeDurationLevel);
+        return new Stats(
+                data.moduleMode(),
+                energyEfficiency,
+                shotDamage,
+                fireIntervalTicks,
+                emitterCount,
+                burstCooldownMultiplier,
+                burstActiveDuration
+        );
     }
 
     @Override
@@ -651,33 +735,37 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return mode == CHANNEL || mode == BURST;
     }
 
-    public record Stats(ModuleMode mode, float cooldownReduction, float energyEfficiency, float activeDuration) {
+    public record Stats(
+            ModuleMode mode,
+            float energyEfficiency,
+            float shotDamage,
+            float fireIntervalTicks,
+            int emitterCount,
+            float burstCooldownMultiplier,
+            float burstActiveDuration
+    ) {
         // Stats 是模块数据到运行数值的边界；UI/配置改动尽量只落在这里或上面的基础 getter。
         public long channelEnergyCost() {
             return Math.max(1L, (long) (CHANNEL_ENERGY_COST / energyEfficiency));
         }
 
         public long burstEnergyCost() {
-            return Math.max(1L, (long) (BURST_ENERGY_COST / energyEfficiency));
-        }
-
-        public long channelCooldownTicks() {
-            return Math.max(1L, (long) (CHANNEL_COOLDOWN_TICKS / cooldownReduction));
+            return Math.max(0L, Math.round(BURST_ENERGY_COST * burstCooldownMultiplier));
         }
 
         public long burstCooldownTicks() {
-            return Math.max(1L, (long) (BURST_COOLDOWN_TICKS / cooldownReduction));
+            return Math.max(1L, Math.round(BURST_COOLDOWN_TICKS * burstCooldownMultiplier));
         }
 
         public int burstActiveTicks() {
-            return Math.max(1, (int) (BURST_ACTIVE_TICKS * activeDuration));
+            return Math.max(1, Math.round(BURST_ACTIVE_TICKS * burstActiveDuration));
         }
     }
 
     private static final class FireState {
         // 自动炮台每槽独立记录发射顺序、冷却、锁定目标和 burst 到期时间。
         private int nextEmitterIndex;
-        private int nextFireTick;
+        private double nextFireTick;
         private UUID lockedTargetId;
         private int lockUntilTick;
         private int burstUntilTick;

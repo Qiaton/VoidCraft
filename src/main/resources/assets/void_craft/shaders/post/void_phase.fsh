@@ -315,10 +315,73 @@ void accumulateAnalyticPhaseEffects(
     }
 }
 
+float easeInOut(float value) {
+    float t = clamp(value, 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
+vec2 transitionAspectPoint(vec2 uv) {
+    vec2 texSize = vec2(textureSize(InSampler, 0));
+    float aspect = texSize.x / max(texSize.y, 1.0);
+    vec2 point = uv - vec2(0.5);
+    point.x *= aspect;
+    return point;
+}
+
+float transitionCoverRadius() {
+    vec2 corner = abs(transitionAspectPoint(vec2(1.0, 1.0)));
+    return length(corner) + 0.08;
+}
+
+float transitionInsideEllipse(float dist, float radius, float edgeWidth) {
+    float outerRadius = max(radius, 0.0001);
+    return 1.0 - smoothstep(max(0.0, outerRadius - edgeWidth), outerRadius, dist);
+}
+
+vec2 phaseWorldTransitionOffset(float enterProgress, float exitProgress, float holdWhite, float transitionActive, float time) {
+    if (transitionActive < 0.5) {
+        return vec2(0.0);
+    }
+
+    vec2 aspectPoint = transitionAspectPoint(texCoord);
+    float dist = length(aspectPoint);
+    float coverRadius = transitionCoverRadius();
+    vec2 dir = dist > 0.0001 ? normalize(texCoord - vec2(0.5)) : vec2(0.0);
+    float flowNoise = noise(texCoord * 18.0 + vec2(time * 0.42, -time * 0.31));
+    float foldNoise = noise(texCoord * 42.0 + vec2(-time * 0.28, time * 0.36));
+    float wave = sin(dist * 38.0 - time * 5.8 + flowNoise * 6.28318);
+    float shimmer = mix(wave, foldNoise * 2.0 - 1.0, 0.34);
+
+    float enterMask = 0.0;
+    if (enterProgress > 0.0) {
+        float radius = coverRadius * easeInOut(enterProgress);
+        enterMask = transitionInsideEllipse(dist, radius, 0.18);
+        enterMask *= 1.0 - smoothstep(0.74, 1.0, enterProgress) * 0.72;
+    }
+
+    float exitMask = 0.0;
+    if (exitProgress > 0.5) {
+        float collapse = easeInOut((exitProgress - 0.5) * 2.0);
+        float radius = coverRadius * (1.0 - collapse);
+        exitMask = transitionInsideEllipse(dist, radius, 0.20) * (1.0 - collapse * 0.55);
+    }
+
+    float mask = max(enterMask, exitMask) * (1.0 - holdWhite);
+    vec2 tangent = vec2(-dir.y, dir.x);
+    return (dir * shimmer * 0.020 + tangent * wave * 0.010) * mask;
+}
+
 void main() {
     vec2 headerFlags = decodePair(ivec2(0, 0));
-    float localInVoid = headerFlags.x;
+    vec2 transitionProgress = decodePair(ivec2(1, 0));
+    vec2 transitionFlags = decodePair(ivec2(2, 0));
+    float fullScreenPhaseStrength = clamp(headerFlags.x, 0.0, 1.0);
     float time = headerFlags.y * 128.0;
+    float enterProgress = clamp(transitionProgress.x, 0.0, 1.0);
+    float exitProgress = clamp(transitionProgress.y, 0.0, 1.0);
+    float holdWhite = transitionFlags.x;
+    float transitionStage = transitionFlags.y;
+    float transitionActive = transitionStage > 0.001 ? 1.0 : 0.0;
 
     vec2 pixelSize = 1.0 / vec2(textureSize(InSampler, 0));
     vec2 totalOffset = vec2(0.0);
@@ -361,11 +424,13 @@ void main() {
         );
     }
 
+    totalOffset += phaseWorldTransitionOffset(enterProgress, exitProgress, holdWhite, transitionActive, time);
+
     vec2 uv = clamp(texCoord + totalOffset, pixelSize * 0.5, vec2(1.0) - pixelSize * 0.5);
     vec3 color = texture(InSampler, uv).rgb;
 
-    if (localInVoid > 0.5) {
-        color = mix(color, applyFullScreenPhase(color), 0.84);
+    if (fullScreenPhaseStrength > 0.001) {
+        color = mix(color, applyFullScreenPhase(color), 0.84 * fullScreenPhaseStrength);
     }
 
     color = mix(color, color * vec3(0.024, 0.028, 0.060), clamp(blackHoleShadow, 0.0, 1.0));

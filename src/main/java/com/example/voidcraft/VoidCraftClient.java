@@ -3,8 +3,12 @@ package com.example.voidcraft;
 import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
+import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionOverlay;
+import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreen;
+import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreenRegistration;
 import com.example.voidcraft.Gui.ModuleScreen;
 import net.minecraft.resources.Identifier;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,6 +18,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 
@@ -22,6 +27,10 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
 @EventBusSubscriber(modid = VoidCraft.MODID, value = Dist.CLIENT)
 public class VoidCraftClient {
+    public VoidCraftClient(IEventBus bus) {
+        bus.addListener(PhaseWorldTransitionScreenRegistration::registerPhaseWorldTransitionScreen);
+    }
+
     @SubscribeEvent
     public static void ClientFlowFov(net.neoforged.neoforge.client.event.ClientTickEvent.Post  event) {
         if(FlowEffect.fov_effect>1.38){             //控制视角缩放效果
@@ -57,12 +66,23 @@ public class VoidCraftClient {
     }
 
     @SubscribeEvent
-    public static void ENERGY_HUD(RegisterGuiLayersEvent event) {
+    public static void REGISTER_GUI_LAYERS(RegisterGuiLayersEvent event) {
         event.registerAbove(
                 VanillaGuiLayers.HOTBAR,
                 Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
                 EnergyHud::render
         );
+        event.registerAboveAll(
+                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_world_transition"),
+                (guiGraphics, deltaTracker) -> PhaseWorldTransitionOverlay.render(guiGraphics)
+        );
+    }
+
+    @SubscribeEvent
+    public static void PHASE_WORLD_TRANSITION_SCREEN_OVERLAY(ScreenEvent.Render.Post event) {
+        if (!(event.getScreen() instanceof PhaseWorldTransitionScreen)) {
+            PhaseWorldTransitionOverlay.render(event.getGuiGraphics(), true);
+        }
     }
 
 }
