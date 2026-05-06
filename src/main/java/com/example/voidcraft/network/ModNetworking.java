@@ -1,5 +1,10 @@
 package com.example.voidcraft.network;
 
+import com.example.voidcraft.Block.entity.BoundVoidPosition;
+import com.example.voidcraft.Block.entity.VoidEnergyBinding;
+import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
+import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingScreen;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionClient;
 import com.example.voidcraft.Custom.Clock.VoidClock;
@@ -18,8 +23,11 @@ import com.example.voidcraft.Item.custom.PhaseWatch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -27,6 +35,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
@@ -36,7 +45,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "29";
+    private static final String NETWORK_VERSION = "31";
 
     private ModNetworking() {
     }
@@ -47,6 +56,43 @@ public final class ModNetworking {
 
     public static void sendEnergyHud(ServerPlayer player, int percent, boolean visible) {
         PacketDistributor.sendToPlayer(player, new EnergyHudPayload(percent, visible));
+    }
+
+    public static void sendCoordinateBindings(
+            ServerPlayer player,
+            BoundVoidPosition ownerPosition,
+            VoidEnergyTransferBlockEntity owner
+    ) {
+        java.util.ArrayList<CoordinateBindingsPayload.Entry> entries = new java.util.ArrayList<>();
+        MinecraftServer server = player.level().getServer();
+        for (VoidEnergyBinding binding : owner.getOutputTargets()) {
+            entries.add(new CoordinateBindingsPayload.Entry(
+                    true,
+                    binding.target(),
+                    binding.type(),
+                    VoidEnergyTransfer.describeOutputBinding(server, owner, binding),
+                    getBoundBlockName(server, binding.target())
+            ));
+        }
+        for (VoidEnergyBinding binding : owner.getInputSources()) {
+            entries.add(new CoordinateBindingsPayload.Entry(
+                    false,
+                    binding.target(),
+                    binding.type(),
+                    VoidEnergyTransfer.describeInputBinding(server, owner, binding),
+                    getBoundBlockName(server, binding.target())
+            ));
+        }
+        PacketDistributor.sendToPlayer(player, new CoordinateBindingsPayload(ownerPosition, entries));
+    }
+
+    private static Component getBoundBlockName(MinecraftServer server, BoundVoidPosition position) {
+        ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, position.dimension());
+        ServerLevel level = server.getLevel(levelKey);
+        if (level == null || !level.isLoaded(position.pos())) {
+            return Component.translatable("screen.void_craft.coordinate_bindings.target_unloaded");
+        }
+        return level.getBlockState(position.pos()).getBlock().getName();
     }
 
     public static void sendPhaseWorldTransition(
@@ -304,10 +350,12 @@ public final class ModNetworking {
         registrar.playToClient(PhaseWorldTransitionPayload.TYPE, PhaseWorldTransitionPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionClient);
         registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::handleTurretStateClient);
         registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::handleTurretShotFxClient);
+        registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::handleCoordinateBindingsClient);
         registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::handleUseWatchModuleServer);
         registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::handleReleaseBlinkModuleServer);
         registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::handleUseTurretShotServer);
         registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionReadyServer);
+        registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::handleRemoveCoordinateBindingServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
         ClientPacketDistributor.sendToServer(payload);
@@ -414,6 +462,38 @@ public final class ModNetworking {
                 new Vec3(payload.targetX(), payload.targetY(), payload.targetZ()),
                 payload.toBeamConfig()
         ));
+    }
+
+    private static void handleCoordinateBindingsClient(CoordinateBindingsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> CoordinateBindingScreen.open(payload));
+    }
+
+    private static void handleRemoveCoordinateBindingServer(RemoveCoordinateBindingPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        if (!payload.owner().dimension().equals(player.level().dimension().identifier())) {
+            return;
+        }
+        if (player.blockPosition().distSqr(payload.owner().pos()) > 64.0D) {
+            return;
+        }
+        if (!player.level().isLoaded(payload.owner().pos())) {
+            return;
+        }
+
+        BlockEntity ownerBlockEntity = player.level().getBlockEntity(payload.owner().pos());
+        if (!(ownerBlockEntity instanceof VoidEnergyTransferBlockEntity owner)) {
+            return;
+        }
+
+        if (payload.outputList()) {
+            VoidEnergyTransfer.removeOutputBinding(player.level().getServer(), owner, payload.target());
+        } else {
+            VoidEnergyTransfer.removeInputBinding(player.level().getServer(), owner, payload.target());
+        }
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.void_craft.coordinate_designator.binding_removed"), true);
+        sendCoordinateBindings(player, payload.owner(), owner);
     }
 
     private static void handleVoidBlackHoleClient(VoidBlackHolePayload payload, IPayloadContext context) {

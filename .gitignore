@@ -1,5 +1,6 @@
 ### Gradle ###
 .gradle/
+.gradle-user/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/**/build/
@@ -27,6 +28,18 @@ bin/
 
 ### VS Code ###
 .vscode/
+
+### Local AI / Assistant Tools ###
+.codex/
+.continue/
+.cursor/
+.windsurf/
+.claude/
+.agents/
+.aider*
+.cline/
+.roo/
+.gemini/
 
 ### Mac OS ###
 .DS_Store

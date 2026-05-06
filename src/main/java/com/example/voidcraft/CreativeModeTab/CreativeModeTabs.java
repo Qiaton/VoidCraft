@@ -1,15 +1,22 @@
 package com.example.voidcraft.CreativeModeTab;
 
+import com.example.voidcraft.Block.BatteryBlock;
+import com.example.voidcraft.Block.ModBlockEntities;
 import com.example.voidcraft.Block.ModBlockItem;
 import com.example.voidcraft.Item.ModItem;
 import com.example.voidcraft.Item.custom.ModuleItem.*;
 import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.VoidCraft;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BlockItemStateProperties;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -29,6 +36,7 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.BLACK_BLOCK.get());
                         output.accept(ModBlockItem.VOID_ORE_BLOCK.get());
                         output.accept(ModBlockItem.BATTERY_BLOCK.get());
+                        output.accept(getEmptyBatteryBlockItem());
                         output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
@@ -37,6 +45,7 @@ public class CreativeModeTabs {
                         output.accept(ModItem.ADVANCED_ENERGY_CORE);
                         output.accept(ModItem.ELITE_ENERGY_CORE);
                         output.accept(ModItem.ENERGY_CORE_RESIDUE);
+                        output.accept(ModItem.COORDINATE_DESIGNATOR);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem());
                         output.accept(getHealthModuleItem());
@@ -50,6 +59,17 @@ public class CreativeModeTabs {
                     .build()
 
     );
+    public static ItemStack getEmptyBatteryBlockItem(){
+        ItemStack stack = new ItemStack(ModBlockItem.BATTERY_BLOCK.get());
+        stack.set(
+                DataComponents.BLOCK_STATE,
+                BlockItemStateProperties.EMPTY.with(BatteryBlock.ENERGY_STAGE, 0)
+        );
+        TagValueOutput output = TagValueOutput.createWithoutContext(ProblemReporter.DISCARDING);
+        output.putLong("VoidEnergy", 0L);
+        BlockItem.setBlockEntityData(stack, ModBlockEntities.BATTERY_BLOCK_ENTITY.get(), output);
+        return stack;
+    }
     public static ItemStack getModuleItem(){
         ItemStack stack = new ItemStack(ModItem.MODULE_ITEM.get());
         stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5))));
