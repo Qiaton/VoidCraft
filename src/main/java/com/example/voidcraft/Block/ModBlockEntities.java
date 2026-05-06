@@ -5,8 +5,6 @@ import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -25,14 +23,5 @@ public class ModBlockEntities {
 
     public static void register(IEventBus bus) {
         BLOCK_ENTITY_TYPES.register(bus);
-        bus.addListener(ModBlockEntities::registerCapabilities);
-    }
-
-    private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(
-                Capabilities.Energy.BLOCK,
-                BATTERY_BLOCK_ENTITY.get(),
-                (blockEntity, direction) -> blockEntity.getEnergyStorage()
-        );
     }
 }

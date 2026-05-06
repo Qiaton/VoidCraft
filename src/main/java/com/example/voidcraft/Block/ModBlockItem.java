@@ -16,9 +16,10 @@ public class ModBlockItem {
             "void_ore_block",
             ModBlock.VOID_ORE_BLOCK
     );
-    public static final DeferredItem<BlockItem> BATTERY_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
+    public static final DeferredItem<BatteryBlockItem> BATTERY_BLOCK = BLOCK_ITEMS.registerItem(
             "battery_block",
-            ModBlock.BATTERY_BLOCK
+            props -> new BatteryBlockItem(ModBlock.BATTERY_BLOCK.get(), props),
+            props -> props.useBlockDescriptionPrefix()
     );
     public static void register(IEventBus bus) {
         BLOCK_ITEMS.register(bus);

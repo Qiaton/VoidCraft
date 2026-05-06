@@ -2,6 +2,7 @@ package com.example.voidcraft;
 
 import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.ClientCustom.FlowEffect;
+import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingPreviewClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionOverlay;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreen;
@@ -47,6 +48,7 @@ public class VoidCraftClient {
     public static void onClientTick(ClientTickEvent.Post event) {
         PhaseEmitterClientManager.tick();
         PhaseEmitterClientManager.tickLocalAttackInput();
+        CoordinateBindingPreviewClient.tick();
     }
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {

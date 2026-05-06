@@ -1,6 +1,7 @@
 package com.example.voidcraft.Item;
 
 import com.example.voidcraft.Item.custom.FlowType;
+import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import com.example.voidcraft.Item.custom.EnergyCoreItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
@@ -67,6 +68,11 @@ public class ModItem {
             "energy_core_residue",
             Item::new,
             props -> props
+    );
+    public static final DeferredItem<CoordinateDesignatorItem> COORDINATE_DESIGNATOR = ITEMS.registerItem(
+            "coordinate_designator",
+            CoordinateDesignatorItem::new,
+            props -> props.stacksTo(1)
     );
     public static final DeferredItem<Item> VOID_ORE = ITEMS.registerItem(
             "void_ore",

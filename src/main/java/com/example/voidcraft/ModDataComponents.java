@@ -3,6 +3,7 @@ package com.example.voidcraft;
 
 
 import com.example.voidcraft.Item.custom.EnergyCoreData;
+import com.example.voidcraft.Item.custom.CoordinateDesignatorData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
 import com.example.voidcraft.Item.custom.WatchEnergyData;
@@ -33,6 +34,10 @@ public class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>,DataComponentType<EnergyCoreData>> ENERGY_CORE_DATA = DATA_COMPONENTS.registerComponentType(
             "energy_core_data",
             builder -> builder.persistent(EnergyCoreData.CODEC)
+    );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<CoordinateDesignatorData>> COORDINATE_DESIGNATOR_DATA = DATA_COMPONENTS.registerComponentType(
+            "coordinate_designator_data",
+            builder -> builder.persistent(CoordinateDesignatorData.CODEC)
     );
 
     public static void register(IEventBus bus){
