@@ -3,6 +3,7 @@ package com.example.voidcraft.Item;
 import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import com.example.voidcraft.Item.custom.EnergyCoreItem;
+import com.example.voidcraft.Item.custom.VoidCrystalItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
@@ -68,6 +69,27 @@ public class ModItem {
             "energy_core_residue",
             Item::new,
             props -> props
+    );
+    public static final DeferredItem<VoidCrystalItem> LOW_PURITY_VOID_CRYSTAL = ITEMS.registerItem(
+            "low_purity_void_crystal",
+            props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.LOW_PURITY),
+            props -> props
+                    .stacksTo(1)
+                    .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.LOW_PURITY.durabilityMultiplier())
+    );
+    public static final DeferredItem<VoidCrystalItem> HIGH_PURITY_VOID_CRYSTAL = ITEMS.registerItem(
+            "high_purity_void_crystal",
+            props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.HIGH_PURITY),
+            props -> props
+                    .stacksTo(1)
+                    .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.HIGH_PURITY.durabilityMultiplier())
+    );
+    public static final DeferredItem<VoidCrystalItem> PURE_VOID_CRYSTAL = ITEMS.registerItem(
+            "pure_void_crystal",
+            props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.PURE),
+            props -> props
+                    .stacksTo(1)
+                    .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.PURE.durabilityMultiplier())
     );
     public static final DeferredItem<CoordinateDesignatorItem> COORDINATE_DESIGNATOR = ITEMS.registerItem(
             "coordinate_designator",

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "void_craft:item/low_purity_void_crystal"
+  }
+}

@@ -41,6 +41,17 @@ public class ModBlock {
                     .requiresCorrectToolForDrops()
     );
 
+    public static final DeferredBlock<ChunkMapperBlock> CHUNK_MAPPER_BLOCK = BLOCKS.registerBlock(
+            "chunk_mapper_block",
+            ChunkMapperBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> 3)
+                    .strength(2.5F, 6.0F)
+                    .requiresCorrectToolForDrops()
+    );
+
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);

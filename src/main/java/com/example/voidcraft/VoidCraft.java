@@ -9,6 +9,7 @@ import com.example.voidcraft.Item.ModItem;
 import com.example.voidcraft.loot.ModLootTables;
 import com.example.voidcraft.network.ModNetworking;
 import com.example.voidcraft.Sound.ModSound;
+import com.example.voidcraft.world.ChunkMapperChunkTickets;
 import com.example.voidcraft.world.ModWorldGeneration;
 import net.neoforged.bus.api.IEventBus;
 
@@ -33,6 +34,7 @@ public class VoidCraft {
         ModDataComponents.register(bus);
         ModMenuType.register(bus);
         ModWorldGeneration.register(bus);
+        ChunkMapperChunkTickets.register(bus);
         ModLootTables.register();
         }
     }

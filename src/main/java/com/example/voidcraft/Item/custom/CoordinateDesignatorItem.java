@@ -1,5 +1,6 @@
 package com.example.voidcraft.Item.custom;
 
+import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
 import com.example.voidcraft.Block.entity.BoundVoidPosition;
 import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
 import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
@@ -7,6 +8,7 @@ import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.network.ModNetworking;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -21,11 +23,17 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jspecify.annotations.NonNull;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public class CoordinateDesignatorItem extends Item {
+    private static final long CHUNK_MAPPER_OVERWRITE_CONFIRM_TICKS = 100L;
+    private static final Map<UUID, PendingChunkMapperInputOverwrite> PENDING_CHUNK_MAPPER_OVERWRITES = new HashMap<>();
+
     public CoordinateDesignatorItem(Properties properties) {
         super(properties);
     }
@@ -75,7 +83,24 @@ public class CoordinateDesignatorItem extends Item {
         }
 
         BoundVoidPosition first = firstTarget.get();
-        VoidEnergyTransfer.BindResult result = VoidEnergyTransfer.bind(serverPlayer.level().getServer(), first, clicked, data.mode());
+        MinecraftServer server = serverPlayer.level().getServer();
+        ChunkMapperOverwriteTarget overwriteTarget = getChunkMapperOverwriteTarget(server, first, clicked, data.mode());
+        if (overwriteTarget != null && !hasConfirmedChunkMapperOverwrite(serverPlayer, overwriteTarget, data.mode())) {
+            PENDING_CHUNK_MAPPER_OVERWRITES.put(
+                    serverPlayer.getUUID(),
+                    new PendingChunkMapperInputOverwrite(
+                            overwriteTarget.source(),
+                            overwriteTarget.target(),
+                            data.mode(),
+                            level.getGameTime() + CHUNK_MAPPER_OVERWRITE_CONFIRM_TICKS
+                    )
+            );
+            sendActionbar(player, Component.translatable("message.void_craft.chunk_mapper.input_overwrite_confirm"));
+            return InteractionResult.SUCCESS;
+        }
+
+        VoidEnergyTransfer.BindResult result = VoidEnergyTransfer.bind(server, first, clicked, data.mode(), overwriteTarget != null);
+        PENDING_CHUNK_MAPPER_OVERWRITES.remove(serverPlayer.getUUID());
         setData(stack, data.clearFirstTarget());
         sendActionbar(player, Component.translatable(result.translationKey()));
         return InteractionResult.SUCCESS;
@@ -141,5 +166,69 @@ public class CoordinateDesignatorItem extends Item {
 
     private static void sendActionbar(Player player, Component message) {
         player.displayClientMessage(message, true);
+    }
+
+    private static ChunkMapperOverwriteTarget getChunkMapperOverwriteTarget(
+            MinecraftServer server,
+            BoundVoidPosition primary,
+            BoundVoidPosition secondary,
+            CoordinateDesignatorData.Mode mode
+    ) {
+        BoundVoidPosition source;
+        BoundVoidPosition target;
+        if (mode == CoordinateDesignatorData.Mode.INPUT) {
+            source = secondary;
+            target = primary;
+        } else if (mode == CoordinateDesignatorData.Mode.OUTPUT) {
+            source = primary;
+            target = secondary;
+        } else {
+            return null;
+        }
+
+        VoidEnergyTransfer.ResolveResult sourceResult = VoidEnergyTransfer.resolve(server, source);
+        VoidEnergyTransfer.ResolveResult targetResult = VoidEnergyTransfer.resolve(server, target);
+        if (sourceResult.status() != VoidEnergyTransfer.BindingStatus.OK
+                || targetResult.status() != VoidEnergyTransfer.BindingStatus.OK
+                || !(targetResult.endpoint() instanceof ChunkMapperBlockEntity mapper)) {
+            return null;
+        }
+
+        VoidEnergyTransferBlockEntity sourceEndpoint = sourceResult.endpoint();
+        if (!sourceEndpoint.canExtractVoidEnergy()
+                || (!sourceEndpoint.hasOutputTarget(target) && !sourceEndpoint.canAddOutputTarget(target))) {
+            return null;
+        }
+
+        if (mapper.hasInputSource(source) || mapper.getInputSources().isEmpty() || mapper.canAddInputSource(source)) {
+            return null;
+        }
+
+        return new ChunkMapperOverwriteTarget(source, target);
+    }
+
+    private static boolean hasConfirmedChunkMapperOverwrite(
+            ServerPlayer player,
+            ChunkMapperOverwriteTarget target,
+            CoordinateDesignatorData.Mode mode
+    ) {
+        PendingChunkMapperInputOverwrite pending = PENDING_CHUNK_MAPPER_OVERWRITES.get(player.getUUID());
+        if (pending == null || pending.expiresAt() < player.level().getGameTime()) {
+            return false;
+        }
+        return pending.mode() == mode
+                && pending.source().sameBlock(target.source())
+                && pending.target().sameBlock(target.target());
+    }
+
+    private record ChunkMapperOverwriteTarget(BoundVoidPosition source, BoundVoidPosition target) {
+    }
+
+    private record PendingChunkMapperInputOverwrite(
+            BoundVoidPosition source,
+            BoundVoidPosition target,
+            CoordinateDesignatorData.Mode mode,
+            long expiresAt
+    ) {
     }
 }

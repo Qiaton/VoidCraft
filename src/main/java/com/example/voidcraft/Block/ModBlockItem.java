@@ -21,6 +21,10 @@ public class ModBlockItem {
             props -> new BatteryBlockItem(ModBlock.BATTERY_BLOCK.get(), props),
             props -> props.useBlockDescriptionPrefix()
     );
+    public static final DeferredItem<BlockItem> CHUNK_MAPPER_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
+            "chunk_mapper_block",
+            ModBlock.CHUNK_MAPPER_BLOCK
+    );
     public static void register(IEventBus bus) {
         BLOCK_ITEMS.register(bus);
     }
