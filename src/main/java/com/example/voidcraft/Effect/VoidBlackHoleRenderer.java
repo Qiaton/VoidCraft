@@ -38,7 +38,8 @@ public final class VoidBlackHoleRenderer {
                 diskViewVisibility(blackHole.config, coreFacingData),
                 0,
                 false,
-                false
+                false,
+                true
         );
     }
 
@@ -61,6 +62,7 @@ public final class VoidBlackHoleRenderer {
                 diskViewVisibility(blackHole.config, coreFacingData),
                 light,
                 true,
+                false,
                 false
         );
     }
@@ -84,7 +86,8 @@ public final class VoidBlackHoleRenderer {
                 diskViewVisibility(blackHole.config, coreFacingData),
                 light,
                 true,
-                true
+                true,
+                false
         );
     }
 
@@ -250,7 +253,8 @@ public final class VoidBlackHoleRenderer {
             float diskAlphaScale,
             int light,
             boolean textured,
-            boolean glowOnly
+            boolean glowOnly,
+            boolean renderRim
     ) {
         float fade = metrics.fade();
         if (fade <= 0.01F || metrics.halfHeight() <= 0.001F || metrics.halfWidth() <= 0.001F) {
@@ -266,17 +270,19 @@ public final class VoidBlackHoleRenderer {
             renderSphereLayer(buffer, coreMatrix4f, metrics.halfHeight(), metrics.halfWidth(), coreAlpha * config.coreAlphaScale(), config.coreColor(), light, textured, false);
         }
 
-        renderSphereLayer(
-                buffer,
-                coreMatrix4f,
-                metrics.halfHeight() * 1.08F,
-                metrics.halfWidth() * 1.08F,
-                rimAlpha * (glowOnly ? config.shaderRimAlphaScale() : config.rimAlphaScale()),
-                config.color(),
-                light,
-                textured,
-                true
-        );
+        if (renderRim) {
+            renderSphereLayer(
+                    buffer,
+                    coreMatrix4f,
+                    metrics.halfHeight() * 1.08F,
+                    metrics.halfWidth() * 1.08F,
+                    rimAlpha * (glowOnly ? config.shaderRimAlphaScale() : config.rimAlphaScale()),
+                    config.color(),
+                    light,
+                    textured,
+                    true
+            );
+        }
         if (!glowOnly) {
             renderAccretionDisk(buffer, diskMatrix4f, metrics.halfHeight(), metrics.halfWidth(), diskAlpha, config, light, textured, true);
         }

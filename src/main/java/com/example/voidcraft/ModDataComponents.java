@@ -2,8 +2,10 @@ package com.example.voidcraft;
 
 
 
+import com.example.voidcraft.Item.custom.EnergyCoreData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
+import com.example.voidcraft.Item.custom.WatchEnergyData;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
@@ -23,6 +25,14 @@ public class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>,DataComponentType<ModuleModifierData>>  MODULE_MODIFIER_DATA = DATA_COMPONENTS.registerComponentType(
             "module_modifier_data",
             builder -> builder.persistent(ModuleModifierData.CODEC)
+    );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<WatchEnergyData>> WATCH_ENERGY = DATA_COMPONENTS.registerComponentType(
+            "watch_energy",
+            builder -> builder.persistent(WatchEnergyData.CODEC)
+    );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<EnergyCoreData>> ENERGY_CORE_DATA = DATA_COMPONENTS.registerComponentType(
+            "energy_core_data",
+            builder -> builder.persistent(EnergyCoreData.CODEC)
     );
 
     public static void register(IEventBus bus){

@@ -5,6 +5,7 @@
   "package": "com.example.voidcraft.Custom.Behavior.Mixin",
   "mixins": [
     "AbstractArrowAccessor",
+    "PhasePlayerTraversalMixin",
     "VoidArcherArrowDamageMixin",
     "VoidEntity",
     "VoidLivingEntityClass",

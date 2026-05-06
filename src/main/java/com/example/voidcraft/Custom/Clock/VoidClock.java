@@ -18,7 +18,7 @@ public class VoidClock {
     public static Map<UUID,Integer> VOID_TICKS = new HashMap<>();
     public static Map<UUID,Integer> VOID_PLAYER_TICKS = new HashMap<>();
     public static Map<UUID,Integer> VOID_PLAYER_TOTAL_TICKS = new HashMap<>();
-    public static final int DEFAULT_VOID_PLAYER_FLASH_TOTAL = 3;
+    public static final int DEFAULT_VOID_PLAYER_FLASH_TOTAL = 1;
     @SubscribeEvent
     public static void VOID_TICK_SERVER(PlayerTickEvent.Post event) {
         Player player = event.getEntity();

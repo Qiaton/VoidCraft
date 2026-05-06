@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "void_craft:item/basic_energy_core"
+  }
+}

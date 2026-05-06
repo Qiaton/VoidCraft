@@ -25,12 +25,11 @@ import java.util.UUID;
 @EventBusSubscriber
 public class ModuleSkillClock {
     public static Map<UUID,Map<Integer,Long>> COOLDOWN_TICKS = new HashMap<>();
-    public static Map<UUID,Long> MODULE_ENERGY = new HashMap<>();
     public static Map<UUID, Map<Integer, Long>> CHANNEL_ENERGY = new HashMap<>();
     private static final Map<UUID,Integer> ACTIONBAR_LOCK_TICKS = new HashMap<>();
     private static final long MAX_ENERGY = 1000L;
     private static final long TICKS_PER_SECOND = 20L;
-    private static final int ENERGY_HUD_SYNC_INTERVAL_TICKS = 5;
+    private static final int ENERGY_HUD_SYNC_INTERVAL_TICKS = 2;
     private static final int FEEDBACK_ACTIONBAR_LOCK_TICKS = 40;
     @SubscribeEvent
     public static void CHANNEL_CLOCK(PlayerTickEvent.Post event) {
@@ -89,17 +88,34 @@ public class ModuleSkillClock {
 
         Map<Integer, Long> channelData = CHANNEL_ENERGY.get(playerId);
 
-        if (channelData != null && !channelData.isEmpty()) {
+        if (hasDrainingChannel(channelData)) {
             return;
         }
 
-        MODULE_ENERGY.putIfAbsent(playerId, MAX_ENERGY);
-
-        long energy = MODULE_ENERGY.get(playerId);
-
-        if (energy < MAX_ENERGY) {
-            MODULE_ENERGY.put(playerId, Math.min(energy + 10, MAX_ENERGY));
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return;
         }
+
+        PhaseWatch.RechargeResult rechargeResult = PhaseWatch.rechargeFromCore(watchStack);
+        if (rechargeResult == PhaseWatch.RechargeResult.CORE_DEPLETED
+                || rechargeResult == PhaseWatch.RechargeResult.CORE_SCRAPPED) {
+            tryShowFeedbackActionbar(player, Component.translatable("message.void_craft.energy_core.depleted"));
+        }
+    }
+
+    private static boolean hasDrainingChannel(Map<Integer, Long> channelData) {
+        if (channelData == null || channelData.isEmpty()) {
+            return false;
+        }
+
+        for (Long energyCost : channelData.values()) {
+            if (energyCost != null && energyCost > 0L) {
+                return true;
+            }
+        }
+
+        return false;
     }
     @SubscribeEvent
     public static void ENERGY_HUD_SYNC(PlayerTickEvent.Post event) {
@@ -162,11 +178,11 @@ public class ModuleSkillClock {
     }
 
     public static long getEnergy(ServerPlayer player){
-        return MODULE_ENERGY.computeIfAbsent(player.getUUID(), uuid -> MAX_ENERGY);
+        return PhaseWatch.getEnergy(player.getOffhandItem());
     }
 
     public static void setEnergy(ServerPlayer player, long energy){
-        MODULE_ENERGY.put(player.getUUID(),Math.max(0L, Math.min(energy, MAX_ENERGY)));
+        PhaseWatch.setEnergy(player.getOffhandItem(), energy);
     }
 
     public static boolean tryUseEnergy(ServerPlayer player, long requiredEnergy){
@@ -193,12 +209,23 @@ public class ModuleSkillClock {
 
     private static int getEnergyPercent(ServerPlayer player) {
         long energy = getEnergy(player);
-        return (int) Math.max(0L, Math.min(100L, Math.round(energy * 100.0D / MAX_ENERGY)));
+        long maxEnergy = PhaseWatch.getMaxEnergy(player.getOffhandItem());
+        if (maxEnergy <= 0L) {
+            return 0;
+        }
+        return (int) Math.max(0L, Math.min(100L, Math.round(energy * 100.0D / maxEnergy)));
     }
 
     private static void showFeedbackActionbar(ServerPlayer player, Component message){
         player.displayClientMessage(message, true);
         ACTIONBAR_LOCK_TICKS.put(player.getUUID(), FEEDBACK_ACTIONBAR_LOCK_TICKS);
+    }
+
+    private static void tryShowFeedbackActionbar(ServerPlayer player, Component message) {
+        if (ACTIONBAR_LOCK_TICKS.containsKey(player.getUUID())) {
+            return;
+        }
+        showFeedbackActionbar(player, message);
     }
 
     private static void tickActionbarLock(UUID playerId){
@@ -272,7 +299,6 @@ public class ModuleSkillClock {
         UUID playerId = player.getUUID();
         CHANNEL_ENERGY.remove(playerId);
         COOLDOWN_TICKS.remove(playerId);
-        MODULE_ENERGY.remove(playerId);
         ACTIONBAR_LOCK_TICKS.remove(playerId);
         // 登出时只清服务器运行时状态，避免 UUID 表一直挂到进程结束。
         PhaseTurretModule.clearPlayerState(player);

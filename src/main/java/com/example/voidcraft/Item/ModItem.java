@@ -1,6 +1,7 @@
 package com.example.voidcraft.Item;
 
 import com.example.voidcraft.Item.custom.FlowType;
+import com.example.voidcraft.Item.custom.EnergyCoreItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
@@ -10,6 +11,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModToolMaterial;
@@ -45,6 +47,31 @@ public class ModItem {
             props-> props
             .stacksTo(1)
             .durability(100)
+    );
+    public static final DeferredItem<EnergyCoreItem> BASIC_ENERGY_CORE = ITEMS.registerItem(
+            "basic_energy_core",
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.BASIC),
+            props -> props.stacksTo(1)
+    );
+    public static final DeferredItem<EnergyCoreItem> ADVANCED_ENERGY_CORE = ITEMS.registerItem(
+            "advanced_energy_core",
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.ADVANCED),
+            props -> props.stacksTo(1)
+    );
+    public static final DeferredItem<EnergyCoreItem> ELITE_ENERGY_CORE = ITEMS.registerItem(
+            "elite_energy_core",
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.ELITE),
+            props -> props.stacksTo(1)
+    );
+    public static final DeferredItem<Item> ENERGY_CORE_RESIDUE = ITEMS.registerItem(
+            "energy_core_residue",
+            Item::new,
+            props -> props
+    );
+    public static final DeferredItem<Item> VOID_ORE = ITEMS.registerItem(
+            "void_ore",
+            Item::new,
+            props -> props
     );
     public static final DeferredItem<Item> MODULE_ITEM = ITEMS.registerItem(
             "void_module_item",
@@ -91,6 +118,12 @@ public class ModItem {
     public static final DeferredItem<Item> ASSIST_PHASE_TURRET_MODULE = ITEMS.registerItem(
             "assist_phase_turret_module_item",
             AssistPhaseTurretModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> WORLD_MODULE = ITEMS.registerItem(
+            "world_module_item",
+            WorldModule::new,
             props-> props
 
     );

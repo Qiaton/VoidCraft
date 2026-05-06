@@ -1,36 +1,78 @@
 package com.example.voidcraft.Custom.Behavior.Turret;
 
-public enum PhaseEmitterSlot {
-    LEFT_TOP(-1, 1),
-    RIGHT_BOTTOM(1, -1),
-    LEFT_BOTTOM(-1, -1),
-    RIGHT_TOP(1, 1);
+import com.example.voidcraft.Config;
 
-    public final int x;
-    public final int y;
+public final class PhaseEmitterSlot {
+    private static final int MIN_EMITTER_COUNT = 1;
+    private static final int MAX_EMITTER_COUNT = 20;
 
-    PhaseEmitterSlot(int x, int y) {
-        this.x = x;
-        this.y = y;
+    private final int fireIndex;
+    private final int positionIndex;
+    private final int emitterCount;
+
+    private PhaseEmitterSlot(int fireIndex, int positionIndex, int emitterCount) {
+        this.fireIndex = fireIndex;
+        this.positionIndex = positionIndex;
+        this.emitterCount = emitterCount;
     }
 
-    // 所有炮台模式共用同一套发射顺序，视觉和服务端伤害能保持一致。
-    public static final PhaseEmitterSlot[] FIRE_ORDER = {
-            LEFT_TOP,
-            RIGHT_BOTTOM,
-            LEFT_BOTTOM,
-            RIGHT_TOP
-    };
+    public int fireIndex() {
+        return this.fireIndex;
+    }
+
+    public double orbitPhase() {
+        return (Math.PI * 2.0D * this.positionIndex) / this.emitterCount;
+    }
+
+    public static int configuredCount() {
+        return normalizeCount(Config.getPhaseTurretEmitterCount());
+    }
+
+    public static int normalizeCount(int emitterCount) {
+        return Math.max(MIN_EMITTER_COUNT, Math.min(MAX_EMITTER_COUNT, emitterCount));
+    }
 
     public static boolean isValidFireIndex(int index) {
-        return index >= 0 && index < FIRE_ORDER.length;
+        return isValidFireIndex(index, configuredCount());
+    }
+
+    public static boolean isValidFireIndex(int index, int emitterCount) {
+        return index >= 0 && index < normalizeCount(emitterCount);
     }
 
     public static PhaseEmitterSlot byFireIndex(int index) {
-        if (!isValidFireIndex(index)) {
-            return LEFT_TOP;
+        return byFireIndex(index, configuredCount());
+    }
+
+    public static PhaseEmitterSlot byFireIndex(int index, int emitterCount) {
+        int actualCount = normalizeCount(emitterCount);
+        int actualFireIndex = Math.floorMod(index, actualCount);
+        return new PhaseEmitterSlot(actualFireIndex, toPositionIndex(actualFireIndex, actualCount), actualCount);
+    }
+
+    public static PhaseEmitterSlot[] fireOrder() {
+        return fireOrder(configuredCount());
+    }
+
+    public static PhaseEmitterSlot[] fireOrder(int emitterCount) {
+        int actualCount = normalizeCount(emitterCount);
+        PhaseEmitterSlot[] slots = new PhaseEmitterSlot[actualCount];
+        for (int index = 0; index < actualCount; index++) {
+            slots[index] = byFireIndex(index, actualCount);
+        }
+        return slots;
+    }
+
+    private static int toPositionIndex(int fireIndex, int emitterCount) {
+        if (emitterCount == 4) {
+            return switch (fireIndex) {
+                case 1 -> 2;
+                case 2 -> 3;
+                case 3 -> 1;
+                default -> 0;
+            };
         }
 
-        return FIRE_ORDER[index];
+        return fireIndex;
     }
 }

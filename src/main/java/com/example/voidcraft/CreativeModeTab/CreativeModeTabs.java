@@ -27,9 +27,16 @@ public class CreativeModeTabs {
                     .icon(()-> new ItemStack(Items.IRON_AXE))
                     .displayItems(((parameters, output) -> {
                         output.accept(ModBlockItem.BLACK_BLOCK.get());
+                        output.accept(ModBlockItem.VOID_ORE_BLOCK.get());
+                        output.accept(ModBlockItem.BATTERY_BLOCK.get());
+                        output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
                         output.accept(ModItem.PHASE_WATCH);
+                        output.accept(ModItem.BASIC_ENERGY_CORE);
+                        output.accept(ModItem.ADVANCED_ENERGY_CORE);
+                        output.accept(ModItem.ELITE_ENERGY_CORE);
+                        output.accept(ModItem.ENERGY_CORE_RESIDUE);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem());
                         output.accept(getHealthModuleItem());
@@ -38,6 +45,7 @@ public class CreativeModeTabs {
                         output.accept(getSafeBlinkVoidModuleItem());
                         output.accept(getPhaseTurretModuleItem());
                         output.accept(getAssistPhaseTurretModuleItem());
+                        output.accept(getWorldModuleItem());
                     }))
                     .build()
 
@@ -64,12 +72,17 @@ public class CreativeModeTabs {
     }
     public static ItemStack getPhaseTurretModuleItem(){
         ItemStack stack = new ItemStack(ModItem.PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,15, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,10),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getAssistPhaseTurretModuleItem(){
         ItemStack stack = new ItemStack(ModItem.ASSIST_PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,12, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,10),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        return stack;
+    }
+    public static ItemStack getWorldModuleItem(){
+        ItemStack stack = new ItemStack(ModItem.WORLD_MODULE.get());
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getModuleModifierItem(){

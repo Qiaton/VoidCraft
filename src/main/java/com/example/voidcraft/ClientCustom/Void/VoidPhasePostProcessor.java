@@ -2,8 +2,10 @@ package com.example.voidcraft.ClientCustom.Void;
 
 import com.example.voidcraft.Effect.VoidBlackHoleInstance;
 import com.example.voidcraft.Effect.VoidRingInstance;
+import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
+import com.example.voidcraft.world.PhaseDimensions;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -23,6 +25,7 @@ public final class VoidPhasePostProcessor {
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
     public static final Identifier MASK_TEXTURE_ID =
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_mask.png");
+    public static final float PHASE_DIMENSION_FILTER_STRENGTH = 0.70F;
 
     private static DynamicTexture dataTexture;
     private static NativeImage dataPixels;
@@ -59,18 +62,7 @@ public final class VoidPhasePostProcessor {
 
     public static void releaseResources() {
         endMaskWrite();
-        if (dataTexture != null) {
-            dataTexture.close();
-            dataTexture = null;
-            dataPixels = null;
-        }
-
-        if (maskTexture != null) {
-            maskTexture.close();
-        } else if (maskTarget != null) {
-            maskTarget.destroyBuffers();
-            maskTarget = null;
-        }
+        resetFrame();
     }
 
     public static void beginMaskWrite() {
@@ -285,16 +277,36 @@ public final class VoidPhasePostProcessor {
             return;
         }
 
-        float inVoid = mc.player.getData(ModAttachments.IN_VOID.get()) ? 1.0F : 0.0F;
+        PhaseWorldTransitionClient.markPostEffectFrameRendered();
+        float inVoid = getFullScreenPhaseStrength(mc);
         float time = (mc.level.getGameTime() + partialTick) % 128.0F / 128.0F;
         writePackedU16(0, 0, inVoid, time);
-        dataPixels.setPixel(1, 0, 0);
-        dataPixels.setPixel(2, 0, 0);
+        writePackedU16(1, 0, PhaseWorldTransitionClient.enterProgress(), PhaseWorldTransitionClient.exitProgress());
+        writePackedU16(
+                2,
+                0,
+                PhaseWorldTransitionClient.holdWhite(),
+                PhaseWorldTransitionClient.stageCode()
+        );
         dataPixels.setPixel(3, 0, 0);
         dataPixels.setPixel(4, 0, 0);
         dataPixels.setPixel(5, 0, 0);
         dataPixels.setPixel(6, 0, 0);
         dataPixels.setPixel(7, 0, 0);
+    }
+
+    private static float getFullScreenPhaseStrength(Minecraft mc) {
+        if (mc.player == null || mc.level == null) {
+            return 0.0F;
+        }
+
+        boolean playerInVoid = mc.player.getData(ModAttachments.IN_VOID.get())
+                || (mc.player.isUsingItem() && mc.player.getUseItem().getItem() instanceof SpatialSword);
+        if (playerInVoid) {
+            return 1.0F;
+        }
+
+        return PhaseDimensions.isPhaseMirror(mc.level) ? PHASE_DIMENSION_FILTER_STRENGTH : 0.0F;
     }
 
     private static void clearDataPixels() {
