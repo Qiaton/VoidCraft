@@ -8,6 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.List;
+
 public final class VoidEnergyTransfer {
     private VoidEnergyTransfer() {
     }
@@ -28,6 +30,16 @@ public final class VoidEnergyTransfer {
     }
 
     public static BindResult bind(MinecraftServer server, BoundVoidPosition primary, BoundVoidPosition secondary, CoordinateDesignatorData.Mode mode) {
+        return bind(server, primary, secondary, mode, false);
+    }
+
+    public static BindResult bind(
+            MinecraftServer server,
+            BoundVoidPosition primary,
+            BoundVoidPosition secondary,
+            CoordinateDesignatorData.Mode mode,
+            boolean replaceTargetInput
+    ) {
         if (primary.sameBlock(secondary)) {
             return BindResult.SAME_BLOCK;
         }
@@ -70,11 +82,21 @@ public final class VoidEnergyTransfer {
         if (sourceHasOutput && targetHasInput) {
             return BindResult.DUPLICATE;
         }
+        boolean shouldReplaceTargetInput = replaceTargetInput
+                && targetEndpoint != null
+                && !targetHasInput
+                && !targetEndpoint.getInputSources().isEmpty();
         if (sourceEndpoint != null && !sourceHasOutput && !sourceEndpoint.canAddOutputTarget(target)) {
             return BindResult.SOURCE_OUTPUT_FULL;
         }
-        if (targetEndpoint != null && !targetHasInput && !targetEndpoint.canAddInputSource(source)) {
+        if (targetEndpoint != null && !targetHasInput && !targetEndpoint.canAddInputSource(source) && !shouldReplaceTargetInput) {
             return BindResult.TARGET_INPUT_FULL;
+        }
+
+        if (targetEndpoint != null && shouldReplaceTargetInput) {
+            for (VoidEnergyBinding binding : List.copyOf(targetEndpoint.getInputSources())) {
+                removeInputBinding(server, targetEndpoint, binding.target());
+            }
         }
 
         if (sourceEndpoint != null && !sourceHasOutput) {

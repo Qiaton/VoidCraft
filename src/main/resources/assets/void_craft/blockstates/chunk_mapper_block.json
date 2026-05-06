@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "tier=0": {
+      "model": "void_craft:block/chunk_mapper_block_0"
+    },
+    "tier=1": {
+      "model": "void_craft:block/chunk_mapper_block_1"
+    },
+    "tier=2": {
+      "model": "void_craft:block/chunk_mapper_block_2"
+    },
+    "tier=3": {
+      "model": "void_craft:block/chunk_mapper_block_3"
+    }
+  }
+}

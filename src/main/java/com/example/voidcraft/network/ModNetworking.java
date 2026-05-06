@@ -1,9 +1,12 @@
 package com.example.voidcraft.network;
 
+import com.example.voidcraft.Block.ChunkMapperBlock;
 import com.example.voidcraft.Block.entity.BoundVoidPosition;
+import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
 import com.example.voidcraft.Block.entity.VoidEnergyBinding;
 import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
 import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.ClientCustom.Coordinate.ChunkMapperStatusScreen;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingScreen;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionClient;
@@ -45,7 +48,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "31";
+    private static final String NETWORK_VERSION = "32";
 
     private ModNetworking() {
     }
@@ -84,6 +87,33 @@ public final class ModNetworking {
             ));
         }
         PacketDistributor.sendToPlayer(player, new CoordinateBindingsPayload(ownerPosition, entries));
+    }
+
+    public static void sendChunkMapperStatus(ServerPlayer player, ChunkMapperBlockEntity mapper) {
+        MinecraftServer server = player.level().getServer();
+        BoundVoidPosition inputSource = null;
+        VoidEnergyTransfer.BindingStatus inputStatus = VoidEnergyTransfer.BindingStatus.NOT_FUNCTIONAL;
+        Component inputName = Component.translatable("screen.void_craft.chunk_mapper_status.input_empty");
+        if (!mapper.getInputSources().isEmpty()) {
+            VoidEnergyBinding binding = mapper.getInputSources().get(0);
+            inputSource = binding.target();
+            inputStatus = VoidEnergyTransfer.describeInputBinding(server, mapper, binding);
+            inputName = getBoundBlockName(server, inputSource);
+        }
+
+        PacketDistributor.sendToPlayer(player, new ChunkMapperStatusPayload(
+                mapper.getVoidPosition(),
+                mapper.getTier(),
+                mapper.getChunkRadius(),
+                mapper.getCoverageSize(),
+                mapper.getEnergyCostPerTick(),
+                mapper.getEnergyStored(),
+                mapper.getEnergyCapacity(),
+                mapper.isRunning(),
+                inputSource,
+                inputStatus,
+                inputName
+        ));
     }
 
     private static Component getBoundBlockName(MinecraftServer server, BoundVoidPosition position) {
@@ -351,11 +381,13 @@ public final class ModNetworking {
         registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::handleTurretStateClient);
         registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::handleTurretShotFxClient);
         registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::handleCoordinateBindingsClient);
+        registrar.playToClient(ChunkMapperStatusPayload.TYPE, ChunkMapperStatusPayload.STREAM_CODEC, ModNetworking::handleChunkMapperStatusClient);
         registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::handleUseWatchModuleServer);
         registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::handleReleaseBlinkModuleServer);
         registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::handleUseTurretShotServer);
         registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionReadyServer);
         registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::handleRemoveCoordinateBindingServer);
+        registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::handleSetChunkMapperTierServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
         ClientPacketDistributor.sendToServer(payload);
@@ -468,21 +500,15 @@ public final class ModNetworking {
         context.enqueueWork(() -> CoordinateBindingScreen.open(payload));
     }
 
+    private static void handleChunkMapperStatusClient(ChunkMapperStatusPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ChunkMapperStatusScreen.open(payload));
+    }
+
     private static void handleRemoveCoordinateBindingServer(RemoveCoordinateBindingPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
         }
-        if (!payload.owner().dimension().equals(player.level().dimension().identifier())) {
-            return;
-        }
-        if (player.blockPosition().distSqr(payload.owner().pos()) > 64.0D) {
-            return;
-        }
-        if (!player.level().isLoaded(payload.owner().pos())) {
-            return;
-        }
-
-        BlockEntity ownerBlockEntity = player.level().getBlockEntity(payload.owner().pos());
+        BlockEntity ownerBlockEntity = getAccessibleBlockEntity(player, payload.owner());
         if (!(ownerBlockEntity instanceof VoidEnergyTransferBlockEntity owner)) {
             return;
         }
@@ -494,6 +520,35 @@ public final class ModNetworking {
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.void_craft.coordinate_designator.binding_removed"), true);
         sendCoordinateBindings(player, payload.owner(), owner);
+    }
+
+    private static void handleSetChunkMapperTierServer(SetChunkMapperTierPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        if (payload.tier() < 0 || payload.tier() > ChunkMapperBlock.MAX_TIER) {
+            return;
+        }
+        BlockEntity blockEntity = getAccessibleBlockEntity(player, payload.owner());
+        if (!(blockEntity instanceof ChunkMapperBlockEntity mapper)) {
+            return;
+        }
+
+        mapper.setTier(payload.tier());
+        sendChunkMapperStatus(player, mapper);
+    }
+
+    private static BlockEntity getAccessibleBlockEntity(ServerPlayer player, BoundVoidPosition position) {
+        if (!position.dimension().equals(player.level().dimension().identifier())) {
+            return null;
+        }
+        if (player.blockPosition().distSqr(position.pos()) > 64.0D) {
+            return null;
+        }
+        if (!player.level().isLoaded(position.pos())) {
+            return null;
+        }
+        return player.level().getBlockEntity(position.pos());
     }
 
     private static void handleVoidBlackHoleClient(VoidBlackHolePayload payload, IPayloadContext context) {

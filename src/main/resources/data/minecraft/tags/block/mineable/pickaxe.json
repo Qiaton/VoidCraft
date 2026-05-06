@@ -3,6 +3,7 @@
   "values" : [
     "void_craft:black_block",
     "void_craft:void_ore_block",
-    "void_craft:battery_block"
+    "void_craft:battery_block",
+    "void_craft:chunk_mapper_block"
   ]
 }

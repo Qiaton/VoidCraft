@@ -37,6 +37,7 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.VOID_ORE_BLOCK.get());
                         output.accept(ModBlockItem.BATTERY_BLOCK.get());
                         output.accept(getEmptyBatteryBlockItem());
+                        output.accept(ModBlockItem.CHUNK_MAPPER_BLOCK.get());
                         output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
@@ -45,6 +46,9 @@ public class CreativeModeTabs {
                         output.accept(ModItem.ADVANCED_ENERGY_CORE);
                         output.accept(ModItem.ELITE_ENERGY_CORE);
                         output.accept(ModItem.ENERGY_CORE_RESIDUE);
+                        output.accept(ModItem.LOW_PURITY_VOID_CRYSTAL);
+                        output.accept(ModItem.HIGH_PURITY_VOID_CRYSTAL);
+                        output.accept(ModItem.PURE_VOID_CRYSTAL);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem());
