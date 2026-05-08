@@ -49,7 +49,7 @@ public class WorldModule extends ModuleItem {
             return;
         }
 
-        if (!ModuleSkillClock.checkCooldown(player, slot)) {
+        if (!ModuleSkillClock.canUseNow(player, slot)) {
             return;
         }
 
@@ -57,7 +57,7 @@ public class WorldModule extends ModuleItem {
             return;
         }
 
-        ServerLevel targetLevel = resolveTargetLevel(player);
+        ServerLevel targetLevel = getTargetWorldLevel(player);
         if (targetLevel == null) {
             return;
         }
@@ -76,26 +76,26 @@ public class WorldModule extends ModuleItem {
         ModNetworking.sendPhaseWorldTransition(player, sourceDimension, targetDimension);
         Clock.addClock(
                 TELEPORT_FALLBACK_DELAY_TICKS,
-                () -> completePendingTransition(player)
+                () -> finishMove(player)
         );
         ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
     }
 
-    public static void completePendingTransition(ServerPlayer player) {
+    public static void finishMove(ServerPlayer player) {
         PendingTransition pending = PENDING_TRANSITIONS.remove(player.getUUID());
         if (pending == null) {
             return;
         }
 
-        executeWorldTransition(player, pending.sourceDimension());
+        moveWorld(player, pending.sourceDimension());
     }
 
-    private static void executeWorldTransition(ServerPlayer player, ResourceKey<Level> sourceDimension) {
+    private static void moveWorld(ServerPlayer player, ResourceKey<Level> sourceDimension) {
         if (player.isRemoved() || player.isDeadOrDying() || player.level().dimension() != sourceDimension) {
             return;
         }
 
-        ServerLevel targetLevel = resolveTargetLevel(player);
+        ServerLevel targetLevel = getTargetWorldLevel(player);
         if (targetLevel == null) {
             return;
         }
@@ -123,13 +123,13 @@ public class WorldModule extends ModuleItem {
         ModNetworking.sendPhaseTear(teleported, VoidRingInstance.Preset.DEFAULT);
     }
 
-    private static ServerLevel resolveTargetLevel(ServerPlayer player) {
+    private static ServerLevel getTargetWorldLevel(ServerPlayer player) {
         MinecraftServer server = player.level().getServer();
         if (server == null) {
             return null;
         }
 
-        ResourceKey<Level> targetDimension = PhaseWorldRules.resolveTransitionTarget(player.level().dimension());
+        ResourceKey<Level> targetDimension = PhaseWorldRules.getTargetWorld(player.level().dimension());
         if (targetDimension == null) {
             return null;
         }

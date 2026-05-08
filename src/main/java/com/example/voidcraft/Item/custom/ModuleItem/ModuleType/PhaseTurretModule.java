@@ -264,12 +264,12 @@ public class PhaseTurretModule extends ModuleItem {
             .noiseScrollSpeed(6.0F)
             .occludedByBlocks(false)
             .build();
-    private static final VoidBeamInstance.Config SHOT_BEAM = buildShotBeamConfig(
+    private static final VoidBeamInstance.Config SHOT_BEAM = makeShotBeam(
             VisualColors.SHOT_BEAM_CORE,
             VisualColors.SHOT_BEAM_GLOW
     );
 
-    private static VoidBeamInstance.Config buildShotBeamConfig(int coreColor, int glowColor) {
+    private static VoidBeamInstance.Config makeShotBeam(int coreColor, int glowColor) {
         return VoidBeamInstance.Config.builder()
             .lifetimeTicks(6)
             .coreRadius(0.045F)
@@ -290,15 +290,15 @@ public class PhaseTurretModule extends ModuleItem {
             .build();
     }
 
-    public static VoidRingInstance.Preset getMuzzleFlashPreset() {
+    public static VoidRingInstance.Preset getMuzzleFlash() {
         return MUZZLE_FLASH;
     }
 
-    public static VoidRingInstance.Preset getHitFlashPreset() {
+    public static VoidRingInstance.Preset getHitFlash() {
         return HIT_FLASH;
     }
 
-    public static VoidRingInstance.Preset getHitFlashPreset(int color) {
+    public static VoidRingInstance.Preset getHitFlash(int color) {
         int actualColor = color & 0xFFFFFF;
         if (actualColor == VisualColors.HIT_FLASH) {
             return HIT_FLASH;
@@ -309,7 +309,7 @@ public class PhaseTurretModule extends ModuleItem {
                 .build();
     }
 
-    public static VoidRingInstance.Preset getToggleFlashPreset() {
+    public static VoidRingInstance.Preset getToggleFlash() {
         return TOGGLE_FLASH;
     }
 
@@ -334,7 +334,7 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         if (stats.mode() == BURST) {
-            doUseBurst(player, moduleStack, slot, stats);
+            useBurst(player, moduleStack, slot, stats);
             return;
         }
 
@@ -342,11 +342,11 @@ public class PhaseTurretModule extends ModuleItem {
             return;
         }
 
-        doUseChannel(player, moduleStack, slot, stats);
+        useChannel(player, moduleStack, slot, stats);
     }
 
-    private void doUseChannel(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
-        if (ModuleSkillClock.getChannel(player, slot)) {
+    private void useChannel(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+        if (ModuleSkillClock.hasChannel(player, slot)) {
             ModuleSkillClock.stopChannel(player, slot);
             return;
         }
@@ -356,8 +356,8 @@ public class PhaseTurretModule extends ModuleItem {
             return;
         }
 
-        stopOtherTurretChannels(player, slot);
-        AssistPhaseTurretModule.stopOtherBurstTurrets(player, slot);
+        stopOtherTurrets(player, slot);
+        AssistPhaseTurretModule.stopOtherBursts(player, slot);
         // 炮台开关接入通用 channel：持续耗能由 ModuleSkillClock 统一扣。
         ModuleSkillClock.startChannel(player, slot, offEnergy);
         FIRE_STATES
@@ -366,21 +366,21 @@ public class PhaseTurretModule extends ModuleItem {
         ModNetworking.sendTurretState(player, true, moduleStack);
     }
 
-    private void doUseBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
-        if (ModuleSkillClock.getChannel(player, slot)) {
+    private void useBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+        if (ModuleSkillClock.hasChannel(player, slot)) {
             ModuleSkillClock.stopChannel(player, slot);
             return;
         }
 
-        boolean cooldownReady = ModuleSkillClock.checkCooldown(player, slot);
+        boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
         if (cooldownReady) {
             ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
         } else if (!ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
             return;
         }
 
-        stopOtherTurretChannels(player, slot);
-        AssistPhaseTurretModule.stopOtherBurstTurrets(player, slot);
+        stopOtherTurrets(player, slot);
+        AssistPhaseTurretModule.stopOtherBursts(player, slot);
         // BURST 只临时开启手动炮台姿态，不额外走 channel 每 tick 能量消耗。
         ModuleSkillClock.startChannel(player, slot, 0);
         FireState state = new FireState();
@@ -391,10 +391,10 @@ public class PhaseTurretModule extends ModuleItem {
         ModNetworking.sendTurretState(player, true, moduleStack);
     }
 
-    public static void tryFireActiveTurret(ServerPlayer player) {
-        ActiveTurret activeTurret = findActiveTurret(player);
+    public static void tryFireTurret(ServerPlayer player) {
+        ActiveTurret activeTurret = findTurret(player);
         if (activeTurret == null) {
-            if (!AssistPhaseTurretModule.hasAnyActive(player)) {
+            if (!AssistPhaseTurretModule.hasAny(player)) {
                 ModNetworking.sendTurretState(player, false);
             }
             return;
@@ -404,7 +404,7 @@ public class PhaseTurretModule extends ModuleItem {
                 FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
         FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
 
-        if (!canFireNow(player, state)) {
+        if (!canFire(player, state)) {
             return;
         }
 
@@ -412,7 +412,7 @@ public class PhaseTurretModule extends ModuleItem {
         int emitterCount = getEmitterCount(activeTurret.moduleStack());
         int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
         state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
-        scheduleNextFire(player, state, activeTurret.module().getFireIntervalTicks(activeTurret.moduleStack()));
+        setNextFire(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
 
         ShotResult result = activeTurret.module().fire(
                 player,
@@ -421,14 +421,14 @@ public class PhaseTurretModule extends ModuleItem {
         );
 
         if (result != null) {
-            syncShotResult(player, emitterIndex, result);
+            sendShotResult(player, emitterIndex, result);
         }
     }
 
-    private static void tryFireVolley(ServerPlayer player) {
-        ActiveTurret activeTurret = findActiveTurret(player);
+    private static void tryVolley(ServerPlayer player) {
+        ActiveTurret activeTurret = findTurret(player);
         if (activeTurret == null) {
-            if (!AssistPhaseTurretModule.hasAnyActive(player)) {
+            if (!AssistPhaseTurretModule.hasAny(player)) {
                 ModNetworking.sendTurretState(player, false);
             }
             return;
@@ -438,12 +438,12 @@ public class PhaseTurretModule extends ModuleItem {
                 FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
         FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
 
-        if (!canFireNow(player, state)) {
+        if (!canFire(player, state)) {
             return;
         }
 
         int emitterCount = getEmitterCount(activeTurret.moduleStack());
-        scheduleNextFire(player, state, activeTurret.module().getFireIntervalTicks(activeTurret.moduleStack()));
+        setNextFire(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
 
         // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
         for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
@@ -451,21 +451,21 @@ public class PhaseTurretModule extends ModuleItem {
                     player,
                     activeTurret.moduleStack(),
                     emitterIndex,
-                    buildVolleyLook(player),
+                    getVolleyLook(player),
                     VOLLEY_DAMAGE_MULTIPLIER
             );
 
             if (result != null) {
-                syncShotResult(player, emitterIndex, result);
+                sendShotResult(player, emitterIndex, result);
             }
         }
     }
 
-    private static boolean canFireNow(ServerPlayer player, FireState state) {
+    private static boolean canFire(ServerPlayer player, FireState state) {
         return player.tickCount + 1.0E-6D >= state.nextFireTick;
     }
 
-    private static void scheduleNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
+    private static void setNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
         double interval = Math.max(0.05D, fireIntervalTicks);
         double nextFireTick = state.nextFireTick <= 0.0D
                 ? player.tickCount + interval
@@ -478,9 +478,9 @@ public class PhaseTurretModule extends ModuleItem {
     }
 
     public static void setInputState(ServerPlayer player, boolean shooting, boolean volleyShooting) {
-        ActiveTurret activeTurret = findActiveTurret(player);
+        ActiveTurret activeTurret = findTurret(player);
         if (activeTurret == null) {
-            if (!AssistPhaseTurretModule.hasAnyActive(player)) {
+            if (!AssistPhaseTurretModule.hasAny(player)) {
                 ModNetworking.sendTurretState(player, false);
             }
             return;
@@ -497,8 +497,8 @@ public class PhaseTurretModule extends ModuleItem {
         setInputState(player, shooting, false);
     }
 
-    public static void tickAutoFire(ServerPlayer player) {
-        ActiveTurret activeTurret = findActiveTurret(player);
+    public static void tickFire(ServerPlayer player) {
+        ActiveTurret activeTurret = findTurret(player);
         if (activeTurret == null) {
             return;
         }
@@ -513,7 +513,7 @@ public class PhaseTurretModule extends ModuleItem {
             return;
         }
 
-        if (isBurstExpired(player, state)) {
+        if (isBurstDone(player, state)) {
             ModuleSkillClock.stopChannel(player, activeTurret.slot());
             return;
         }
@@ -523,25 +523,25 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         if (state.volleyShooting) {
-            tryFireVolley(player);
+            tryVolley(player);
             return;
         }
 
-        tryFireActiveTurret(player);
+        tryFireTurret(player);
     }
 
-    private static boolean isBurstExpired(ServerPlayer player, FireState state) {
+    private static boolean isBurstDone(ServerPlayer player, FireState state) {
         return state.burstUntilTick > 0 && player.tickCount >= state.burstUntilTick;
     }
 
-    public static void onChannelStopped(ServerPlayer player, int slot) {
-        boolean hadFireState = removeFireState(player, slot);
-        if ((hadFireState || isTurretSlot(player, slot)) && !hasActiveTurret(player, slot)) {
+    public static void onChannelStop(ServerPlayer player, int slot) {
+        boolean hadFireState = removeFire(player, slot);
+        if ((hadFireState || isTurretSlot(player, slot)) && !hasTurret(player, slot)) {
             ModNetworking.sendTurretState(player, false);
         }
     }
 
-    public static void clearPlayerState(ServerPlayer player) {
+    public static void clearPlayer(ServerPlayer player) {
         if (player == null) {
             return;
         }
@@ -550,10 +550,10 @@ public class PhaseTurretModule extends ModuleItem {
         FIRE_STATES.remove(player.getUUID());
     }
 
-    private static void stopOtherTurretChannels(ServerPlayer player, int activeSlot) {
+    private static void stopOtherTurrets(ServerPlayer player, int activeSlot) {
         // 同一时间只保留一个炮台类 channel，避免多个模块同时争用同一套炮台球视觉。
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
-            if (slot == activeSlot || !ModuleSkillClock.getChannel(player, slot) || !isTurretSlot(player, slot)) {
+            if (slot == activeSlot || !ModuleSkillClock.hasChannel(player, slot) || !isTurretSlot(player, slot)) {
                 continue;
             }
 
@@ -561,13 +561,13 @@ public class PhaseTurretModule extends ModuleItem {
         }
     }
 
-    private static boolean hasActiveTurret(ServerPlayer player, int ignoredSlot) {
+    private static boolean hasTurret(ServerPlayer player, int ignoredSlot) {
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
             if (slot == ignoredSlot || !isTurretSlot(player, slot)) {
                 continue;
             }
 
-            if (ModuleSkillClock.getChannel(player, slot) || AssistPhaseTurretModule.hasActiveBurst(player, slot)) {
+            if (ModuleSkillClock.hasChannel(player, slot) || AssistPhaseTurretModule.hasBurst(player, slot)) {
                 return true;
             }
         }
@@ -575,7 +575,7 @@ public class PhaseTurretModule extends ModuleItem {
         return false;
     }
 
-    private static ActiveTurret findActiveTurret(ServerPlayer player) {
+    private static ActiveTurret findTurret(ServerPlayer player) {
         ItemStack watchStack = player.getOffhandItem();
         if (!(watchStack.getItem() instanceof PhaseWatch)) {
             return null;
@@ -592,7 +592,7 @@ public class PhaseTurretModule extends ModuleItem {
         contents.copyInto(items);
 
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
-            if (!ModuleSkillClock.getChannel(player, slot)) {
+            if (!ModuleSkillClock.hasChannel(player, slot)) {
                 continue;
             }
 
@@ -631,7 +631,7 @@ public class PhaseTurretModule extends ModuleItem {
                 || moduleStack.getItem() instanceof AssistPhaseTurretModule;
     }
 
-    private static boolean removeFireState(ServerPlayer player, int slot) {
+    private static boolean removeFire(ServerPlayer player, int slot) {
         Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
         if (playerStates == null) {
             return false;
@@ -714,7 +714,7 @@ public class PhaseTurretModule extends ModuleItem {
         PhaseEmitterSlot emitterSlot = PhaseEmitterSlot.byFireIndex(emitterIndex, getEmitterCount(moduleStack));
 
         Vec3 start = player.getEyePosition();
-        Vec3 look = normalizeLook(player, shotLook);
+        Vec3 look = fixLook(player, shotLook);
 
         Vec3 end = start.add(look.scale(RANGE));
 
@@ -732,7 +732,7 @@ public class PhaseTurretModule extends ModuleItem {
                 .expandTowards(look.scale(RANGE))
                 .inflate(1.0D);
 
-        EntityHitResult entityHit = rayCastEntity(
+        EntityHitResult entityHit = rayEntity(
                 player,
                 start,
                 blockHitPos,
@@ -741,12 +741,12 @@ public class PhaseTurretModule extends ModuleItem {
 
         if (entityHit != null) {
             Entity hitEntity = entityHit.getEntity();
-            Entity damageTarget = resolveTurretDamageTarget(hitEntity);
+            Entity damageTarget = getDamageTarget(hitEntity);
             if (damageTarget != null) {
-                hurtTurretTarget(
+                hurtTarget(
                         player,
                         hitEntity,
-                        getShotDamage(moduleStack, damageTarget) * Math.max(0.0F, damageMultiplier)
+                        getDamage(moduleStack, damageTarget) * Math.max(0.0F, damageMultiplier)
                 );
             }
 
@@ -754,7 +754,7 @@ public class PhaseTurretModule extends ModuleItem {
                     emitterSlot,
                     entityHit.getLocation(),
                     hitEntity.getId(),
-                    getShotBeamConfig(moduleStack, emitterSlot, entityHit.getLocation(), hitEntity.getId())
+                    getBeam(moduleStack, emitterSlot, entityHit.getLocation(), hitEntity.getId())
             );
         } else {
 
@@ -762,19 +762,19 @@ public class PhaseTurretModule extends ModuleItem {
                     emitterSlot,
                     blockHitPos,
                     -1,
-                    getShotBeamConfig(moduleStack, emitterSlot, blockHitPos, -1)
+                    getBeam(moduleStack, emitterSlot, blockHitPos, -1)
             );
         }
     }
 
-    private static void syncShotResult(ServerPlayer player, int emitterIndex, ShotResult result) {
+    private static void sendShotResult(ServerPlayer player, int emitterIndex, ShotResult result) {
         ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
         ModNetworking.sendTurretShotFx(player, emitterIndex, result.targetPos(), result.beamConfig());
     }
 
-    private static Vec3 buildVolleyLook(ServerPlayer player) {
-        Vec3 look = normalizeLook(player, player.getLookAngle());
-        Vec3 right = getViewRight(look);
+    private static Vec3 getVolleyLook(ServerPlayer player) {
+        Vec3 look = fixLook(player, player.getLookAngle());
+        Vec3 right = getRight(look);
         Vec3 up = right.cross(look);
         if (up.lengthSqr() < 1.0E-8D) {
             up = new Vec3(0.0D, 1.0D, 0.0D);
@@ -794,7 +794,7 @@ public class PhaseTurretModule extends ModuleItem {
                 .normalize();
     }
 
-    private static Vec3 normalizeLook(ServerPlayer player, Vec3 look) {
+    private static Vec3 fixLook(ServerPlayer player, Vec3 look) {
         Vec3 actualLook = look == null ? player.getLookAngle() : look;
         if (actualLook.lengthSqr() < 1.0E-8D) {
             return player.getLookAngle();
@@ -803,7 +803,7 @@ public class PhaseTurretModule extends ModuleItem {
         return actualLook.normalize();
     }
 
-    private static Vec3 getViewRight(Vec3 look) {
+    private static Vec3 getRight(Vec3 look) {
         Vec3 right = new Vec3(-look.z, 0.0D, look.x);
         if (right.lengthSqr() < 1.0E-8D) {
             return new Vec3(1.0D, 0.0D, 0.0D);
@@ -812,7 +812,7 @@ public class PhaseTurretModule extends ModuleItem {
         return right.normalize();
     }
 
-    protected VoidBeamInstance.Config getShotBeamConfig(
+    protected VoidBeamInstance.Config getBeam(
             ItemStack moduleStack,
             PhaseEmitterSlot emitterSlot,
             Vec3 targetPos,
@@ -825,49 +825,49 @@ public class PhaseTurretModule extends ModuleItem {
             return SHOT_BEAM;
         }
 
-        return buildShotBeamConfig(
+        return makeShotBeam(
                 VisualColors.shotBeamCoreForLevel(level),
                 VisualColors.shotBeamGlowForLevel(level)
         );
     }
 
-    protected float getFireIntervalTicks(ItemStack moduleStack) {
+    protected float getFireTicks(ItemStack moduleStack) {
         Stats stats = getStats(moduleStack);
         return stats == null ? Math.max(1, FIRE_INTERVAL_TICKS) : stats.fireIntervalTicks();
     }
 
-    protected float getShotDamage(ItemStack moduleStack, LivingEntity target) {
+    protected float getDamage(ItemStack moduleStack, LivingEntity target) {
         Stats stats = getStats(moduleStack);
         return stats == null ? SHOT_DAMAGE : stats.shotDamage();
     }
 
-    protected float getShotDamage(ItemStack moduleStack, Entity target) {
+    protected float getDamage(ItemStack moduleStack, Entity target) {
         if (target instanceof LivingEntity livingTarget) {
-            return getShotDamage(moduleStack, livingTarget);
+            return getDamage(moduleStack, livingTarget);
         }
 
         return SHOT_DAMAGE;
     }
 
-    private static boolean hurtTurretTarget(ServerPlayer player, Entity hitEntity, float damage) {
+    private static boolean hurtTarget(ServerPlayer player, Entity hitEntity, float damage) {
         if (!(player.level() instanceof ServerLevel serverLevel)) {
             return false;
         }
 
-        DamageSource damageSource = buildShotDamageSource(player);
+        DamageSource damageSource = makeDamageSource(player);
         if (hitEntity instanceof PartEntity<?> partEntity) {
             // 多部件实体优先让被命中的部件自己处理伤害，保留龙头/身体等部位自己的转发规则。
-            if (hurtMultipartTarget(serverLevel, partEntity, damageSource, damage)) {
+            if (hurtPart(serverLevel, partEntity, damageSource, damage)) {
                 return true;
             }
 
-            return hurtResolvedTarget(serverLevel, partEntity.getParent(), damageSource, damage);
+            return hurtRealTarget(serverLevel, partEntity.getParent(), damageSource, damage);
         }
 
-        return hurtResolvedTarget(serverLevel, hitEntity, damageSource, damage);
+        return hurtRealTarget(serverLevel, hitEntity, damageSource, damage);
     }
 
-    private static boolean hurtMultipartTarget(
+    private static boolean hurtPart(
             ServerLevel serverLevel,
             PartEntity<?> partEntity,
             DamageSource damageSource,
@@ -886,14 +886,14 @@ public class PhaseTurretModule extends ModuleItem {
         return partEntity.hurtServer(serverLevel, damageSource, damage);
     }
 
-    private static boolean hurtResolvedTarget(
+    private static boolean hurtRealTarget(
             ServerLevel serverLevel,
             Entity target,
             DamageSource damageSource,
             float damage
     ) {
         if (target instanceof LivingEntity livingTarget) {
-            return hurtLivingTarget(serverLevel, livingTarget, damageSource, damage);
+            return hurtLiving(serverLevel, livingTarget, damageSource, damage);
         }
 
         if (target == null || target.isRemoved() || !target.isAlive()) {
@@ -903,7 +903,7 @@ public class PhaseTurretModule extends ModuleItem {
         return target.hurtServer(serverLevel, damageSource, damage);
     }
 
-    private static boolean hurtLivingTarget(
+    private static boolean hurtLiving(
             ServerLevel serverLevel,
             LivingEntity target,
             DamageSource damageSource,
@@ -917,17 +917,17 @@ public class PhaseTurretModule extends ModuleItem {
         return hurt;
     }
 
-    private static DamageSource buildShotDamageSource(ServerPlayer player) {
-        return player.damageSources().source(getShotDamageType(player), player, player);
+    private static DamageSource makeDamageSource(ServerPlayer player) {
+        return player.damageSources().source(getDamageType(player), player, player);
     }
 
-    private static ResourceKey<DamageType> getShotDamageType(ServerPlayer player) {
+    private static ResourceKey<DamageType> getDamageType(ServerPlayer player) {
         return player.getRandom().nextBoolean()
                 ? ModDamageTypes.PHASE_TURRET_SHRED
                 : ModDamageTypes.PHASE_TURRET_DISPERSE;
     }
 
-    private static EntityHitResult rayCastEntity(
+    private static EntityHitResult rayEntity(
             ServerPlayer player,
             Vec3 start,
             Vec3 end,
@@ -940,7 +940,7 @@ public class PhaseTurretModule extends ModuleItem {
         for (Entity entity : player.level().getEntities(
                 player,
                 searchBox,
-                target -> isRaycastableTurretTarget(player, target)
+                target -> canRayHit(player, target)
         )) {
             // 炮台光束稍微放宽命中盒，减少擦边空枪，但不做自动锁敌。
             AABB targetBox = entity.getBoundingBox().inflate(entity.getPickRadius() + AIM_ASSIST_RADIUS);
@@ -974,7 +974,7 @@ public class PhaseTurretModule extends ModuleItem {
         return new EntityHitResult(closestEntity, closestHitPos);
     }
 
-    private static boolean isRaycastableTurretTarget(ServerPlayer player, Entity target) {
+    private static boolean canRayHit(ServerPlayer player, Entity target) {
         if (target == null
                 || target == player
                 || target.is(player)
@@ -989,14 +989,14 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         if (target instanceof PartEntity<?> partEntity) {
-            return isValidMultipartParent(player, partEntity.getParent());
+            return isGoodPartParent(player, partEntity.getParent());
         }
 
         return false;
     }
 
-    private static Entity resolveTurretDamageTarget(Entity hitEntity) {
-        if (hitEntity instanceof PartEntity<?> partEntity && isValidMultipartParent(null, partEntity.getParent())) {
+    private static Entity getDamageTarget(Entity hitEntity) {
+        if (hitEntity instanceof PartEntity<?> partEntity && isGoodPartParent(null, partEntity.getParent())) {
             return partEntity.getParent();
         }
 
@@ -1007,7 +1007,7 @@ public class PhaseTurretModule extends ModuleItem {
         return null;
     }
 
-    private static boolean isValidMultipartParent(ServerPlayer player, Entity parent) {
+    private static boolean isGoodPartParent(ServerPlayer player, Entity parent) {
         if (parent == null || parent.isRemoved() || !parent.isAlive()) {
             return false;
         }

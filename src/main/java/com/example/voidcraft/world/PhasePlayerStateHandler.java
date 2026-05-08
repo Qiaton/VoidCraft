@@ -24,8 +24,8 @@ public final class PhasePlayerStateHandler {
     @SubscribeEvent
     public static void onPlayerTickPre(PlayerTickEvent.Pre event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide() && PhaseWorldRules.shouldApplyPhaseTraversal(player.level())) {
-            applyClientPhaseTraversal(player);
+        if (player.level().isClientSide() && PhaseWorldRules.canPhaseWalk(player.level())) {
+            setClientPhase(player);
         }
     }
 
@@ -35,10 +35,10 @@ public final class PhasePlayerStateHandler {
             return;
         }
 
-        if (PhaseWorldRules.shouldApplyPhaseTraversal(player.level())) {
-            applyServerPhaseTraversal(player);
+        if (PhaseWorldRules.canPhaseWalk(player.level())) {
+            setServerPhase(player);
         } else {
-            restoreServerAbilities(player, false);
+            restoreFly(player, false);
         }
     }
 
@@ -48,10 +48,10 @@ public final class PhasePlayerStateHandler {
             return;
         }
 
-        if (PhaseWorldRules.shouldApplyPhaseTraversal(player.level())) {
-            applyServerPhaseTraversal(player);
+        if (PhaseWorldRules.canPhaseWalk(player.level())) {
+            setServerPhase(player);
         } else {
-            restoreServerAbilities(player, PhaseDimensions.isPhaseMirror(event.getFrom()));
+            restoreFly(player, PhaseDimensions.isPhaseMirror(event.getFrom()));
         }
     }
 
@@ -61,48 +61,48 @@ public final class PhasePlayerStateHandler {
             return;
         }
 
-        if (PhaseWorldRules.shouldApplyPhaseTraversal(player.level())) {
-            applyServerPhaseTraversal(player);
+        if (PhaseWorldRules.canPhaseWalk(player.level())) {
+            setServerPhase(player);
         } else {
-            restoreServerAbilities(player, false);
+            restoreFly(player, false);
         }
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player
-                && PhaseWorldRules.shouldApplyPhaseTraversal(player.level())) {
-            applyServerPhaseTraversal(player);
+                && PhaseWorldRules.canPhaseWalk(player.level())) {
+            setServerPhase(player);
         }
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            restoreServerAbilities(player, false);
+            restoreFly(player, false);
         }
     }
 
-    public static boolean shouldPhaseThrough(Player player) {
-        return player != null && PhaseWorldRules.shouldApplyPhaseTraversal(player.level());
+    public static boolean canPhaseThrough(Player player) {
+        return player != null && PhaseWorldRules.canPhaseWalk(player.level());
     }
 
-    private static void applyServerPhaseTraversal(ServerPlayer player) {
+    private static void setServerPhase(ServerPlayer player) {
         PHASE_ABILITY_SNAPSHOTS.computeIfAbsent(player.getUUID(), ignored -> AbilitySnapshot.capture(player));
-        boolean changed = applyPhaseAbilities(player);
-        applyPhasePhysics(player);
+        boolean changed = setPhaseFly(player);
+        setPhaseMove(player);
 
         if (changed) {
             player.onUpdateAbilities();
         }
     }
 
-    private static void applyClientPhaseTraversal(Player player) {
-        applyPhaseAbilities(player);
-        applyPhasePhysics(player);
+    private static void setClientPhase(Player player) {
+        setPhaseFly(player);
+        setPhaseMove(player);
     }
 
-    private static boolean applyPhaseAbilities(Player player) {
+    private static boolean setPhaseFly(Player player) {
         Abilities abilities = player.getAbilities();
         boolean changed = false;
 
@@ -119,13 +119,13 @@ public final class PhasePlayerStateHandler {
         return changed;
     }
 
-    private static void applyPhasePhysics(Player player) {
+    private static void setPhaseMove(Player player) {
         player.noPhysics = true;
         player.setOnGround(false);
         player.resetFallDistance();
     }
 
-    private static void restoreServerAbilities(ServerPlayer player, boolean forceRemoveSurvivalFlight) {
+    private static void restoreFly(ServerPlayer player, boolean forceRemoveSurvivalFlight) {
         AbilitySnapshot snapshot = PHASE_ABILITY_SNAPSHOTS.remove(player.getUUID());
         if (snapshot == null && !forceRemoveSurvivalFlight) {
             return;
@@ -136,7 +136,7 @@ public final class PhasePlayerStateHandler {
         boolean flying = snapshot != null ? snapshot.flying : abilities.flying;
 
         if ((forceRemoveSurvivalFlight || (snapshot != null && snapshot.forceRemoveOnExit))
-                && shouldForceRemovePhaseFlight(player)) {
+                && needDropFly(player)) {
             mayfly = false;
             flying = false;
         }
@@ -151,7 +151,7 @@ public final class PhasePlayerStateHandler {
         }
     }
 
-    private static boolean shouldForceRemovePhaseFlight(ServerPlayer player) {
+    private static boolean needDropFly(ServerPlayer player) {
         GameType gameMode = player.gameMode.getGameModeForPlayer();
         return gameMode != GameType.SPECTATOR && !gameMode.isCreative();
     }
@@ -159,7 +159,7 @@ public final class PhasePlayerStateHandler {
     private record AbilitySnapshot(boolean mayfly, boolean flying, boolean forceRemoveOnExit) {
         private static AbilitySnapshot capture(ServerPlayer player) {
             Abilities abilities = player.getAbilities();
-            return new AbilitySnapshot(abilities.mayfly, abilities.flying, shouldForceRemovePhaseFlight(player));
+            return new AbilitySnapshot(abilities.mayfly, abilities.flying, needDropFly(player));
         }
     }
 }

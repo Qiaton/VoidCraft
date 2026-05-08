@@ -26,7 +26,7 @@ public class FlowType extends Item {
 
         if (!level.isClientSide()){
 //            VoidClock.VOID_TICKS.put(player.getUUID(),30);
-//            DashClock.SET_DASH(player,30,8);
+//            DashClock.setDash(player,30,8);
 //            itemStack.hurtAndBreak(1,player,hand);
 //            ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
 //            ModSound.playEnterVoid(level, player);

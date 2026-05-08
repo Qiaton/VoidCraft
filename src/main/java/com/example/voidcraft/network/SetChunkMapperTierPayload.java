@@ -7,6 +7,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
+// 客户端点档位按钮后只告诉服务端“哪个映射器要改到几档”。
 public record SetChunkMapperTierPayload(BoundVoidPosition owner, int tier) implements CustomPacketPayload {
     public static final Type<SetChunkMapperTierPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "set_chunk_mapper_tier"));

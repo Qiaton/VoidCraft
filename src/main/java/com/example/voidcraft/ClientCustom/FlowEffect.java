@@ -10,7 +10,7 @@ import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
 public class FlowEffect {           //创建公共变量来给其他类使用
     public static float fov_effect=0;       //这是fov的偏移值
     @SubscribeEvent //把下面的方法和EventBusSubscriber一起带走
-    public static void EFFECT(ComputeFovModifierEvent e) {
+    public static void addFov(ComputeFovModifierEvent e) {
         e.setNewFovModifier(e.getNewFovModifier()+fov_effect);      //基于现有的fov值加一个偏移值达到视角缩放的效果
     }
 }

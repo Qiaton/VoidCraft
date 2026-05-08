@@ -15,6 +15,7 @@ import net.minecraft.resources.Identifier;
 import java.util.ArrayList;
 import java.util.List;
 
+// 服务端把某个虚空能方块的输入/输出绑定列表发给客户端解绑面板。
 public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> entries) implements CustomPacketPayload {
     public static final Type<CoordinateBindingsPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "coordinate_bindings"));
@@ -29,6 +30,7 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
     }
 
     private static void encode(ByteBuf buffer, CoordinateBindingsPayload payload) {
+        // 包里不传方块实体本身，只传位置、方向、状态和显示名。
         writePosition(buffer, payload.owner);
         buffer.writeInt(payload.entries.size());
         for (Entry entry : payload.entries) {
@@ -44,6 +46,7 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
         BoundVoidPosition owner = readPosition(buffer);
         int size = Math.max(0, buffer.readInt());
         List<Entry> entries = new ArrayList<>(size);
+        // 每条 entry 对应界面里的一行连接记录。
         for (int i = 0; i < size; i++) {
             boolean outputList = buffer.readBoolean();
             BoundVoidPosition target = readPosition(buffer);
@@ -60,6 +63,7 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
     }
 
     static void writePosition(ByteBuf buffer, BoundVoidPosition position) {
+        // 网络包用二进制写位置，比 NBT 字符串更轻。
         Identifier.STREAM_CODEC.encode(buffer, position.dimension());
         BlockPos.STREAM_CODEC.encode(buffer, position.pos());
     }
@@ -72,6 +76,7 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
     }
 
     private static <T> T readEnum(int ordinal, T[] values, T fallback) {
+        // 客户端收到越界枚举时使用兜底值，避免坏包导致崩溃。
         return ordinal >= 0 && ordinal < values.length ? values[ordinal] : fallback;
     }
 
@@ -81,6 +86,7 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
     }
 
     public record Entry(
+            // true 表示这是 owner 的输出列表，false 表示这是 owner 的输入列表。
             boolean outputList,
             BoundVoidPosition target,
             VoidEnergyBindingType type,

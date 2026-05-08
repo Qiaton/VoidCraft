@@ -11,6 +11,7 @@ import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 public final class ChunkMapperChunkTickets {
+    // NeoForge 区块票控制器：区块映射器用它申请和释放强加载。
     public static final TicketController CHUNK_MAPPER = new TicketController(
             Identifier.fromNamespaceAndPath(VoidCraft.MODID, "chunk_mapper"),
             ChunkMapperChunkTickets::validateTickets
@@ -28,6 +29,7 @@ public final class ChunkMapperChunkTickets {
     }
 
     private static void validateTickets(ServerLevel level, net.neoforged.neoforge.common.world.chunk.TicketHelper ticketHelper) {
+        // 存档加载或方块被移除后，校验器会清掉已经不该保留的区块票。
         for (BlockPos owner : ticketHelper.getBlockTickets().keySet()) {
             BlockEntity blockEntity = level.getBlockEntity(owner);
             if (!(blockEntity instanceof ChunkMapperBlockEntity mapper) || !mapper.shouldKeepForcedTickets()) {

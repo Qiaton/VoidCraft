@@ -4,6 +4,10 @@
     "void_craft:black_block",
     "void_craft:void_ore_block",
     "void_craft:battery_block",
-    "void_craft:chunk_mapper_block"
+    "void_craft:chunk_mapper_block",
+    "void_craft:void_phenomenon_collector",
+    "void_craft:improved_void_phenomenon_collector",
+    "void_craft:advanced_void_phenomenon_collector",
+    "void_craft:void_attuner"
   ]
 }

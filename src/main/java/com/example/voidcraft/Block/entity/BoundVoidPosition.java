@@ -10,6 +10,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 
 import java.util.Optional;
 
+// 虚空能绑定保存的是“维度 + 方块坐标”，不能只存 BlockPos，否则跨维度会串线。
 public record BoundVoidPosition(Identifier dimension, BlockPos pos) {
     public static final Codec<BoundVoidPosition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Identifier.CODEC.fieldOf("dimension").forGetter(BoundVoidPosition::dimension),
@@ -20,10 +21,12 @@ public record BoundVoidPosition(Identifier dimension, BlockPos pos) {
         return new BoundVoidPosition(level.dimension().identifier(), pos.immutable());
     }
 
+    // 比较绑定点时只关心是不是同一个维度里的同一个方块。
     public boolean sameBlock(BoundVoidPosition other) {
         return other != null && this.dimension.equals(other.dimension) && this.pos.equals(other.pos);
     }
 
+    // 方块实体存盘用的是 ValueInput/ValueOutput，所以这里手动拆成简单字段。
     public void save(ValueOutput output) {
         output.putString("Dimension", this.dimension.toString());
         output.putInt("X", this.pos.getX());
@@ -31,6 +34,7 @@ public record BoundVoidPosition(Identifier dimension, BlockPos pos) {
         output.putInt("Z", this.pos.getZ());
     }
 
+    // 读取旧存档或坏数据时返回 Optional.empty，避免绑定数据把方块实体读崩。
     public static Optional<BoundVoidPosition> load(ValueInput input) {
         Optional<String> dimension = input.getString("Dimension");
         if (dimension.isEmpty()) {

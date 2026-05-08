@@ -40,9 +40,9 @@ public class VoidModule extends ModuleItem {
         if(mode == null) return;
         if(mode == CHANNEL){
             long offEnergy = stats.channelEnergyCost();
-            if(ModuleSkillClock.getChannel(player,slot)){
+            if(ModuleSkillClock.hasChannel(player,slot)){
                 ModuleSkillClock.stopChannel(player,slot);
-                VoidClock.STOP_VOID(player);
+                VoidClock.stopVoid(player);
             }
             else{
                 if(!ModuleSkillClock.tryUseEnergy(player,offEnergy)){
@@ -54,13 +54,13 @@ public class VoidModule extends ModuleItem {
             }
         }
         if(mode == BURST){
-            if(!ModuleSkillClock.checkCooldown(player,slot)){
+            if(!ModuleSkillClock.canUseNow(player,slot)){
                 return;
             }
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
             ModSound.playEnterVoid(level, player);
             ModuleSkillClock.setCooldown(player, slot, COOLDOWN_TICKS);
-            VoidClock.SET_VOID_TICKS(player, stats.activeTicks());
+            VoidClock.setVoidTicks(player, stats.activeTicks());
         }
     }
 

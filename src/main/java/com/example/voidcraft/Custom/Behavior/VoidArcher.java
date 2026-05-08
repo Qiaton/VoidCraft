@@ -73,21 +73,21 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     private static final Map<ServerLevel, Deque<PendingAreaDamage>> PENDING_AREA_DAMAGE = new HashMap<>(); // 超大范围 AOE 拆到后续 tick 继续结算。
 
     // ===== 视觉预设入口 =====
-    private static final VoidTrailInstance.Preset RAY = buildRayPreset(); // 箭飞行时用的拉丝预设。
-    private static final VoidRingInstance.Preset LIGHT = buildBaseLightPreset(); // 箭命中时用的基础白光预设。
+    private static final VoidTrailInstance.Preset RAY = makeRay(); // 箭飞行时用的拉丝预设。
+    private static final VoidRingInstance.Preset LIGHT = makeBaseLight(); // 箭命中时用的基础白光预设。
     private static final VoidBlackHoleInstance.Config BLACK_HOLE_CONFIG = VoidBlackHoleInstance.Config.DEFAULT; // 箭命中时播放的黑洞球体配置。
 
     @SubscribeEvent // 实体进世界时，尽快尝试给箭挂上虚空射手效果。
     public static void onArrowJoinLevel(EntityJoinLevelEvent event) {
         if (event.getEntity() instanceof AbstractArrow arrow) {
-            handleArrowFlight(arrow);
+            runArrow(arrow);
         }
     }
 
     @SubscribeEvent // 每 tick 再补一次，避免刚进世界那一刻还没拿到附魔信息。
     public static void onArrowTick(EntityTickEvent.Post event) {
         if (event.getEntity() instanceof AbstractArrow arrow) {
-            handleArrowFlight(arrow);
+            runArrow(arrow);
         }
     }
 
@@ -107,7 +107,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     @SubscribeEvent // 世界 tick 后处理一小批挂起的 AOE，避免命中瞬间把所有目标都压在同一 tick。
     public static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
-            processQueuedAreaDamage(serverLevel);
+            tickAreaDamage(serverLevel);
         }
     }
 
@@ -121,13 +121,13 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
     @SubscribeEvent // 箭命中时，统一处理白光、AOE 和清箭。
     public static void onProjectileImpact(ProjectileImpactEvent event) {
         Projectile projectile = event.getProjectile();
-        int level = getVoidArcherLevel(projectile);
+        int level = getArcherLevel(projectile);
         if (level <= 0) {
             return;
         }
 
         if (projectile instanceof AbstractArrow arrow && projectile.level() instanceof ServerLevel serverLevel) {
-            if (isOwnerHit(arrow, event.getRayTraceResult())) {
+            if (isSelfHit(arrow, event.getRayTraceResult())) {
                 event.setCanceled(true);
                 return;
             }
@@ -136,23 +136,23 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 return;
             }
 
-            if (handleArrowImpact(serverLevel, arrow, event.getRayTraceResult(), level)) {
+            if (hitArrow(serverLevel, arrow, event.getRayTraceResult(), level)) {
                 event.setCanceled(true);
             }
         }
     }
 
     public static boolean isVoidArcherProjectile(Projectile projectile) { // 给别的类一个清晰入口，判断某支箭是否带虚空射手逻辑。
-        return getVoidArcherLevel(projectile) > 0;
+        return getArcherLevel(projectile) > 0;
     }
 
-    private static void handleArrowFlight(AbstractArrow arrow) { // 飞行阶段总入口。
-        int level = getVoidArcherLevel(arrow);
+    private static void runArrow(AbstractArrow arrow) { // 飞行阶段总入口。
+        int level = getArcherLevel(arrow);
         if (level <= 0) {
             return;
         }
 
-        applyArrowVisualState(arrow); // 视觉状态每 tick 都刷新一次，避免同步抖动。
+        hideArrow(arrow); // 视觉状态每 tick 都刷新一次，避免同步抖动。
 
         if (arrow.level().isClientSide()) { // 真正改伤害和发网络包只放在服务端。
             return;
@@ -163,19 +163,19 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             return;
         }
 
-        applyArrowEnhancementOnce(arrow, level); // 只在第一次真正强化箭的速度和伤害参数。
-        lockArrowDirection(arrow); // 后续飞行只沿发射时锁住的方向走，不再跟准心变化。
-        sendTrailIfNeeded(arrow); // 拉丝按需要补发。
+        boostArrowOnce(arrow, level); // 只在第一次真正强化箭的速度和伤害参数。
+        lockArrowDir(arrow); // 后续飞行只沿发射时锁住的方向走，不再跟准心变化。
+        sendTrail(arrow); // 拉丝按需要补发。
     }
 
-    private static boolean handleArrowImpact(ServerLevel serverLevel, AbstractArrow arrow, HitResult hitResult, int level) { // 命中阶段总入口。
+    private static boolean hitArrow(ServerLevel serverLevel, AbstractArrow arrow, HitResult hitResult, int level) { // 命中阶段总入口。
         Vec3 impactPosition = hitResult.getLocation();
-        float impactScale = getImpactScale(arrow);
-        VoidRingInstance.Preset lightPreset = buildLightForLevel(level);
-        VoidBlackHoleInstance.Config blackHoleConfig = buildBlackHoleForLevel(level);
+        float impactScale = getHitScale(arrow);
+        VoidRingInstance.Preset lightPreset = makeLight(level);
+        VoidBlackHoleInstance.Config blackHoleConfig = makeBlackHole(level);
 
-        sendImpactTrailSeed(arrow); // 命中这一帧再补一次带种子段的拉丝，专门兜住“高速箭刚生成就命中”的情况。
-        scheduleImpactAreaDamage(serverLevel, arrow, hitResult, impactPosition, impactScale, lightPreset, level); // 先结算 AOE 伤害。
+        sendHitTrail(arrow); // 命中这一帧再补一次带种子段的拉丝，专门兜住“高速箭刚生成就命中”的情况。
+        addAreaDamage(serverLevel, arrow, hitResult, impactPosition, impactScale, lightPreset, level); // 先结算 AOE 伤害。
         // ModNetworking.sendPhaseTearAt(serverLevel, impactPosition, impactScale, lightPreset); // 原虚空射手命中白光效果。
         ModNetworking.sendBlackHoleAt(serverLevel, impactPosition, impactScale, blackHoleConfig); // 再在落点播放新黑洞实例。
 
@@ -189,19 +189,19 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return true;
     }
 
-    private static void applyArrowVisualState(AbstractArrow arrow) { // 每 tick 都刷一遍箭的视觉状态。
+    private static void hideArrow(AbstractArrow arrow) { // 每 tick 都刷一遍箭的视觉状态。
         arrow.setInvisible(true); // 箭本体隐藏。
         arrow.setNoGravity(true); // 箭无下坠。
         arrow.setCritArrow(false); // 关闭原版满弓暴击粒子尾迹。
     }
 
-    private static void applyArrowEnhancementOnce(AbstractArrow arrow, int level) { // 只在第一次进入服务端逻辑时修改箭的飞行参数。
+    private static void boostArrowOnce(AbstractArrow arrow, int level) { // 只在第一次进入服务端逻辑时修改箭的飞行参数。
         UUID arrowId = arrow.getUUID();
         if (MODIFIED_ARROWS.contains(arrowId)) {
             return;
         }
 
-        float speedMultiplier = getSpeedMultiplier(level);
+        float speedMultiplier = getSpeedMult(level);
         double baseDamage = ((AbstractArrowAccessor) arrow).voidcraft$getBaseDamage();
         Vec3 currentMotion = arrow.getDeltaMovement();
         Vec3 ownerMotion = arrow.getOwner() == null ? Vec3.ZERO : arrow.getOwner().getDeltaMovement();
@@ -215,7 +215,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
 
         double flightSpeed = flightMotion.length();
-        Vec3 aimDirection = resolveAimDirection(arrow.getOwner(), flightMotion);
+        Vec3 aimDirection = getAimDir(arrow.getOwner(), flightMotion);
         Vec3 newMotion = aimDirection.scale(flightSpeed * speedMultiplier);
 
         LOCKED_DIRECTIONS.put(arrowId, aimDirection);
@@ -224,7 +224,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         MODIFIED_ARROWS.add(arrowId);
     }
 
-    private static void lockArrowDirection(AbstractArrow arrow) { // 保持箭沿首次锁定的方向飞行，避免中途再被别的逻辑带偏。
+    private static void lockArrowDir(AbstractArrow arrow) { // 保持箭沿首次锁定的方向飞行，避免中途再被别的逻辑带偏。
         Vec3 lockedDirection = LOCKED_DIRECTIONS.get(arrow.getUUID());
         if (lockedDirection == null) {
             return;
@@ -242,7 +242,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
     }
 
-    private static void sendTrailIfNeeded(AbstractArrow arrow) { // 根据当前状态决定是否需要再补一次拉丝包。
+    private static void sendTrail(AbstractArrow arrow) { // 根据当前状态决定是否需要再补一次拉丝包。
         UUID arrowId = arrow.getUUID();
         boolean firstSend = TRAIL_SENT_ARROWS.add(arrowId);
         boolean primeResend = arrow.tickCount <= TRAIL_PRIME_TICKS
@@ -252,11 +252,11 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
     }
 
-    private static void sendImpactTrailSeed(AbstractArrow arrow) {
+    private static void sendHitTrail(AbstractArrow arrow) {
         ModNetworking.sendEntityTrail(arrow, RAY, 1.0F, TRAIL_SEED_LENGTH);
     }
 
-    private static VoidTrailInstance.Preset buildRayPreset() { // 以后要调箭尾拉丝，优先改这里。
+    private static VoidTrailInstance.Preset makeRay() { // 以后要调箭尾拉丝，优先改这里。
         return VoidTrailInstance.Preset.builder()
                 .lifetimeTicks(20)
                 .centerYOffset(0.0F)
@@ -271,7 +271,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .build();
     }
 
-    private static VoidRingInstance.Preset buildBaseLightPreset() { // 以后要调命中白光，优先改这里。
+    private static VoidRingInstance.Preset makeBaseLight() { // 以后要调命中白光，优先改这里。
         return VoidRingInstance.Preset.builder()
                 .durationTicks(5)
                 .peakHoldTicks(1)
@@ -294,7 +294,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .noiseScrollSpeed(6.68F)
                 .build();
     }
-//private static VoidRingInstance.Preset buildBaseLightPreset() { // 以后要调命中白光，优先改这里。
+//private static VoidRingInstance.Preset makeBaseLight() { // 以后要调命中白光，优先改这里。
 //    return VoidRingInstance.Preset.builder()
 //            .durationTicks(80)
 //            .followCameraPitch(true)
@@ -328,7 +328,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
 //            .build();
 //}
 
-    private static VoidRingInstance.Preset buildLightForLevel(int level) { // 按附魔等级放大白光尺寸。
+    private static VoidRingInstance.Preset makeLight(int level) { // 按附魔等级放大白光尺寸。
         if (level <= 1) {
             return LIGHT;
         }
@@ -344,7 +344,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .build();
     }
 
-    private static VoidBlackHoleInstance.Config buildBlackHoleForLevel(int level) { // 按附魔等级放大黑洞视觉尺寸。
+    private static VoidBlackHoleInstance.Config makeBlackHole(int level) { // 按附魔等级放大黑洞视觉尺寸。
         if (level <= 1) {
             return BLACK_HOLE_CONFIG;
         }
@@ -360,7 +360,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 .build();
     }
 
-    private static void scheduleImpactAreaDamage( // 命中后，在白光附近打一段 AOE。
+    private static void addAreaDamage( // 命中后，在白光附近打一段 AOE。
             ServerLevel serverLevel,
             AbstractArrow arrow,
             HitResult hitResult,
@@ -369,27 +369,27 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             VoidRingInstance.Preset lightPreset,
             int level
     ) {
-        ImpactAreaProfile areaProfile = buildImpactAreaProfile(impactPosition, impactScale, lightPreset);
-        Entity directHitEntity = resolveDirectHitEntity(hitResult);
-        Set<UUID> excludedEntityIds = buildExcludedAreaTargetIds(directHitEntity, arrow.getOwner());
-        List<PendingAreaTarget> targets = collectImpactTargets(serverLevel, areaProfile, excludedEntityIds);
+        ImpactAreaProfile areaProfile = makeHitArea(impactPosition, impactScale, lightPreset);
+        Entity directHitEntity = getHitEntity(hitResult);
+        Set<UUID> excludedEntityIds = getNoHitIds(directHitEntity, arrow.getOwner());
+        List<PendingAreaTarget> targets = getHitTargets(serverLevel, areaProfile, excludedEntityIds);
         if (targets.isEmpty()) {
             return;
         }
 
-        ArrowDamageContext damageContext = buildArrowDamageContext(serverLevel, arrow, level);
+        ArrowDamageContext damageContext = makeArrowDamage(serverLevel, arrow, level);
         if (damageContext == null) {
             return;
         }
 
         PendingAreaDamage pendingAreaDamage = new PendingAreaDamage(damageContext, targets);
-        processAreaDamageBatch(pendingAreaDamage, AOE_TARGETS_PER_BATCH);
+        hitAreaBatch(pendingAreaDamage, AOE_TARGETS_PER_BATCH);
         if (pendingAreaDamage.hasRemainingTargets()) {
             PENDING_AREA_DAMAGE.computeIfAbsent(serverLevel, ignored -> new ArrayDeque<>()).addLast(pendingAreaDamage);
         }
     }
 
-    private static ImpactAreaProfile buildImpactAreaProfile(Vec3 impactPosition, float impactScale, VoidRingInstance.Preset lightPreset) { // 把白光的伤害体积预先算好，后面粗筛细筛都复用。
+    private static ImpactAreaProfile makeHitArea(Vec3 impactPosition, float impactScale, VoidRingInstance.Preset lightPreset) { // 把白光的伤害体积预先算好，后面粗筛细筛都复用。
         Vec3 damageCenter = impactPosition.add(0.0D, lightPreset.centerYOffset() * impactScale, 0.0D);
         double horizontalRange = Math.max(0.1D, lightPreset.peakHalfWidth() * impactScale);
         double verticalRange = Math.max(0.1D, lightPreset.peakHalfHeight() * impactScale);
@@ -404,20 +404,20 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return new ImpactAreaProfile(damageCenter, horizontalRange, verticalRange, damageBox);
     }
 
-    private static Entity resolveDirectHitEntity(HitResult hitResult) { // 如果箭这次是直击实体，就把那个实体取出来。
+    private static Entity getHitEntity(HitResult hitResult) { // 如果箭这次是直击实体，就把那个实体取出来。
         if (hitResult instanceof EntityHitResult entityHitResult) {
             return entityHitResult.getEntity();
         }
         return null;
     }
 
-    private static boolean isOwnerHit(AbstractArrow arrow, HitResult hitResult) {
+    private static boolean isSelfHit(AbstractArrow arrow, HitResult hitResult) {
         Entity owner = arrow.getOwner();
-        Entity directHitEntity = resolveDirectHitEntity(hitResult);
+        Entity directHitEntity = getHitEntity(hitResult);
         return owner != null && directHitEntity != null && directHitEntity.is(owner);
     }
 
-    private static Set<UUID> buildExcludedAreaTargetIds(Entity... entities) {
+    private static Set<UUID> getNoHitIds(Entity... entities) {
         Set<UUID> excludedEntityIds = new HashSet<>();
         for (Entity entity : entities) {
             if (entity != null) {
@@ -427,7 +427,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return excludedEntityIds;
     }
 
-    private static List<PendingAreaTarget> collectImpactTargets(
+    private static List<PendingAreaTarget> getHitTargets(
             ServerLevel serverLevel,
             ImpactAreaProfile areaProfile,
             Set<UUID> excludedEntityIds
@@ -440,11 +440,11 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 continue;
             }
 
-            if (!isInsideImpactShape(target, areaProfile)) {
+            if (!inHitArea(target, areaProfile)) {
                 continue;
             }
 
-            targets.add(new PendingAreaTarget(target, AOE_DAMAGE_MULTIPLIER, getImpactDistanceSqr(target, areaProfile.center())));
+            targets.add(new PendingAreaTarget(target, AOE_DAMAGE_MULTIPLIER, getHitDistSqr(target, areaProfile.center())));
         }
 
         if (targets.isEmpty()) {
@@ -458,7 +458,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return targets;
     }
 
-    private static boolean isInsideImpactShape(LivingEntity target, ImpactAreaProfile areaProfile) { // 大 AABB 先粗筛，再用椭球细筛把边角上不该命中的目标排掉。
+    private static boolean inHitArea(LivingEntity target, ImpactAreaProfile areaProfile) { // 大 AABB 先粗筛，再用椭球细筛把边角上不该命中的目标排掉。
         Vec3 targetCenter = target.getBoundingBox().getCenter();
         double horizontalRadius = areaProfile.horizontalRange() + target.getBbWidth() * 0.5D;
         double verticalRadius = areaProfile.verticalRange() + target.getBbHeight() * 0.5D;
@@ -470,14 +470,14 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return horizontalFactor + verticalFactor <= 1.0D;
     }
 
-    private static double getImpactDistanceSqr(LivingEntity target, Vec3 damageCenter) {
+    private static double getHitDistSqr(LivingEntity target, Vec3 damageCenter) {
         return target.getBoundingBox().getCenter().distanceToSqr(damageCenter);
     }
 
-    private static ArrowDamageContext buildArrowDamageContext(ServerLevel serverLevel, AbstractArrow arrow, int level) {
-        float speedMultiplier = getSpeedMultiplier(level);
-        double normalizedImpactSpeed = getNormalizedImpactSpeed(arrow, speedMultiplier);
-        float baseDamage = (float) getOriginalBaseDamage(arrow, speedMultiplier);
+    private static ArrowDamageContext makeArrowDamage(ServerLevel serverLevel, AbstractArrow arrow, int level) {
+        float speedMultiplier = getSpeedMult(level);
+        double normalizedImpactSpeed = getHitSpeed(arrow, speedMultiplier);
+        float baseDamage = (float) getBaseDamage(arrow, speedMultiplier);
         if (normalizedImpactSpeed <= 0.0D || baseDamage <= 0.0F) {
             return null;
         }
@@ -490,16 +490,16 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return new ArrowDamageContext(
                 serverLevel,
                 arrow,
-                buildArrowDamageSource(arrow),
+                makeArrowDamageSource(arrow),
                 weapon.copy(),
                 normalizedImpactSpeed,
                 baseDamage,
-                shouldNormalizeVanillaHitDamage(arrow),
-                getVanillaEquivalentMovement(arrow, arrow.getDeltaMovement())
+                needFixVanillaDamage(arrow),
+                getVanillaMove(arrow, arrow.getDeltaMovement())
         );
     }
 
-    private static void processQueuedAreaDamage(ServerLevel serverLevel) {
+    private static void tickAreaDamage(ServerLevel serverLevel) {
         Deque<PendingAreaDamage> queuedAreaDamage = PENDING_AREA_DAMAGE.get(serverLevel);
         if (queuedAreaDamage == null || queuedAreaDamage.isEmpty()) {
             PENDING_AREA_DAMAGE.remove(serverLevel);
@@ -510,7 +510,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         int remainingPasses = queuedAreaDamage.size();
         while (remainingBudget > 0 && remainingPasses > 0 && !queuedAreaDamage.isEmpty()) {
             PendingAreaDamage pendingAreaDamage = queuedAreaDamage.pollFirst();
-            int processedTargets = processAreaDamageBatch(
+            int processedTargets = hitAreaBatch(
                     pendingAreaDamage,
                     Math.min(AOE_TARGETS_PER_BATCH, remainingBudget)
             );
@@ -527,7 +527,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
     }
 
-    private static int processAreaDamageBatch(PendingAreaDamage pendingAreaDamage, int maxTargets) {
+    private static int hitAreaBatch(PendingAreaDamage pendingAreaDamage, int maxTargets) {
         int processedTargets = 0;
         while (processedTargets < maxTargets && pendingAreaDamage.hasRemainingTargets()) {
             PendingAreaTarget targetEntry = pendingAreaDamage.nextTarget();
@@ -538,7 +538,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
                 continue;
             }
 
-            float directDamage = pendingAreaDamage.damageContext().calculateDamage(target);
+            float directDamage = pendingAreaDamage.damageContext().getDamage(target);
             float areaDamage = directDamage * targetEntry.damageMultiplier();
             if (areaDamage > 0.0F) {
                 target.hurtServer(pendingAreaDamage.damageContext().serverLevel(), pendingAreaDamage.damageContext().damageSource(), areaDamage);
@@ -547,7 +547,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return processedTargets;
     }
 
-    private static double getOriginalBaseDamage(AbstractArrow arrow, float speedMultiplier) {
+    private static double getBaseDamage(AbstractArrow arrow, float speedMultiplier) {
         Double originalBaseDamage = ORIGINAL_BASE_DAMAGES.get(arrow.getUUID());
         if (originalBaseDamage != null) {
             return originalBaseDamage;
@@ -557,32 +557,32 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return MODIFIED_ARROWS.contains(arrow.getUUID()) ? currentBaseDamage * speedMultiplier : currentBaseDamage;
     }
 
-    public static boolean shouldNormalizeVanillaHitDamage(AbstractArrow arrow) {
+    public static boolean needFixVanillaDamage(AbstractArrow arrow) {
         return MODIFIED_ARROWS.contains(arrow.getUUID());
     }
 
-    public static double getVanillaEquivalentBaseDamage(AbstractArrow arrow, double fallbackBaseDamage) {
-        if (!shouldNormalizeVanillaHitDamage(arrow)) {
+    public static double getVanillaBaseDamage(AbstractArrow arrow, double fallbackBaseDamage) {
+        if (!needFixVanillaDamage(arrow)) {
             return fallbackBaseDamage;
         }
 
-        return getOriginalBaseDamage(arrow, getStoredSpeedMultiplier(arrow));
+        return getBaseDamage(arrow, getSpeedMult(arrow));
     }
 
-    public static float getVanillaEquivalentImpactSpeed(AbstractArrow arrow, float fallbackSpeed) {
-        if (!shouldNormalizeVanillaHitDamage(arrow)) {
+    public static float getVanillaHitSpeed(AbstractArrow arrow, float fallbackSpeed) {
+        if (!needFixVanillaDamage(arrow)) {
             return fallbackSpeed;
         }
 
-        return (float) getNormalizedImpactSpeed(arrow, getStoredSpeedMultiplier(arrow));
+        return (float) getHitSpeed(arrow, getSpeedMult(arrow));
     }
 
-    public static Vec3 getVanillaEquivalentMovement(AbstractArrow arrow, Vec3 fallbackMovement) {
-        if (!shouldNormalizeVanillaHitDamage(arrow)) {
+    public static Vec3 getVanillaMove(AbstractArrow arrow, Vec3 fallbackMovement) {
+        if (!needFixVanillaDamage(arrow)) {
             return fallbackMovement;
         }
 
-        float speedMultiplier = getStoredSpeedMultiplier(arrow);
+        float speedMultiplier = getSpeedMult(arrow);
         if (speedMultiplier <= 0.0F) {
             return fallbackMovement;
         }
@@ -590,7 +590,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return fallbackMovement.scale(1.0D / speedMultiplier);
     }
 
-    private static double getNormalizedImpactSpeed(AbstractArrow arrow, float speedMultiplier) {
+    private static double getHitSpeed(AbstractArrow arrow, float speedMultiplier) {
         double speed = arrow.getDeltaMovement().length();
         if (speedMultiplier <= 0.0F) {
             return speed;
@@ -598,35 +598,35 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         return speed / speedMultiplier;
     }
 
-    private static float getStoredSpeedMultiplier(AbstractArrow arrow) {
+    private static float getSpeedMult(AbstractArrow arrow) {
         Float speedMultiplier = SPEED_MULTIPLIERS.get(arrow.getUUID());
         if (speedMultiplier != null) {
             return speedMultiplier;
         }
 
-        return getSpeedMultiplier(getVoidArcherLevel(arrow));
+        return getSpeedMult(getArcherLevel(arrow));
     }
 
-    public static DamageSource buildArrowDamageSource(AbstractArrow arrow) {
+    public static DamageSource makeArrowDamageSource(AbstractArrow arrow) {
         Entity owner = arrow.getOwner();
-        return arrow.damageSources().source(getVoidArcherDamageType(arrow), arrow, owner == null ? arrow : owner);
+        return arrow.damageSources().source(getArrowDamageType(arrow), arrow, owner == null ? arrow : owner);
     }
 
-    private static ResourceKey<DamageType> getVoidArcherDamageType(AbstractArrow arrow) {
+    private static ResourceKey<DamageType> getArrowDamageType(AbstractArrow arrow) {
         return arrow.getRandom().nextBoolean() ? ModDamageTypes.VOID_ARCHER_PHASE : ModDamageTypes.VOID_ARCHER_ENTER_VOID;
     }
 
-    private static float getImpactScale(AbstractArrow arrow) { // 命中特效和范围伤害统一复用这一套缩放计算。
+    private static float getHitScale(AbstractArrow arrow) { // 命中特效和范围伤害统一复用这一套缩放计算。
         return arrow.getBbHeight() / 1.8F;
     }
 
-    private static float getSpeedMultiplier(int level) { // 速度倍率统一从这里出，后面好改。
+    private static float getSpeedMult(int level) { // 速度倍率统一从这里出，后面好改。
         return SPEED_MULTIPLIER_PER_LEVEL * level;
     }
 
-    private static Vec3 resolveAimDirection(Entity owner, Vec3 fallbackMotion) { // 只取发射瞬间视线方向，后续不再参考准星落点。
+    private static Vec3 getAimDir(Entity owner, Vec3 fallbackMotion) { // 只取发射瞬间视线方向，后续不再参考准星落点。
         if (owner == null) {
-            return normalizeDirection(fallbackMotion);
+            return fixDir(fallbackMotion);
         }
 
         Vec3 lookDirection = owner.getViewVector(1.0F);
@@ -634,17 +634,17 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             lookDirection = fallbackMotion;
         }
 
-        return normalizeDirection(lookDirection);
+        return fixDir(lookDirection);
     }
 
-    private static Vec3 normalizeDirection(Vec3 direction) { // 安全归一化，避免零向量把速度算坏。
+    private static Vec3 fixDir(Vec3 direction) { // 安全归一化，避免零向量把速度算坏。
         if (direction == null || direction.lengthSqr() < 1.0E-8D) {
             return new Vec3(0.0D, 0.0D, 1.0D);
         }
         return direction.normalize();
     }
 
-    private static int getVoidArcherLevel(Projectile projectile) { // 统一从箭和射手身上读取虚空射手附魔等级。
+    private static int getArcherLevel(Projectile projectile) { // 统一从箭和射手身上读取虚空射手附魔等级。
         HolderLookup<Enchantment> enchantments = projectile.level().holderLookup(Registries.ENCHANTMENT);
         Optional<Holder.Reference<Enchantment>> voidArcher = enchantments.get(
                 com.example.voidcraft.ModEnchantment.VoidArcher.VOID_ARCHER
@@ -654,30 +654,30 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
         }
 
         Holder.Reference<Enchantment> enchantment = voidArcher.get();
-        int weaponLevel = getEnchantmentLevel(projectile.getWeaponItem(), enchantment);
+        int weaponLevel = getEnchantLevel(projectile.getWeaponItem(), enchantment);
         if (weaponLevel > 0) {
             return weaponLevel;
         }
 
         Entity owner = projectile.getOwner();
         if (owner instanceof LivingEntity living) {
-            int mainHandLevel = getEnchantmentLevel(living.getMainHandItem(), enchantment);
+            int mainHandLevel = getEnchantLevel(living.getMainHandItem(), enchantment);
             if (mainHandLevel > 0) {
                 return mainHandLevel;
             }
 
-            int offHandLevel = getEnchantmentLevel(living.getOffhandItem(), enchantment);
+            int offHandLevel = getEnchantLevel(living.getOffhandItem(), enchantment);
             if (offHandLevel > 0) {
                 return offHandLevel;
             }
 
-            return getEnchantmentLevel(living.getUseItem(), enchantment);
+            return getEnchantLevel(living.getUseItem(), enchantment);
         }
 
         return 0;
     }
 
-    private static int getEnchantmentLevel(ItemStack stack, Holder.Reference<Enchantment> enchantment) { // 安全读取物品上的附魔等级。
+    private static int getEnchantLevel(ItemStack stack, Holder.Reference<Enchantment> enchantment) { // 安全读取物品上的附魔等级。
         if (stack == null || stack.isEmpty()) {
             return 0;
         }
@@ -700,7 +700,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             boolean normalizeVanillaHitDamage,
             Vec3 vanillaEquivalentMovement
     ) {
-        private float calculateDamage(LivingEntity target) {
+        private float getDamage(LivingEntity target) {
             double enchantedBaseDamage = this.baseDamage;
             if (!this.weapon.isEmpty()) {
                 if (!this.normalizeVanillaHitDamage) {

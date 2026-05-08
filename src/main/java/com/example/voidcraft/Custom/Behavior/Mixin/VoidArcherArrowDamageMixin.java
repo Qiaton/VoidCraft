@@ -25,7 +25,7 @@ public abstract class VoidArcherArrowDamageMixin {
     )
     private DamageSource voidcraft$useVoidArcherDeathMessage(DamageSources damageSources, AbstractArrow arrow, Entity shooter) {
         if (VoidArcher.isVoidArcherProjectile(arrow)) {
-            return VoidArcher.buildArrowDamageSource(arrow);
+            return VoidArcher.makeArrowDamageSource(arrow);
         }
 
         return damageSources.arrow(arrow, shooter);
@@ -34,13 +34,13 @@ public abstract class VoidArcherArrowDamageMixin {
     @ModifyVariable(method = "onHitEntity", at = @At("STORE"), ordinal = 0)
     private float voidcraft$useVanillaEquivalentImpactSpeed(float speed) {
         AbstractArrow arrow = (AbstractArrow) (Object) this;
-        return VoidArcher.getVanillaEquivalentImpactSpeed(arrow, speed);
+        return VoidArcher.getVanillaHitSpeed(arrow, speed);
     }
 
     @ModifyVariable(method = "onHitEntity", at = @At("STORE"), ordinal = 0)
     private double voidcraft$useVanillaEquivalentBaseDamage(double baseDamage) {
         AbstractArrow arrow = (AbstractArrow) (Object) this;
-        return VoidArcher.getVanillaEquivalentBaseDamage(arrow, baseDamage);
+        return VoidArcher.getVanillaBaseDamage(arrow, baseDamage);
     }
 
     @Redirect(
@@ -58,12 +58,12 @@ public abstract class VoidArcherArrowDamageMixin {
             float damage
     ) {
         AbstractArrow arrow = (AbstractArrow) (Object) this;
-        if (!VoidArcher.shouldNormalizeVanillaHitDamage(arrow)) {
+        if (!VoidArcher.needFixVanillaDamage(arrow)) {
             return EnchantmentHelper.modifyDamage(level, tool, target, damageSource, damage);
         }
 
         Vec3 currentMovement = arrow.getDeltaMovement();
-        arrow.setDeltaMovement(VoidArcher.getVanillaEquivalentMovement(arrow, currentMovement));
+        arrow.setDeltaMovement(VoidArcher.getVanillaMove(arrow, currentMovement));
         try {
             return EnchantmentHelper.modifyDamage(level, tool, target, damageSource, damage);
         } finally {

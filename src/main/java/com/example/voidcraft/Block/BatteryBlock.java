@@ -52,6 +52,7 @@ public class BatteryBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        // 坐标制定器自己处理绑定逻辑，电池这里放行，避免普通右键提示抢掉绑定操作。
         if (stack.getItem() instanceof CoordinateDesignatorItem) {
             return InteractionResult.PASS;
         }
@@ -60,6 +61,7 @@ public class BatteryBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        // 空手右键只显示当前缓存，真正输入/输出由 BatteryBlockEntity 的 tick 处理。
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof BatteryBlockEntity battery) {
             player.displayClientMessage(
                     Component.translatable("message.void_craft.battery_block.energy", battery.getEnergyStored(), battery.getEnergyCapacity()),

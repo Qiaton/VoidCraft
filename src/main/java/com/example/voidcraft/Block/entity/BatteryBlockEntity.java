@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransferBlockEntity {
+    // 电池既能收也能发，是虚空能网络里的中转缓存。
     public static final long CAPACITY = 40_000L;
     public static final long DEFAULT_ENERGY = 40_000L;
     public static final long MAX_INSERT = 1_000L;
@@ -48,6 +49,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
             return;
         }
 
+        // 每隔几 tick 更新外观并从所有输入来源拉电。
         battery.updateEnergyStage();
         battery.pullFromInputSources();
     }
@@ -56,6 +58,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", DEFAULT_ENERGY));
+        // 输入和输出都持久化，重进世界后网络关系还能恢复。
         this.inputSources.clear();
         for (ValueInput child : input.childrenListOrEmpty("InputSources")) {
             VoidEnergyBinding.load(child).ifPresent(this.inputSources::add);
@@ -82,6 +85,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     }
 
     private int getEnergyStage() {
+        // 方块模型用 0-9 档显示电量，真实能量还是存在 voidEnergy 里。
         long capacity = Math.max(1L, getEnergyCapacity());
         long stored = Math.max(0L, getEnergyStored());
         long stage = Math.round((double) stored * BatteryBlock.MAX_ENERGY_STAGE / (double) capacity);
@@ -100,11 +104,13 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
 
         int stage = getEnergyStage();
         if (state.getValue(BatteryBlock.ENERGY_STAGE) != stage) {
+            // 只有档位变化时才 setBlock，减少无意义的方块状态同步。
             level.setBlock(worldPosition, state.setValue(BatteryBlock.ENERGY_STAGE, stage), Block.UPDATE_CLIENTS);
         }
     }
 
     private void pullFromInputSources() {
+        // 电池主动从输入端拉电，来源没加载就暂时跳过，来源失效才删除绑定。
         if (level == null || level.isClientSide() || !canReceiveVoidEnergy()) {
             return;
         }
@@ -139,6 +145,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
             VoidEnergyTransfer.TransferResult result = VoidEnergyTransfer.tryUseEnergy(source, this, remainingRequest);
             remainingRequest -= result.movedEnergy();
             if (remainingRequest <= 0L) {
+                // 本次需求已经填满，剩下的来源等下一轮再拉。
                 return;
             }
         }
@@ -214,6 +221,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
 
     @Override
     public long receiveVoidEnergy(long amount, boolean simulate) {
+        // simulate 为 true 时只回答“能收多少”，不真的改能量。
         long accepted = Math.min(Math.max(0L, amount), getVoidEnergyCapacity() - this.voidEnergy);
         if (!simulate && accepted > 0L) {
             this.voidEnergy = clampEnergy(this.voidEnergy + accepted);
@@ -225,6 +233,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
 
     @Override
     public long extractVoidEnergy(long amount, boolean simulate) {
+        // 输出同样支持模拟，供 VoidEnergyTransfer 先试算再真正搬运。
         long extracted = Math.min(Math.max(0L, amount), this.voidEnergy);
         if (!simulate && extracted > 0L) {
             this.voidEnergy = clampEnergy(this.voidEnergy - extracted);
@@ -237,10 +246,11 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     @Override
     public void onVoidEnergyNetworkChanged() {
         setChanged();
-        syncToClient();
+        syncClient();
     }
 
-    private void syncToClient() {
+    private void syncClient() {
+        // 能量变化后通知客户端刷新方块实体数据和方块外观。
         if (level != null && !level.isClientSide()) {
             BlockState state = getBlockState();
             level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);

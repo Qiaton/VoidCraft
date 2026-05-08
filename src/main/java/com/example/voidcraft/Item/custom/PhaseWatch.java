@@ -152,7 +152,7 @@ public class PhaseWatch extends Item {
             serverPlayer.openMenu(new SimpleMenuProvider(
                     (containerId,playerInventory,openingPlayer)->
                             new ModuleMenu(containerId,playerInventory,new WatchModuleContainer(itemStack)),//创建菜单方法
-                    Component.literal("Modules")                                                //菜单标题名
+                    Component.translatable("screen.void_craft.phase_watch")                                                //菜单标题名
             ));
         }
 

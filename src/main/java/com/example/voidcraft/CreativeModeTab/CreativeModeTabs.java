@@ -38,6 +38,10 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.BATTERY_BLOCK.get());
                         output.accept(getEmptyBatteryBlockItem());
                         output.accept(ModBlockItem.CHUNK_MAPPER_BLOCK.get());
+                        output.accept(ModBlockItem.VOID_PHENOMENON_COLLECTOR.get());
+                        output.accept(ModBlockItem.IMPROVED_VOID_PHENOMENON_COLLECTOR.get());
+                        output.accept(ModBlockItem.ADVANCED_VOID_PHENOMENON_COLLECTOR.get());
+                        output.accept(ModBlockItem.VOID_ATTUNER.get());
                         output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
@@ -49,6 +53,7 @@ public class CreativeModeTabs {
                         output.accept(ModItem.LOW_PURITY_VOID_CRYSTAL);
                         output.accept(ModItem.HIGH_PURITY_VOID_CRYSTAL);
                         output.accept(ModItem.PURE_VOID_CRYSTAL);
+                        output.accept(ModItem.VOID_CRYSTAL_RESIDUE);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem());

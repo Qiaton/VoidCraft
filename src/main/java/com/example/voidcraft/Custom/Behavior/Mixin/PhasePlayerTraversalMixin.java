@@ -21,7 +21,7 @@ public class PhasePlayerTraversalMixin {
     )
     private void voidcraft$keepPhaseTraversalNoPhysics(CallbackInfo ci) {
         Player player = (Player) (Object) this;
-        if (PhasePlayerStateHandler.shouldPhaseThrough(player)) {
+        if (PhasePlayerStateHandler.canPhaseThrough(player)) {
             // 原版每 tick 会按旁观者状态重置 noPhysics，这里把相位维度的穿墙状态补回去。
             player.noPhysics = true;
             player.setOnGround(false);

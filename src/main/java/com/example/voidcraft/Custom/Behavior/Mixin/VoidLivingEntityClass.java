@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public class VoidLivingEntityClass {
     @Inject(method = "isPushable",at = @At("HEAD"),cancellable = true)
-    public void NO_PUSHABLE(CallbackInfoReturnable<Boolean> cir){
+    public void noPushable(CallbackInfoReturnable<Boolean> cir){
         LivingEntity entity = (LivingEntity)(Object)this;
         if(!(entity instanceof Player player)){             //如果这个实体不是玩家就直接跳过
             return;
@@ -24,7 +24,7 @@ public class VoidLivingEntityClass {
         }
     }
     @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
-    private void VOID_FLUID_TRAVEL(Vec3 travelVector, CallbackInfo ci) {
+    private void moveInFluid(Vec3 travelVector, CallbackInfo ci) {
         LivingEntity entity = (LivingEntity)(Object)this;
 
         if (!(entity instanceof Player player)) {
@@ -67,7 +67,7 @@ public class VoidLivingEntityClass {
 
 
     @Inject(method = "isPickable",at = @At("HEAD"),cancellable = true)
-    public void NO_PICKABLE(CallbackInfoReturnable<Boolean> cir){
+    public void noPickable(CallbackInfoReturnable<Boolean> cir){
         LivingEntity entity = (LivingEntity)(Object)this;
         if(!(entity instanceof Player player)){             //如果这个实体不是玩家就直接跳过
             return;

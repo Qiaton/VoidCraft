@@ -75,12 +75,12 @@ public class AssistPhaseTurretModule extends ModuleItem {
     // 玩家最近主动攻击的目标单独记忆，用于“打错非怪物也反击”的优先级。
     private static final Map<UUID, RecentAttackTarget> RECENT_ATTACK_TARGETS = new HashMap<>();
 
-    private static final VoidBeamInstance.Config SHOT_BEAM = buildShotBeamConfig(
+    private static final VoidBeamInstance.Config SHOT_BEAM = makeShotBeam(
             PhaseTurretModule.VisualColors.SHOT_BEAM_CORE,
             PhaseTurretModule.VisualColors.SHOT_BEAM_GLOW
     );
 
-    private static VoidBeamInstance.Config buildShotBeamConfig(int coreColor, int glowColor) {
+    private static VoidBeamInstance.Config makeShotBeam(int coreColor, int glowColor) {
         return VoidBeamInstance.Config.builder()
             .lifetimeTicks(6)
             .coreRadius(0.045F)
@@ -106,7 +106,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
     }
 
     @SubscribeEvent
-    public static void rememberRecentAttackTarget(AttackEntityEvent event) {
+    public static void rememberAttack(AttackEntityEvent event) {
         // 这里只记目标，不直接开火；真正是否可打由后面的距离、视线和锁定规则判断。
         if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide()) {
             return;
@@ -123,14 +123,14 @@ public class AssistPhaseTurretModule extends ModuleItem {
     }
 
     @SubscribeEvent
-    public static void assistTurretClock(PlayerTickEvent.Post event) {
+    public static void tickAssistTurret(PlayerTickEvent.Post event) {
         // 辅助炮台不依赖玩家按住左键，所以使用独立服务端 tick 驱动自动射击。
         if (event.getEntity().level().isClientSide()) {
             return;
         }
 
         if (event.getEntity() instanceof ServerPlayer player) {
-            tickAutoFire(player);
+            tickFire(player);
         }
     }
 
@@ -144,7 +144,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         ModuleMode mode = stats.mode();
         if (mode == CHANNEL) {
             // CHANNEL 是开关型自动炮台：启动后由 ModuleSkillClock 负责持续耗能。
-            if (ModuleSkillClock.getChannel(player, slot)) {
+            if (ModuleSkillClock.hasChannel(player, slot)) {
                 ModuleSkillClock.stopChannel(player, slot);
                 return;
             }
@@ -154,21 +154,21 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 return;
             }
 
-            stopOtherTurretChannels(player, slot);
-            stopOtherBurstTurrets(player, slot);
+            stopOtherTurrets(player, slot);
+            stopOtherBursts(player, slot);
             ModuleSkillClock.startChannel(player, slot, energyCost);
-            getFireState(player, slot);
+            getFire(player, slot);
             ModNetworking.sendAssistTurretState(player, true, moduleStack);
             fire(player, moduleStack, slot, stats);
             return;
         }
         if (mode == BURST) {
-            if (ModuleSkillClock.getChannel(player, slot)) {
+            if (ModuleSkillClock.hasChannel(player, slot)) {
                 ModuleSkillClock.stopChannel(player, slot);
                 return;
             }
 
-            boolean cooldownReady = ModuleSkillClock.checkCooldown(player, slot);
+            boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
             if (cooldownReady) {
                 ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
             } else if (!ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
@@ -179,23 +179,23 @@ public class AssistPhaseTurretModule extends ModuleItem {
         }
     }
 
-    public static void tickAutoFire(ServerPlayer player) {
+    public static void tickFire(ServerPlayer player) {
         // 每 tick 重新读取手表里的模块，模块被移走或手表不在副手时会自然停止。
         ItemStack watchStack = player.getOffhandItem();
         if (!(watchStack.getItem() instanceof PhaseWatch)) {
-            if (removeAllFireStates(player)) {
+            if (clearFire(player)) {
                 ModNetworking.sendAssistTurretState(player, false);
             }
             return;
         }
 
-        NonNullList<ItemStack> items = getWatchModuleStacks(watchStack);
+        NonNullList<ItemStack> items = getWatchModules(watchStack);
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
             ItemStack moduleStack = items.get(slot);
-            FireState state = getExistingFireState(player, slot);
+            FireState state = findFire(player, slot);
             if (!(moduleStack.getItem() instanceof AssistPhaseTurretModule module)) {
-                if (state != null && !ModuleSkillClock.getChannel(player, slot)) {
-                    removeFireState(player, slot);
+                if (state != null && !ModuleSkillClock.hasChannel(player, slot)) {
+                    removeFire(player, slot);
                 }
                 continue;
             }
@@ -205,14 +205,14 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 continue;
             }
 
-            boolean channelActive = ModuleSkillClock.getChannel(player, slot);
-            boolean burstActive = isBurstActive(player, state);
+            boolean channelActive = ModuleSkillClock.hasChannel(player, slot);
+            boolean burstActive = isBurstOn(player, state);
             if (state != null && state.burstUntilTick > 0 && !burstActive) {
                 // BURST 到期后只清 burst 状态；如果同槽 CHANNEL 还开着，继续保留 FireState。
                 state.burstUntilTick = 0;
                 if (!channelActive) {
-                    removeFireState(player, slot);
-                    if (!hasActiveTurret(player, slot)) {
+                    removeFire(player, slot);
+                    if (!hasTurret(player, slot)) {
                         ModNetworking.sendAssistTurretState(player, false);
                     }
                     continue;
@@ -227,32 +227,32 @@ public class AssistPhaseTurretModule extends ModuleItem {
         }
     }
 
-    public static boolean hasActiveBurst(ServerPlayer player, int slot) {
-        return isBurstActive(player, getExistingFireState(player, slot));
+    public static boolean hasBurst(ServerPlayer player, int slot) {
+        return isBurstOn(player, findFire(player, slot));
     }
 
-    public static boolean hasAnyActive(ServerPlayer player) {
-        return hasActiveTurret(player, -1);
+    public static boolean hasAny(ServerPlayer player) {
+        return hasTurret(player, -1);
     }
 
-    public static void onChannelStopped(ServerPlayer player, int slot) {
-        FireState state = getExistingFireState(player, slot);
+    public static void onChannelStop(ServerPlayer player, int slot) {
+        FireState state = findFire(player, slot);
         boolean hadFireState = state != null;
         if (state != null) {
-            if (isBurstActive(player, state)) {
+            if (isBurstOn(player, state)) {
                 // 同槽 burst 还在跑时，不移除 FireState，只清掉 channel 的锁定目标。
                 state.lockedTargetId = null;
                 state.lockUntilTick = 0;
             } else {
-                removeFireState(player, slot);
+                removeFire(player, slot);
             }
         }
-        if ((hadFireState || isAssistTurretSlot(player, slot)) && !hasActiveTurret(player, slot)) {
+        if ((hadFireState || isAssistSlot(player, slot)) && !hasTurret(player, slot)) {
             ModNetworking.sendAssistTurretState(player, false);
         }
     }
 
-    public static void clearPlayerState(ServerPlayer player) {
+    public static void clearPlayer(ServerPlayer player) {
         if (player == null) {
             return;
         }
@@ -264,10 +264,10 @@ public class AssistPhaseTurretModule extends ModuleItem {
     }
 
     private void startBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
-        stopOtherTurretChannels(player, slot);
-        stopOtherBurstTurrets(player, slot);
+        stopOtherTurrets(player, slot);
+        stopOtherBursts(player, slot);
 
-        FireState state = getFireState(player, slot);
+        FireState state = getFire(player, slot);
         state.burstUntilTick = player.tickCount + stats.burstActiveTicks();
         ModNetworking.sendAssistTurretState(player, true, moduleStack);
         fire(player, moduleStack, slot, stats);
@@ -275,12 +275,12 @@ public class AssistPhaseTurretModule extends ModuleItem {
 
     private boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
         // 真正开火的统一入口：模式分支只负责算冷却/扣能量，然后进入这里。
-        FireState state = getFireState(player, slot);
+        FireState state = getFire(player, slot);
         if (player.tickCount < state.nextFireTick) {
             return false;
         }
 
-        LivingEntity target = selectTarget(player, state);
+        LivingEntity target = pickTarget(player, state);
         if (target == null) {
             return false;
         }
@@ -288,16 +288,16 @@ public class AssistPhaseTurretModule extends ModuleItem {
         int emitterCount = PhaseTurretModule.getEmitterCount(moduleStack);
         int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
         state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
-        scheduleNextFire(player, state, getFireIntervalTicks(moduleStack, stats));
+        setNextFire(player, state, getFireTicks(moduleStack, stats));
 
-        hurtTarget(player, target, getShotDamage(moduleStack, stats, target));
+        hurtTarget(player, target, getDamage(moduleStack, stats, target));
         Vec3 targetPos = getTargetPos(target);
         ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
-        ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getShotBeamConfig(moduleStack, stats, target));
+        ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getBeam(moduleStack, stats, target));
         return true;
     }
 
-    private static void scheduleNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
+    private static void setNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
         double interval = Math.max(0.05D, fireIntervalTicks);
         double nextFireTick = state.nextFireTick <= 0.0D
                 ? player.tickCount + interval
@@ -309,53 +309,53 @@ public class AssistPhaseTurretModule extends ModuleItem {
         state.nextFireTick = nextFireTick;
     }
 
-    protected float getFireIntervalTicks(ItemStack moduleStack, Stats stats) {
+    protected float getFireTicks(ItemStack moduleStack, Stats stats) {
         return stats == null ? Math.max(1, FIRE_INTERVAL_TICKS) : stats.fireIntervalTicks();
     }
 
-    protected float getShotDamage(ItemStack moduleStack, Stats stats, LivingEntity target) {
+    protected float getDamage(ItemStack moduleStack, Stats stats, LivingEntity target) {
         return stats == null ? SHOT_DAMAGE : stats.shotDamage();
     }
 
-    protected VoidBeamInstance.Config getShotBeamConfig(ItemStack moduleStack, Stats stats, LivingEntity target) {
+    protected VoidBeamInstance.Config getBeam(ItemStack moduleStack, Stats stats, LivingEntity target) {
         int level = stats == null ? BASE_MODULE_LEVEL : stats.emitterCount();
         if (level <= BASE_MODULE_LEVEL) {
             return SHOT_BEAM;
         }
 
-        return buildShotBeamConfig(
+        return makeShotBeam(
                 PhaseTurretModule.VisualColors.shotBeamCoreForLevel(level),
                 PhaseTurretModule.VisualColors.shotBeamGlowForLevel(level)
         );
     }
 
-    private static LivingEntity selectTarget(ServerPlayer player, FireState state) {
+    private static LivingEntity pickTarget(ServerPlayer player, FireState state) {
         // 优先级：安全距离内的怪物 > 正在攻击玩家的怪物 > 锁定目标 > 玩家最近攻击的目标 > 最近/低血量怪物。
-        LivingEntity safetyThreat = findSafetyThreat(player);
+        LivingEntity safetyThreat = findCloseThreat(player);
         if (safetyThreat != null) {
             lockTarget(player, state, safetyThreat);
             return safetyThreat;
         }
 
         // 玩家正在被怪物攻击时，直接抢占当前锁定目标。
-        LivingEntity attacker = findAttackingHostile(player);
+        LivingEntity attacker = findAttacker(player);
         if (attacker != null) {
             lockTarget(player, state, attacker);
             return attacker;
         }
 
-        LivingEntity lockedTarget = getLockedTarget(player, state);
+        LivingEntity lockedTarget = getLockTarget(player, state);
         if (lockedTarget != null) {
             return lockedTarget;
         }
 
-        LivingEntity recentAttackTarget = getRecentAttackTarget(player);
-        if (isValidTarget(player, recentAttackTarget, true)) {
+        LivingEntity recentAttackTarget = getRecentTarget(player);
+        if (isGoodTarget(player, recentAttackTarget, true)) {
             lockTarget(player, state, recentAttackTarget);
             return recentAttackTarget;
         }
 
-        LivingEntity hostile = findBestHostile(player);
+        LivingEntity hostile = findHostile(player);
         if (hostile != null) {
             lockTarget(player, state, hostile);
             return hostile;
@@ -364,16 +364,16 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return null;
     }
 
-    private static LivingEntity findSafetyThreat(ServerPlayer player) {
+    private static LivingEntity findCloseThreat(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
 
         for (Mob mob : player.level().getEntitiesOfClass(
                 Mob.class,
                 player.getBoundingBox().inflate(SAFE_DISTANCE),
-                AssistPhaseTurretModule::isHostileTarget
+                AssistPhaseTurretModule::isHostile
         )) {
-            if (!isValidTarget(player, mob, false)) {
+            if (!isGoodTarget(player, mob, false)) {
                 continue;
             }
 
@@ -392,16 +392,16 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity findAttackingHostile(ServerPlayer player) {
+    private static LivingEntity findAttacker(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
 
         for (Mob mob : player.level().getEntitiesOfClass(
                 Mob.class,
                 player.getBoundingBox().inflate(RANGE),
-                mob -> mob.getTarget() == player && isHostileTarget(mob)
+                mob -> mob.getTarget() == player && isHostile(mob)
         )) {
-            if (!isValidTarget(player, mob, false)) {
+            if (!isGoodTarget(player, mob, false)) {
                 continue;
             }
 
@@ -415,7 +415,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity findBestHostile(ServerPlayer player) {
+    private static LivingEntity findHostile(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
         float bestHealth = Float.MAX_VALUE;
@@ -424,7 +424,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 Mob.class,
                 player.getBoundingBox().inflate(RANGE)
         )) {
-            if (!isValidTarget(player, mob, false)) {
+            if (!isGoodTarget(player, mob, false)) {
                 continue;
             }
 
@@ -442,22 +442,22 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity getLockedTarget(ServerPlayer player, FireState state) {
+    private static LivingEntity getLockTarget(ServerPlayer player, FireState state) {
         if (state.lockedTargetId == null || player.tickCount >= state.lockUntilTick) {
-            clearLockedTarget(state);
+            clearLock(state);
             return null;
         }
 
         Entity entity = getEntity(player, state.lockedTargetId);
-        if (!(entity instanceof LivingEntity target) || !isValidTarget(player, target, true)) {
-            clearLockedTarget(state);
+        if (!(entity instanceof LivingEntity target) || !isGoodTarget(player, target, true)) {
+            clearLock(state);
             return null;
         }
 
         return target;
     }
 
-    private static LivingEntity getRecentAttackTarget(ServerPlayer player) {
+    private static LivingEntity getRecentTarget(ServerPlayer player) {
         RecentAttackTarget recentTarget = RECENT_ATTACK_TARGETS.get(player.getUUID());
         if (recentTarget == null) {
             return null;
@@ -477,29 +477,29 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return target;
     }
 
-    private static boolean isValidTarget(ServerPlayer player, LivingEntity target, boolean allowNonMonster) {
+    private static boolean isGoodTarget(ServerPlayer player, LivingEntity target, boolean allowNonMonster) {
         if (target == null || target == player || target.isRemoved() || !target.isAlive() || !target.isPickable()) {
             return false;
         }
         if (target.level() != player.level()) {
             return false;
         }
-        if (!allowNonMonster && !isHostileTarget(target)) {
+        if (!allowNonMonster && !isHostile(target)) {
             return false;
         }
         if (player.distanceToSqr(target) > RANGE_SQR) {
             return false;
         }
 
-        return hasLineOfSight(player, target);
+        return canSee(player, target);
     }
 
-    private static boolean isHostileTarget(LivingEntity target) {
+    private static boolean isHostile(LivingEntity target) {
         // 不用 Monster 类判断，幻翼/恶魂这类 MobCategory.MONSTER 也能被自动索敌覆盖。
         return target.getType().getCategory() == MobCategory.MONSTER;
     }
 
-    private static boolean hasLineOfSight(ServerPlayer player, LivingEntity target) {
+    private static boolean canSee(ServerPlayer player, LivingEntity target) {
         Vec3 start = player.getEyePosition();
         Vec3 end = getTargetPos(target);
         BlockHitResult blockHit = player.level().clip(new ClipContext(
@@ -530,7 +530,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         state.lockUntilTick = player.tickCount + TARGET_LOCK_TICKS;
     }
 
-    private static void clearLockedTarget(FireState state) {
+    private static void clearLock(FireState state) {
         state.lockedTargetId = null;
         state.lockUntilTick = 0;
     }
@@ -538,23 +538,23 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static void hurtTarget(ServerPlayer player, LivingEntity target, float damage) {
         int previousInvulnerableTime = target.invulnerableTime;
         target.invulnerableTime = 0;
-        target.hurt(buildShotDamageSource(player), damage);
+        target.hurt(makeDamageSource(player), damage);
         target.invulnerableTime = Math.min(target.invulnerableTime, previousInvulnerableTime);
     }
 
-    private static DamageSource buildShotDamageSource(ServerPlayer player) {
-        return player.damageSources().source(getShotDamageType(player), player, player);
+    private static DamageSource makeDamageSource(ServerPlayer player) {
+        return player.damageSources().source(getDamageType(player), player, player);
     }
 
-    private static ResourceKey<DamageType> getShotDamageType(ServerPlayer player) {
+    private static ResourceKey<DamageType> getDamageType(ServerPlayer player) {
         return player.getRandom().nextBoolean()
                 ? ModDamageTypes.PHASE_TURRET_SHRED
                 : ModDamageTypes.PHASE_TURRET_DISPERSE;
     }
 
-    private static void stopOtherTurretChannels(ServerPlayer player, int activeSlot) {
+    private static void stopOtherTurrets(ServerPlayer player, int activeSlot) {
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
-            if (slot == activeSlot || !ModuleSkillClock.getChannel(player, slot) || !isTurretSlot(player, slot)) {
+            if (slot == activeSlot || !ModuleSkillClock.hasChannel(player, slot) || !isTurretSlot(player, slot)) {
                 continue;
             }
 
@@ -562,7 +562,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         }
     }
 
-    public static void stopOtherBurstTurrets(ServerPlayer player, int activeSlot) {
+    public static void stopOtherBursts(ServerPlayer player, int activeSlot) {
         // 手动炮台或另一个辅助炮台启动时会调用这里，保证炮台球视觉只有一组主状态。
         Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
         if (playerStates == null) {
@@ -572,22 +572,22 @@ public class AssistPhaseTurretModule extends ModuleItem {
         playerStates.entrySet().removeIf(entry -> {
             int slot = entry.getKey();
             FireState state = entry.getValue();
-            if (slot == activeSlot || !isBurstActive(player, state)) {
+            if (slot == activeSlot || !isBurstOn(player, state)) {
                 return false;
             }
 
             state.burstUntilTick = 0;
-            return !ModuleSkillClock.getChannel(player, slot);
+            return !ModuleSkillClock.hasChannel(player, slot);
         });
     }
 
-    private static boolean hasActiveTurret(ServerPlayer player, int ignoredSlot) {
+    private static boolean hasTurret(ServerPlayer player, int ignoredSlot) {
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
             if (slot == ignoredSlot || !isTurretSlot(player, slot)) {
                 continue;
             }
 
-            if (ModuleSkillClock.getChannel(player, slot) || hasActiveBurst(player, slot)) {
+            if (ModuleSkillClock.hasChannel(player, slot) || hasBurst(player, slot)) {
                 return true;
             }
         }
@@ -595,7 +595,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return false;
     }
 
-    private static boolean isAssistTurretSlot(ServerPlayer player, int slot) {
+    private static boolean isAssistSlot(ServerPlayer player, int slot) {
         if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
             return false;
         }
@@ -605,7 +605,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
             return false;
         }
 
-        return getWatchModuleStacks(watchStack).get(slot).getItem() instanceof AssistPhaseTurretModule;
+        return getWatchModules(watchStack).get(slot).getItem() instanceof AssistPhaseTurretModule;
     }
 
     private static boolean isTurretSlot(ServerPlayer player, int slot) {
@@ -618,12 +618,12 @@ public class AssistPhaseTurretModule extends ModuleItem {
             return false;
         }
 
-        ItemStack moduleStack = getWatchModuleStacks(watchStack).get(slot);
+        ItemStack moduleStack = getWatchModules(watchStack).get(slot);
         return moduleStack.getItem() instanceof PhaseTurretModule
                 || moduleStack.getItem() instanceof AssistPhaseTurretModule;
     }
 
-    private static NonNullList<ItemStack> getWatchModuleStacks(ItemStack watchStack) {
+    private static NonNullList<ItemStack> getWatchModules(ItemStack watchStack) {
         // ItemContainerContents.EMPTY 没有固定槽位，读取前必须复制进手表模块槽大小的列表。
         ItemContainerContents contents = watchStack.getOrDefault(
                 DataComponents.CONTAINER,
@@ -637,13 +637,13 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return items;
     }
 
-    private static FireState getFireState(ServerPlayer player, int slot) {
+    private static FireState getFire(ServerPlayer player, int slot) {
         return FIRE_STATES
                 .computeIfAbsent(player.getUUID(), uuid -> new HashMap<>())
                 .computeIfAbsent(slot, ignored -> new FireState());
     }
 
-    private static FireState getExistingFireState(ServerPlayer player, int slot) {
+    private static FireState findFire(ServerPlayer player, int slot) {
         Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
         if (playerStates == null) {
             return null;
@@ -652,11 +652,11 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return playerStates.get(slot);
     }
 
-    private static boolean isBurstActive(ServerPlayer player, FireState state) {
+    private static boolean isBurstOn(ServerPlayer player, FireState state) {
         return state != null && state.burstUntilTick > player.tickCount;
     }
 
-    private static boolean removeFireState(ServerPlayer player, int slot) {
+    private static boolean removeFire(ServerPlayer player, int slot) {
         Map<Integer, FireState> playerStates = FIRE_STATES.get(player.getUUID());
         if (playerStates == null) {
             return false;
@@ -670,7 +670,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return removed;
     }
 
-    private static boolean removeAllFireStates(ServerPlayer player) {
+    private static boolean clearFire(ServerPlayer player) {
         return FIRE_STATES.remove(player.getUUID()) != null;
     }
 

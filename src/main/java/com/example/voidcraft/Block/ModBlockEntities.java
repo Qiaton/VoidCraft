@@ -2,6 +2,7 @@ package com.example.voidcraft.Block;
 
 import com.example.voidcraft.Block.entity.BatteryBlockEntity;
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
+import com.example.voidcraft.Block.entity.VoidPhenomenonCollectorBlockEntity;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -25,6 +26,20 @@ public class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChunkMapperBlockEntity>> CHUNK_MAPPER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "chunk_mapper_block",
             () -> new BlockEntityType<>(ChunkMapperBlockEntity::new, Set.of(ModBlock.CHUNK_MAPPER_BLOCK.get()))
+    );
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidPhenomenonCollectorBlockEntity>> VOID_PHENOMENON_COLLECTOR_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "void_phenomenon_collector",
+            // 发电机方块实体负责结晶槽、虚空能缓存、输出绑定和菜单数据。
+            () -> new BlockEntityType<>(
+                    VoidPhenomenonCollectorBlockEntity::new,
+                    Set.of(
+                            ModBlock.VOID_PHENOMENON_COLLECTOR.get(),
+                            ModBlock.IMPROVED_VOID_PHENOMENON_COLLECTOR.get(),
+                            ModBlock.ADVANCED_VOID_PHENOMENON_COLLECTOR.get(),
+                            ModBlock.VOID_ATTUNER.get()
+                    )
+            )
     );
 
     public static void register(IEventBus bus) {

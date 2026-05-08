@@ -72,7 +72,7 @@ public class BlinkVoidModule extends ModuleItem {
             if (!canBlinkTo(player, ticks, stats, target)) {
                 return;
             }
-            if(!ModuleSkillClock.checkCooldown(player,slot)){              // 先检查这个技能槽是否还在冷却
+            if(!ModuleSkillClock.canUseNow(player,slot)){              // 先检查这个技能槽是否还在冷却
                 if(ModuleSkillClock.tryUseEnergy(player,(long)stats.energyCost())){
 
                 }
@@ -108,7 +108,7 @@ public class BlinkVoidModule extends ModuleItem {
             ModNetworking.sendTrailSegment(serverLevel, player.getId(), trailStart, trailEnd, trailScale, trailPreset);
         }
         ModNetworking.sendPhaseTear(player,VoidRingInstance.Preset.DEFAULT);
-        VoidClock.SET_VOID_TICKS(player, 2);
+        VoidClock.setVoidTicks(player, 2);
         player.connection.teleport(
                 feetTarget.x,
                 feetTarget.y,

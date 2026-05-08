@@ -54,7 +54,7 @@ public final class ModNetworking {
     }
 
     public static void register(IEventBus bus) {
-        bus.addListener(ModNetworking::registerPayloadHandlers);
+        bus.addListener(ModNetworking::registerPayloads);
     }
 
     public static void sendEnergyHud(ServerPlayer player, int percent, boolean visible) {
@@ -66,6 +66,7 @@ public final class ModNetworking {
             BoundVoidPosition ownerPosition,
             VoidEnergyTransferBlockEntity owner
     ) {
+        // 把输入列表和输出列表合并成一份界面数据，客户端只负责展示和发删除请求。
         java.util.ArrayList<CoordinateBindingsPayload.Entry> entries = new java.util.ArrayList<>();
         MinecraftServer server = player.level().getServer();
         for (VoidEnergyBinding binding : owner.getOutputTargets()) {
@@ -90,6 +91,7 @@ public final class ModNetworking {
     }
 
     public static void sendChunkMapperStatus(ServerPlayer player, ChunkMapperBlockEntity mapper) {
+        // 状态面板打开时即时组装一次快照，避免客户端自己推算服务端状态。
         MinecraftServer server = player.level().getServer();
         BoundVoidPosition inputSource = null;
         VoidEnergyTransfer.BindingStatus inputStatus = VoidEnergyTransfer.BindingStatus.NOT_FUNCTIONAL;
@@ -117,6 +119,7 @@ public final class ModNetworking {
     }
 
     private static Component getBoundBlockName(MinecraftServer server, BoundVoidPosition position) {
+        // 目标没加载时仍然显示“未加载”，不要为了名字强行加载区块。
         ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, position.dimension());
         ServerLevel level = server.getLevel(levelKey);
         if (level == null || !level.isLoaded(position.pos())) {
@@ -249,7 +252,7 @@ public final class ModNetworking {
 
     // 发送跟随实体移动的 ring；客户端渲染时会持续读取 trackedEntityId 的位置。
     public static void sendPhaseTearAttached(Entity entity, VoidRingInstance.Preset preset) {
-        sendPhaseTearAttachedInternal(entity, preset);
+        sendAttachedPhaseTear(entity, preset);
     }
 
     // 从实体所在世界发一个指定坐标的 ring，center 是未加 centerYOffset 的世界坐标。
@@ -322,7 +325,7 @@ public final class ModNetworking {
         VoidTrailInstance.Preset actualPreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
         float actualScale = Math.max(0.01F, scale);
         Vec3 seedEnd = entity.position();
-        Vec3 seedStart = buildTrailSeedStart(entity, seedEnd, seedLength);
+        Vec3 seedStart = getTrailSeedStart(entity, seedEnd, seedLength);
         VoidTrailPayload payload = VoidTrailPayload.fromPreset(entity.getId(), actualScale, seedStart, seedEnd, actualPreset);
 
         Vec3 center = seedEnd;
@@ -349,7 +352,7 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayersNear(level, null, to.x, to.y, to.z, 128.0D, payload);
     }
 
-    private static void sendPhaseTearAttachedInternal(Entity entity, VoidRingInstance.Preset preset) {
+    private static void sendAttachedPhaseTear(Entity entity, VoidRingInstance.Preset preset) {
         if (entity.level().isClientSide()) {
             return;
         }
@@ -371,28 +374,29 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, payload);
     }
 
-    private static void registerPayloadHandlers(RegisterPayloadHandlersEvent event) {
+    private static void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
-        registrar.playToClient(PhaseTearPayload.TYPE, PhaseTearPayload.STREAM_CODEC, ModNetworking::handlePhaseTearClient);
-        registrar.playToClient(VoidTrailPayload.TYPE, VoidTrailPayload.STREAM_CODEC, ModNetworking::handleVoidTrailClient);
-        registrar.playToClient(VoidBlackHolePayload.TYPE, VoidBlackHolePayload.STREAM_CODEC, ModNetworking::handleVoidBlackHoleClient);
-        registrar.playToClient(EnergyHudPayload.TYPE, EnergyHudPayload.STREAM_CODEC, ModNetworking::handleEnergyHudClient);
-        registrar.playToClient(PhaseWorldTransitionPayload.TYPE, PhaseWorldTransitionPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionClient);
-        registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::handleTurretStateClient);
-        registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::handleTurretShotFxClient);
-        registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::handleCoordinateBindingsClient);
-        registrar.playToClient(ChunkMapperStatusPayload.TYPE, ChunkMapperStatusPayload.STREAM_CODEC, ModNetworking::handleChunkMapperStatusClient);
-        registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::handleUseWatchModuleServer);
-        registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::handleReleaseBlinkModuleServer);
-        registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::handleUseTurretShotServer);
-        registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::handlePhaseWorldTransitionReadyServer);
-        registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::handleRemoveCoordinateBindingServer);
-        registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::handleSetChunkMapperTierServer);
+        registrar.playToClient(PhaseTearPayload.TYPE, PhaseTearPayload.STREAM_CODEC, ModNetworking::onPhaseTearClient);
+        registrar.playToClient(VoidTrailPayload.TYPE, VoidTrailPayload.STREAM_CODEC, ModNetworking::onTrailClient);
+        registrar.playToClient(VoidBlackHolePayload.TYPE, VoidBlackHolePayload.STREAM_CODEC, ModNetworking::onBlackHoleClient);
+        registrar.playToClient(EnergyHudPayload.TYPE, EnergyHudPayload.STREAM_CODEC, ModNetworking::onEnergyHudClient);
+        registrar.playToClient(PhaseWorldTransitionPayload.TYPE, PhaseWorldTransitionPayload.STREAM_CODEC, ModNetworking::onWorldMoveClient);
+        registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::onTurretStateClient);
+        registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::onTurretShotClient);
+        // 坐标绑定和区块映射器面板都走轻量状态包，不直接同步完整方块实体。
+        registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::onBindingsClient);
+        registrar.playToClient(ChunkMapperStatusPayload.TYPE, ChunkMapperStatusPayload.STREAM_CODEC, ModNetworking::onMapperStatusClient);
+        registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::onUseWatchServer);
+        registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlinkServer);
+        registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::onUseTurretShotServer);
+        registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::onWorldReadyServer);
+        registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::onRemoveBindingServer);
+        registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::onSetMapperTierServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
         ClientPacketDistributor.sendToServer(payload);
     }
-    private static void handleReleaseBlinkModuleServer(
+    private static void onReleaseBlinkServer(
             ReleaseBlinkModulePayload payload,
             IPayloadContext context
     ){
@@ -435,7 +439,7 @@ public final class ModNetworking {
 
 
     }
-    private static void handleUseWatchModuleServer(
+    private static void onUseWatchServer(
             UseWatchModulePayload payload,
             IPayloadContext context
     ) {
@@ -457,7 +461,7 @@ public final class ModNetworking {
         PhaseWatch.useModule(serverPlayer, watchStack, slot);
     }
 
-    private static void handleVoidTrailClient(VoidTrailPayload payload, IPayloadContext context) {
+    private static void onTrailClient(VoidTrailPayload payload, IPayloadContext context) {
         if (!payload.trackEntity()) {
             VoidTrailManager.addTrailSegment(payload.seedStart(), payload.seedEnd(), payload.scale(), payload.toPreset());
             return;
@@ -466,18 +470,18 @@ public final class ModNetworking {
         VoidTrailManager.trackEntity(payload.entityId(), payload.scale(), payload.toPreset(), payload.seedStart(), payload.seedEnd());
     }
 
-    private static void handleEnergyHudClient(EnergyHudPayload payload, IPayloadContext context) {
+    private static void onEnergyHudClient(EnergyHudPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> EnergyHud.update(payload.percent(), payload.visible()));
     }
 
-    private static void handlePhaseWorldTransitionClient(PhaseWorldTransitionPayload payload, IPayloadContext context) {
+    private static void onWorldMoveClient(PhaseWorldTransitionPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseWorldTransitionClient.beginLoadingTransition(
                 payload.sourceDimension(),
                 payload.targetDimension()
         ));
     }
 
-    private static void handleTurretStateClient(TurretStatePayload payload, IPayloadContext context) {
+    private static void onTurretStateClient(TurretStatePayload payload, IPayloadContext context) {
         // blocksInput 是手动/辅助炮台的客户端边界，不能只用 active 推断。
         context.enqueueWork(() -> PhaseEmitterClientManager.syncState(
                 payload.playerId(),
@@ -487,7 +491,7 @@ public final class ModNetworking {
         ));
     }
 
-    private static void handleTurretShotFxClient(TurretShotFxPayload payload, IPayloadContext context) {
+    private static void onTurretShotClient(TurretShotFxPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseEmitterClientManager.playShotFx(
                 payload.playerId(),
                 payload.emitterIndex(),
@@ -496,19 +500,20 @@ public final class ModNetworking {
         ));
     }
 
-    private static void handleCoordinateBindingsClient(CoordinateBindingsPayload payload, IPayloadContext context) {
+    private static void onBindingsClient(CoordinateBindingsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> CoordinateBindingScreen.open(payload));
     }
 
-    private static void handleChunkMapperStatusClient(ChunkMapperStatusPayload payload, IPayloadContext context) {
+    private static void onMapperStatusClient(ChunkMapperStatusPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ChunkMapperStatusScreen.open(payload));
     }
 
-    private static void handleRemoveCoordinateBindingServer(RemoveCoordinateBindingPayload payload, IPayloadContext context) {
+    private static void onRemoveBindingServer(RemoveCoordinateBindingPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
         }
-        BlockEntity ownerBlockEntity = getAccessibleBlockEntity(player, payload.owner());
+        // 删除绑定必须重新按距离和维度找方块，不能信客户端传来的位置。
+        BlockEntity ownerBlockEntity = getUseBlock(player, payload.owner());
         if (!(ownerBlockEntity instanceof VoidEnergyTransferBlockEntity owner)) {
             return;
         }
@@ -522,14 +527,15 @@ public final class ModNetworking {
         sendCoordinateBindings(player, payload.owner(), owner);
     }
 
-    private static void handleSetChunkMapperTierServer(SetChunkMapperTierPayload payload, IPayloadContext context) {
+    private static void onSetMapperTierServer(SetChunkMapperTierPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
         }
+        // 服务端再次限制档位范围，客户端按钮不能直接决定合法性。
         if (payload.tier() < 0 || payload.tier() > ChunkMapperBlock.MAX_TIER) {
             return;
         }
-        BlockEntity blockEntity = getAccessibleBlockEntity(player, payload.owner());
+        BlockEntity blockEntity = getUseBlock(player, payload.owner());
         if (!(blockEntity instanceof ChunkMapperBlockEntity mapper)) {
             return;
         }
@@ -538,7 +544,8 @@ public final class ModNetworking {
         sendChunkMapperStatus(player, mapper);
     }
 
-    private static BlockEntity getAccessibleBlockEntity(ServerPlayer player, BoundVoidPosition position) {
+    private static BlockEntity getUseBlock(ServerPlayer player, BoundVoidPosition position) {
+        // 只允许操作同维度、近距离、已加载的方块，防止客户端远程乱改。
         if (!position.dimension().equals(player.level().dimension().identifier())) {
             return null;
         }
@@ -551,7 +558,7 @@ public final class ModNetworking {
         return player.level().getBlockEntity(position.pos());
     }
 
-    private static void handleVoidBlackHoleClient(VoidBlackHolePayload payload, IPayloadContext context) {
+    private static void onBlackHoleClient(VoidBlackHolePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level == null) {
@@ -567,7 +574,7 @@ public final class ModNetworking {
         });
     }
 
-    private static Vec3 buildTrailSeedStart(Entity entity, Vec3 seedEnd, double seedLength) {
+    private static Vec3 getTrailSeedStart(Entity entity, Vec3 seedEnd, double seedLength) {
         Vec3 motion = entity.getDeltaMovement();
         if (motion.lengthSqr() < 1.0E-8D) {
             return null;
@@ -580,7 +587,7 @@ public final class ModNetworking {
         return seedEnd.subtract(motion);
     }
 
-    private static void handlePhaseTearClient(PhaseTearPayload payload, IPayloadContext context) {
+    private static void onPhaseTearClient(PhaseTearPayload payload, IPayloadContext context) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
             return;
@@ -607,10 +614,10 @@ public final class ModNetworking {
         }
 
         if (trackedEntity instanceof Player player) {
-            VoidClock.VOID_PLAYER_FLASH(player);
+            VoidClock.flashVoidPlayer(player);
         }
     }
-    private static void handleUseTurretShotServer(
+    private static void onUseTurretShotServer(
             UseTurretShotPayload payload,
             IPayloadContext context
     ) {
@@ -624,7 +631,7 @@ public final class ModNetworking {
         PhaseTurretModule.setInputState(serverPlayer, payload.shooting(), payload.volleyShooting());
     }
 
-    private static void handlePhaseWorldTransitionReadyServer(
+    private static void onWorldReadyServer(
             PhaseWorldTransitionReadyPayload payload,
             IPayloadContext context
     ) {
@@ -634,6 +641,6 @@ public final class ModNetworking {
             return;
         }
 
-        WorldModule.completePendingTransition(serverPlayer);
+        WorldModule.finishMove(serverPlayer);
     }
 }

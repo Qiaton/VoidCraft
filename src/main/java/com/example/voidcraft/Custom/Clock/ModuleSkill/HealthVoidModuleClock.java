@@ -18,7 +18,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public class HealthVoidModuleClock {
 
     @SubscribeEvent
-    public static void CHANNEL_HEALTH_VOID(PlayerTickEvent.Post event) {
+    public static void tickHealthVoid(PlayerTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
@@ -42,7 +42,7 @@ public class HealthVoidModuleClock {
         contents.copyInto(items);
 
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
-            if (!ModuleSkillClock.getChannel(player, slot)) {
+            if (!ModuleSkillClock.hasChannel(player, slot)) {
                 continue;
             }
 
@@ -60,7 +60,7 @@ public class HealthVoidModuleClock {
                 }
 
                 player.setData(ModAttachments.VOID_SPEED.get(), stats.voidSpeed());
-                VoidClock.SET_VOID_TICKS(player, 2);
+                VoidClock.setVoidTicks(player, 2);
                 player.heal(stats.channelHealAmount());
                 return;
             }

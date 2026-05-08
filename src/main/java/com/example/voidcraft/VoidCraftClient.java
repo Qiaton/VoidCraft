@@ -3,11 +3,13 @@ package com.example.voidcraft;
 import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingPreviewClient;
+import com.example.voidcraft.ClientCustom.Generator.VoidPhenomenonCollectorBlackHoleClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionOverlay;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreen;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreenRegistration;
 import com.example.voidcraft.Gui.ModuleScreen;
+import com.example.voidcraft.Gui.VoidPhenomenonCollectorScreen;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.api.distmarker.Dist;
@@ -33,7 +35,7 @@ public class VoidCraftClient {
     }
 
     @SubscribeEvent
-    public static void ClientFlowFov(net.neoforged.neoforge.client.event.ClientTickEvent.Post  event) {
+    public static void tickFlowFov(net.neoforged.neoforge.client.event.ClientTickEvent.Post  event) {
         if(FlowEffect.fov_effect>1.38){             //控制视角缩放效果
             FlowEffect.fov_effect-=0.1F;
         }
@@ -49,6 +51,7 @@ public class VoidCraftClient {
         PhaseEmitterClientManager.tick();
         PhaseEmitterClientManager.tickLocalAttackInput();
         CoordinateBindingPreviewClient.tick();
+        VoidPhenomenonCollectorBlackHoleClient.tick();
     }
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
@@ -63,12 +66,14 @@ public class VoidCraftClient {
         }
     }
     @SubscribeEvent
-    public static void MODULE_MENU(RegisterMenuScreensEvent event){
-        event.register(ModMenuType.MODULE_MENU.get(), ModuleScreen::new);
+    public static void registerModuleMenu(RegisterMenuScreensEvent event){
+        // 客户端把服务端菜单类型绑定到对应 Screen。
+        event.register(ModMenuType.registerModuleMenu.get(), ModuleScreen::new);
+        event.register(ModMenuType.VOID_PHENOMENON_COLLECTOR_MENU.get(), VoidPhenomenonCollectorScreen::new);
     }
 
     @SubscribeEvent
-    public static void REGISTER_GUI_LAYERS(RegisterGuiLayersEvent event) {
+    public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(
                 VanillaGuiLayers.HOTBAR,
                 Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
@@ -81,7 +86,7 @@ public class VoidCraftClient {
     }
 
     @SubscribeEvent
-    public static void PHASE_WORLD_TRANSITION_SCREEN_OVERLAY(ScreenEvent.Render.Post event) {
+    public static void renderPhaseScreenOverlay(ScreenEvent.Render.Post event) {
         if (!(event.getScreen() instanceof PhaseWorldTransitionScreen)) {
             PhaseWorldTransitionOverlay.render(event.getGuiGraphics(), true);
         }

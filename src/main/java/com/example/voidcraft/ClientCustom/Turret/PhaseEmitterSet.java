@@ -130,7 +130,7 @@ public class PhaseEmitterSet {
     public void playToggleFlash(Player owner) {
         for (PhaseEmitterSlot slot : PhaseEmitterSlot.fireOrder(this.emitterCount)) {
             Vec3 center = getCurrentEmitterPos(owner, slot, 1.0F);
-            VoidRingManager.addRing(center, 1.0F, PhaseTurretModule.getToggleFlashPreset());
+            VoidRingManager.addRing(center, 1.0F, PhaseTurretModule.getToggleFlash());
         }
     }
 

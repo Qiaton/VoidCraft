@@ -2,6 +2,8 @@ package com.example.voidcraft.Block.entity;
 
 import java.util.List;
 
+// 能接入虚空能网络的方块实体都实现这个接口。
+// 具体方块只负责存能量和列表，通用的添加/删除绑定逻辑放在默认方法里。
 public interface VoidEnergyTransferBlockEntity {
     BoundVoidPosition getVoidPosition();
 
@@ -31,14 +33,17 @@ public interface VoidEnergyTransferBlockEntity {
 
     void onVoidEnergyNetworkChanged();
 
+    // 输入列表保存“谁给我供能”。
     default boolean hasInputSource(BoundVoidPosition source) {
         return getInputSources().stream().anyMatch(binding -> binding.matches(source));
     }
 
+    // 输出列表保存“我要把能量送给谁”。
     default boolean hasOutputTarget(BoundVoidPosition target) {
         return getOutputTargets().stream().anyMatch(binding -> binding.matches(target));
     }
 
+    // 添加前先检查能力、重复项和上限，避免不同方块各写一套规则。
     default boolean canAddInputSource(BoundVoidPosition source) {
         return canReceiveVoidEnergy()
                 && !hasInputSource(source)
@@ -51,6 +56,7 @@ public interface VoidEnergyTransferBlockEntity {
                 && getOutputTargets().size() < getMaxOutputBindings();
     }
 
+    // 成功改动绑定后统一通知方块实体保存并同步客户端。
     default boolean addInputSource(VoidEnergyBinding binding) {
         if (!canAddInputSource(binding.target())) {
             return false;
