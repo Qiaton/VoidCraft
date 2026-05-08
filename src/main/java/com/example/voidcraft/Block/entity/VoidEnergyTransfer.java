@@ -14,6 +14,7 @@ public final class VoidEnergyTransfer {
     private VoidEnergyTransfer() {
     }
 
+    // 根据存下来的维度和坐标找到真实方块实体；区块没加载时先不判坏。
     public static ResolveResult resolve(MinecraftServer server, BoundVoidPosition position) {
         ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, position.dimension());
         ServerLevel level = server.getLevel(levelKey);
@@ -40,6 +41,7 @@ public final class VoidEnergyTransfer {
             CoordinateDesignatorData.Mode mode,
             boolean replaceTargetInput
     ) {
+        // 两次点到同一个方块没有意义，直接给玩家提示。
         if (primary.sameBlock(secondary)) {
             return BindResult.SAME_BLOCK;
         }
@@ -48,6 +50,7 @@ public final class VoidEnergyTransfer {
         BoundVoidPosition target;
         VoidEnergyBindingType bindingType;
 
+        // INPUT 模式是“当前方块从第一次记录的方块拿电”，OUTPUT 模式反过来。
         if (mode == CoordinateDesignatorData.Mode.INPUT) {
             source = secondary;
             target = primary;
@@ -61,6 +64,7 @@ public final class VoidEnergyTransfer {
         ResolveResult sourceResult = resolve(server, source);
         ResolveResult targetResult = resolve(server, target);
 
+        // 方块被拆掉或两端都没加载时，不写入新的坏绑定。
         if (sourceResult.status() == BindingStatus.NOT_FUNCTIONAL || targetResult.status() == BindingStatus.NOT_FUNCTIONAL) {
             return BindResult.POSITION_CHANGED;
         }
@@ -86,6 +90,7 @@ public final class VoidEnergyTransfer {
                 && targetEndpoint != null
                 && !targetHasInput
                 && !targetEndpoint.getInputSources().isEmpty();
+        // 输出端和输入端都要各自有容量；区块映射器这类单输入方块可走二次确认覆盖。
         if (sourceEndpoint != null && !sourceHasOutput && !sourceEndpoint.canAddOutputTarget(target)) {
             return BindResult.SOURCE_OUTPUT_FULL;
         }
@@ -94,11 +99,13 @@ public final class VoidEnergyTransfer {
         }
 
         if (targetEndpoint != null && shouldReplaceTargetInput) {
+            // 覆盖输入时要同时清掉旧来源的输出列表，保持两端列表互相对应。
             for (VoidEnergyBinding binding : List.copyOf(targetEndpoint.getInputSources())) {
                 removeInputBinding(server, targetEndpoint, binding.target());
             }
         }
 
+        // 真正写入绑定时，两端各记一份；之后校验和移除才能从任意一端操作。
         if (sourceEndpoint != null && !sourceHasOutput) {
             sourceEndpoint.addOutputTarget(new VoidEnergyBinding(target, bindingType));
         }
@@ -113,6 +120,7 @@ public final class VoidEnergyTransfer {
             VoidEnergyTransferBlockEntity target,
             long requestedEnergy
     ) {
+        // 所有传电都先走能力检查，避免调用方忘记判断输入/输出方向。
         if (source == null || target == null || requestedEnergy <= 0L) {
             return TransferResult.failed(BindingStatus.NOT_FUNCTIONAL);
         }
@@ -125,6 +133,7 @@ public final class VoidEnergyTransfer {
 
         long request = Math.min(requestedEnergy, source.getMaxVoidEnergyOutputPerTransfer());
         request = Math.min(request, target.getMaxVoidEnergyInputPerTransfer());
+        // 先模拟抽取和插入，算出双方都能接受的真实数量，再执行实际移动。
         long simulatedExtract = source.extractVoidEnergy(request, true);
         long simulatedInsert = target.receiveVoidEnergy(simulatedExtract, true);
         long moved = Math.min(simulatedExtract, simulatedInsert);
@@ -135,6 +144,7 @@ public final class VoidEnergyTransfer {
         long extracted = source.extractVoidEnergy(moved, false);
         long inserted = target.receiveVoidEnergy(extracted, false);
         if (inserted < extracted) {
+            // 理论上模拟后不会少插；这里兜底把没插进去的能量退回来源。
             source.receiveVoidEnergy(extracted - inserted, false);
         }
 
@@ -142,6 +152,7 @@ public final class VoidEnergyTransfer {
     }
 
     public static BindingStatus describeOutputBinding(MinecraftServer server, VoidEnergyTransferBlockEntity owner, VoidEnergyBinding binding) {
+        // 状态面板用这个检查输出列表：目标是否存在、能否输入、是否也记着我。
         ResolveResult target = resolve(server, binding.target());
         if (target.status() != BindingStatus.OK) {
             return target.status();
@@ -156,6 +167,7 @@ public final class VoidEnergyTransfer {
     }
 
     public static BindingStatus describeInputBinding(MinecraftServer server, VoidEnergyTransferBlockEntity owner, VoidEnergyBinding binding) {
+        // 状态面板用这个检查输入列表：来源是否存在、能否输出、是否也连着我。
         ResolveResult source = resolve(server, binding.target());
         if (source.status() != BindingStatus.OK) {
             return source.status();
@@ -170,6 +182,7 @@ public final class VoidEnergyTransfer {
     }
 
     public static void removeOutputBinding(MinecraftServer server, VoidEnergyTransferBlockEntity source, BoundVoidPosition target) {
+        // 从输出端删除时，也顺手删掉目标输入端里对应的来源。
         BoundVoidPosition sourcePos = source.getVoidPosition();
         source.removeOutputTarget(target);
         ResolveResult targetResult = resolve(server, target);
@@ -179,6 +192,7 @@ public final class VoidEnergyTransfer {
     }
 
     public static void removeInputBinding(MinecraftServer server, VoidEnergyTransferBlockEntity target, BoundVoidPosition source) {
+        // 从输入端删除时，也顺手删掉来源输出端里对应的目标。
         BoundVoidPosition targetPos = target.getVoidPosition();
         target.removeInputSource(source);
         ResolveResult sourceResult = resolve(server, source);

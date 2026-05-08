@@ -52,6 +52,48 @@ public class ModBlock {
                     .requiresCorrectToolForDrops()
     );
 
+    public static final DeferredBlock<VoidPhenomenonCollectorBlock> VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
+            "void_phenomenon_collector",
+            VoidPhenomenonCollectorBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    // ACTIVE 时发光更强，用来反馈发电机正在消耗结晶。
+                    .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
+                    .strength(2.5F, 6.0F)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidPhenomenonCollectorBlock> IMPROVED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
+            "improved_void_phenomenon_collector",
+            VoidPhenomenonCollectorBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
+                    .strength(2.5F, 6.0F)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidPhenomenonCollectorBlock> ADVANCED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
+            "advanced_void_phenomenon_collector",
+            VoidPhenomenonCollectorBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
+                    .strength(2.5F, 6.0F)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidPhenomenonCollectorBlock> VOID_ATTUNER = BLOCKS.registerBlock(
+            "void_attuner",
+            VoidPhenomenonCollectorBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
+                    .strength(2.5F, 6.0F)
+                    .requiresCorrectToolForDrops()
+    );
+
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);

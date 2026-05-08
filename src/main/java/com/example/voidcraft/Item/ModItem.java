@@ -91,6 +91,12 @@ public class ModItem {
                     .stacksTo(1)
                     .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.PURE.durabilityMultiplier())
     );
+    public static final DeferredItem<Item> VOID_CRYSTAL_RESIDUE = ITEMS.registerItem(
+            "void_crystal_residue",
+            // 虚空结晶耗尽后留下的废渣，目前只是普通物品。
+            Item::new,
+            props -> props
+    );
     public static final DeferredItem<CoordinateDesignatorItem> COORDINATE_DESIGNATOR = ITEMS.registerItem(
             "coordinate_designator",
             CoordinateDesignatorItem::new,

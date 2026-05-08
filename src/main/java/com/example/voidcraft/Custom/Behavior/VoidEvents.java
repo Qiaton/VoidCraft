@@ -23,7 +23,7 @@ public class VoidEvents {
     public static final Identifier VOID_SPEED_ID = Identifier.fromNamespaceAndPath(VoidCraft.MODID, "void_speed");
     @SubscribeEvent
     //虚空内无法受伤
-    public static void IN_VOID_Immunity(EntityInvulnerabilityCheckEvent event){//这一大串相当于 造成伤害时
+    public static void noVoidHurt(EntityInvulnerabilityCheckEvent event){//这一大串相当于 造成伤害时
         if(event.getEntity() instanceof Player player){ //如果获取的实体为玩家类型 player就是event的别名
             if (!player.level().isClientSide()) {
                 if (player.getData(ModAttachments.IN_VOID.get())) { //如果player获取IN_VOID的数据为true
@@ -33,7 +33,7 @@ public class VoidEvents {
         }
     }
     @SubscribeEvent
-    public static void VOID_JUMP(net.neoforged.neoforge.event.entity.living.LivingEvent.LivingJumpEvent event) {
+    public static void onVoidJump(net.neoforged.neoforge.event.entity.living.LivingEvent.LivingJumpEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
@@ -63,7 +63,7 @@ public class VoidEvents {
         }
     }
     @SubscribeEvent
-    public static void NO_ATTACK(AttackEntityEvent event) {
+    public static void noVoidAttack(AttackEntityEvent event) {
         Player player = event.getEntity();
 
         if (player.getData(ModAttachments.IN_VOID.get())) {
@@ -71,7 +71,7 @@ public class VoidEvents {
         }
     }
     @SubscribeEvent
-    public static void NO_CLICK_BLOCK(PlayerInteractEvent.LeftClickBlock event) {
+    public static void noVoidLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
 
         if (player.getData(ModAttachments.IN_VOID.get())) {
@@ -80,7 +80,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //玩家在虚空内无法交互方块
-    public static void NO_TOUCH(PlayerInteractEvent.RightClickBlock event){
+    public static void noVoidTouch(PlayerInteractEvent.RightClickBlock event){
         if(event.getEntity() instanceof Player player){
             if(player.getData(ModAttachments.IN_VOID.get())){
                 event.setCanceled(true);
@@ -89,7 +89,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //玩家在虚空内无法交互道具
-    public static void NO_TOUCH(PlayerInteractEvent.RightClickItem event){
+    public static void noVoidTouch(PlayerInteractEvent.RightClickItem event){
         if(event.getEntity() instanceof Player player){
             if(player.getData(ModAttachments.IN_VOID.get())){
                 event.setCanceled(true);
@@ -98,7 +98,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //玩家在虚空内无法交互实体
-    public static void NO_TOUCH(PlayerInteractEvent.EntityInteract event){
+    public static void noVoidTouch(PlayerInteractEvent.EntityInteract event){
         if(event.getEntity() instanceof Player player){
             if(player.getData(ModAttachments.IN_VOID.get())){
                 event.setCanceled(true);
@@ -107,7 +107,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //怪物无法看见玩家
-    public static void NO_TARGET(LivingChangeTargetEvent event){ //生物准备更换目标时
+    public static void noMobTarget(LivingChangeTargetEvent event){ //生物准备更换目标时
         if(event.getNewAboutToBeSetTarget() instanceof Player player && player.getData(ModAttachments.IN_VOID.get())) {
             if (player.getData(ModAttachments.IN_VOID.get())) {
                 event.setNewAboutToBeSetTarget(null);
@@ -116,7 +116,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //让原来锁定玩家的怪物让他们听话别锁定
-    public static void NO_TARGET(PlayerTickEvent.Post event){
+    public static void clearMobTarget(PlayerTickEvent.Post event){
         Player player = event.getEntity();
         if (player.level().isClientSide() || !player.getData(ModAttachments.IN_VOID.get())) {
             return;
@@ -128,7 +128,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //虚空内无法溺死
-    public static void UNLIMITED_OXYGEN(PlayerTickEvent.Post event){
+    public static void keepAir(PlayerTickEvent.Post event){
         Player player = event.getEntity();      //从玩家刻中提取玩家
         if(player.getData(ModAttachments.IN_VOID.get())){ //如果玩家在虚空内
             player.setAirSupply(player.getAirSupply());   //将氧气值锁定满值
@@ -136,7 +136,7 @@ public class VoidEvents {
     }
     @SubscribeEvent
     //禁止虚空内拾取物品
-    public static void noPickup(ItemEntityPickupEvent.Pre event) {//拾取物品前
+    public static void noVoidPickup(ItemEntityPickupEvent.Pre event) {//拾取物品前
         if (event.getPlayer().getData(ModAttachments.IN_VOID.get())) {//如果玩家在虚空里
             event.setCanPickup(TriState.FALSE);//禁止玩家拾取物品
         }

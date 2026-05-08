@@ -16,19 +16,21 @@ import static com.example.voidcraft.Item.custom.PhaseWatch.WATCH_MODULE_SLOT_COU
 
 
 public class ModuleMenu extends AbstractContainerMenu{
+    public static final int WATCH_SLOT_START_X = 61;
+    public static final int WATCH_SLOT_Y = 20;
+    public static final int WATCH_SLOT_SPACING = 18;
+
     public ModuleMenu(int id, Inventory inventory) {
         this(id,inventory,new SimpleContainer(WATCH_CONTAINER_SLOT_COUNT));
     }
     public ModuleMenu(int id, Inventory playerInventory,Container moduleContainer) {
-        super(ModMenuType.MODULE_MENU.get(), id);
+        super(ModMenuType.registerModuleMenu.get(), id);
         checkContainerSize(moduleContainer, WATCH_CONTAINER_SLOT_COUNT);
-        int startX = 70;
-        int y = 20;
 
         for (int slot = 0; slot < WATCH_MODULE_SLOT_COUNT; slot++) {
-            this.addSlot(new ModuleSlot(moduleContainer, slot, startX + slot * 18, y));
+            this.addSlot(new ModuleSlot(moduleContainer, slot, WATCH_SLOT_START_X + slot * WATCH_SLOT_SPACING, WATCH_SLOT_Y));
         }
-        this.addSlot(new EnergyCoreSlot(moduleContainer, WATCH_CORE_SLOT, startX + WATCH_CORE_SLOT * 18, y));
+        this.addSlot(new EnergyCoreSlot(moduleContainer, WATCH_CORE_SLOT, WATCH_SLOT_START_X + WATCH_CORE_SLOT * WATCH_SLOT_SPACING, WATCH_SLOT_Y));
 
         addPlayerInventory(playerInventory);
         addPlayerHotbar(playerInventory);

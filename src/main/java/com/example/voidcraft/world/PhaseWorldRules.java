@@ -20,41 +20,41 @@ public final class PhaseWorldRules {
     private PhaseWorldRules() {
     }
 
-    public static ResourceKey<Level> resolveTransitionTarget(ResourceKey<Level> currentDimension) {
-        return PhaseDimensions.resolveTransitionTarget(currentDimension);
+    public static ResourceKey<Level> getTargetWorld(ResourceKey<Level> currentDimension) {
+        return PhaseDimensions.getTargetWorld(currentDimension);
     }
 
-    public static boolean shouldBlockMobSpawn(Level level) {
+    public static boolean noMobSpawn(Level level) {
         return BLOCK_MOB_SPAWNS && PhaseDimensions.isPhaseMirror(level);
     }
 
-    public static boolean shouldClearGeneratedLootContainers(Level level) {
+    public static boolean needClearLoot(Level level) {
         return CLEAR_GENERATED_LOOT_CONTAINERS && PhaseDimensions.isPhaseMirror(level);
     }
 
-    public static boolean shouldApplyPhaseVisuals(Level level) {
+    public static boolean showPhaseLook(Level level) {
         return PhaseDimensions.isPhaseMirror(level);
     }
 
-    public static boolean shouldApplyPhaseTraversal(Level level) {
+    public static boolean canPhaseWalk(Level level) {
         return ENABLE_PHASE_TRAVERSAL && PhaseDimensions.isPhaseMirror(level);
     }
 
     public static Vec3 findArrivalPos(ServerLevel level, Vec3 preferred) {
-        if (PhaseDimensions.isPhaseMirror(level) && shouldApplyPhaseTraversal(level)) {
-            return findSameCoordinatePhaseArrival(level, preferred);
+        if (PhaseDimensions.isPhaseMirror(level) && canPhaseWalk(level)) {
+            return findPhasePos(level, preferred);
         }
 
-        Vec3 sameHeight = findSameHeightArrival(level, preferred);
+        Vec3 sameHeight = findSameY(level, preferred);
         if (sameHeight != null) {
             return sameHeight;
         }
 
-        if (shouldForceSamePositionArrival(level, preferred)) {
-            return findForcedSamePositionArrival(level, preferred);
+        if (needSamePos(level, preferred)) {
+            return findSamePos(level, preferred);
         }
 
-        Vec3 safeSurface = findSafeSurfaceArrival(level, preferred);
+        Vec3 safeSurface = findSafeGround(level, preferred);
         if (safeSurface != null) {
             return safeSurface;
         }
@@ -65,7 +65,7 @@ public final class PhaseWorldRules {
         return new Vec3(preferred.x, y, preferred.z);
     }
 
-    private static boolean shouldForceSamePositionArrival(ServerLevel level, Vec3 preferred) {
+    private static boolean needSamePos(ServerLevel level, Vec3 preferred) {
         int x = Mth.floor(preferred.x);
         int z = Mth.floor(preferred.z);
         level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
@@ -74,22 +74,22 @@ public final class PhaseWorldRules {
         return Math.abs(surfaceY - preferred.y) > FORCE_SAME_POSITION_SURFACE_DISTANCE;
     }
 
-    private static Vec3 findForcedSamePositionArrival(ServerLevel level, Vec3 preferred) {
+    private static Vec3 findSamePos(ServerLevel level, Vec3 preferred) {
         double minY = level.getMinY() + 1.0D;
         double maxY = level.getMinY() + level.getHeight() - 2.0D;
         double y = Mth.clamp(preferred.y, minY, maxY);
         return new Vec3(preferred.x, y, preferred.z);
     }
 
-    private static Vec3 findSameCoordinatePhaseArrival(ServerLevel level, Vec3 preferred) {
+    private static Vec3 findPhasePos(ServerLevel level, Vec3 preferred) {
         int x = Mth.floor(preferred.x);
         int z = Mth.floor(preferred.z);
         level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
 
-        return findForcedSamePositionArrival(level, preferred);
+        return findSamePos(level, preferred);
     }
 
-    private static Vec3 findSafeSurfaceArrival(ServerLevel level, Vec3 preferred) {
+    private static Vec3 findSafeGround(ServerLevel level, Vec3 preferred) {
         int baseX = Mth.floor(preferred.x);
         int baseZ = Mth.floor(preferred.z);
 
@@ -100,7 +100,7 @@ public final class PhaseWorldRules {
                         continue;
                     }
 
-                    Vec3 candidate = findSurfaceCandidate(level, baseX + dx, baseZ + dz, preferred);
+                    Vec3 candidate = findGroundSpot(level, baseX + dx, baseZ + dz, preferred);
                     if (candidate != null) {
                         return candidate;
                     }
@@ -111,7 +111,7 @@ public final class PhaseWorldRules {
         return null;
     }
 
-    private static Vec3 findSameHeightArrival(ServerLevel level, Vec3 preferred) {
+    private static Vec3 findSameY(ServerLevel level, Vec3 preferred) {
         int baseX = Mth.floor(preferred.x);
         int baseY = Mth.floor(preferred.y);
         int baseZ = Mth.floor(preferred.z);
@@ -126,7 +126,7 @@ public final class PhaseWorldRules {
                         continue;
                     }
 
-                    Vec3 candidate = findSameHeightCandidate(level, baseX + dx, baseY, baseZ + dz, preferred);
+                    Vec3 candidate = findSameYSpot(level, baseX + dx, baseY, baseZ + dz, preferred);
                     if (candidate != null) {
                         return candidate;
                     }
@@ -137,10 +137,10 @@ public final class PhaseWorldRules {
         return null;
     }
 
-    private static Vec3 findSameHeightCandidate(ServerLevel level, int x, int y, int z, Vec3 preferred) {
+    private static Vec3 findSameYSpot(ServerLevel level, int x, int y, int z, Vec3 preferred) {
         level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
         BlockPos feet = new BlockPos(x, y, z);
-        if (!level.getWorldBorder().isWithinBounds(feet) || !isSafeBodySpace(level, feet)) {
+        if (!level.getWorldBorder().isWithinBounds(feet) || !isSafeAir(level, feet)) {
             return null;
         }
 
@@ -149,11 +149,11 @@ public final class PhaseWorldRules {
         return new Vec3(arrivalX, y, arrivalZ);
     }
 
-    private static Vec3 findSurfaceCandidate(ServerLevel level, int x, int z, Vec3 preferred) {
+    private static Vec3 findGroundSpot(ServerLevel level, int x, int z, Vec3 preferred) {
         level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos feet = new BlockPos(x, y, z);
-        if (!level.getWorldBorder().isWithinBounds(feet) || !isSafeStandingSpot(level, feet)) {
+        if (!level.getWorldBorder().isWithinBounds(feet) || !isSafeGround(level, feet)) {
             return null;
         }
 
@@ -162,8 +162,8 @@ public final class PhaseWorldRules {
         return new Vec3(arrivalX, y, arrivalZ);
     }
 
-    private static boolean isSafeStandingSpot(ServerLevel level, BlockPos feet) {
-        if (!isSafeBodySpace(level, feet)) {
+    private static boolean isSafeGround(ServerLevel level, BlockPos feet) {
+        if (!isSafeAir(level, feet)) {
             return false;
         }
 
@@ -171,7 +171,7 @@ public final class PhaseWorldRules {
         return !ground.getCollisionShape(level, feet.below()).isEmpty();
     }
 
-    private static boolean isSafeBodySpace(ServerLevel level, BlockPos feet) {
+    private static boolean isSafeAir(ServerLevel level, BlockPos feet) {
         if (feet.getY() <= level.getMinY() || feet.getY() + 1 > level.getMaxY()) {
             return false;
         }

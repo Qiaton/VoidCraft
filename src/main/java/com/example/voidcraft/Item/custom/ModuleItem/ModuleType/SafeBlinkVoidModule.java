@@ -69,9 +69,9 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
         if (stats == null) return;
         if (level.isClientSide()) return;
         if (stats.mode() != BURST) return;
-        if (!canSafeBlinkTo(player, ticks, stats, target)) return;
+        if (!canBlinkTo(player, ticks, stats, target)) return;
 
-        boolean cooldownReady = ModuleSkillClock.checkCooldown(player, slot);
+        boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
         long cost =  stats.energyCost();
         long cooldown = (long) (COOLDOWN_TICKS / stats.cooldownDuration());
 
@@ -113,7 +113,7 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
 
         return new Stats(data.moduleMode(), cooldownDuration, maxDistance, Speed);
     }
-    private static boolean canSafeBlinkTo(ServerPlayer player, int ticks, Stats stats, Vec3 target) {
+    private static boolean canBlinkTo(ServerPlayer player, int ticks, Stats stats, Vec3 target) {
         if (!Double.isFinite(target.x) || !Double.isFinite(target.y) || !Double.isFinite(target.z)) {
             return false;
         }
@@ -126,7 +126,7 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
     }
 
     public static void setBlink(ServerPlayer player, Vec3 target) {
-        VoidClock.SET_VOID_TICKS(player, 2);
+        VoidClock.setVoidTicks(player, 2);
         int x = Mth.floor(target.x);
         int y = Mth.floor(target.y);
         int z = Mth.floor(target.z);

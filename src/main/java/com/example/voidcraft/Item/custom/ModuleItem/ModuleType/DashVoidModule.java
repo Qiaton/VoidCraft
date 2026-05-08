@@ -40,10 +40,10 @@ public class DashVoidModule extends ModuleItem {
         if(mode == null) return;
         if(mode == CHANNEL){
             long offEnergy = stats.channelEnergyCost();
-            if(ModuleSkillClock.getChannel(player,slot)){
+            if(ModuleSkillClock.hasChannel(player,slot)){
                 ModuleSkillClock.stopChannel(player,slot);
-                VoidClock.STOP_VOID(player);
-                DashClock.CLEAR_DASH(player);
+                VoidClock.stopVoid(player);
+                DashClock.clearDash(player);
                 player.setDeltaMovement(0,0,0);
                 FlowEffect.fov_effect=0;
             }
@@ -54,20 +54,20 @@ public class DashVoidModule extends ModuleItem {
                 ModSound.playEnterVoid(level, player);
                 ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
                 ModuleSkillClock.startChannel(player,slot,offEnergy);
-                DashClock.SET_DASH(player,2, stats.strength());
+                DashClock.setDash(player,2, stats.strength());
 
             }
         }
         if(mode == BURST){
-            if(!ModuleSkillClock.checkCooldown(player,slot)){
+            if(!ModuleSkillClock.canUseNow(player,slot)){
                 return;
             }
             ModSound.playEnterVoid(level, player);
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
             int activeTicks = stats.activeTicks();
-            DashClock.SET_DASH(player,activeTicks, stats.strength());
+            DashClock.setDash(player,activeTicks, stats.strength());
             ModuleSkillClock.setCooldown(player, slot, COOLDOWN_TICKS);
-            VoidClock.SET_VOID_TICKS(player,activeTicks);
+            VoidClock.setVoidTicks(player,activeTicks);
         }
     }
 

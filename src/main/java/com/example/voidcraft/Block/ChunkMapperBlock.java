@@ -35,6 +35,7 @@ public class ChunkMapperBlock extends BaseEntityBlock {
     }
 
     public static String getTierDisplayName(int tier) {
+        // UI 和服务端都走这里拿档位名，避免两边各维护一份 I/II/III。
         int index = Math.max(0, Math.min(MAX_TIER, tier));
         return TIER_DISPLAY_NAMES[index];
     }
@@ -59,6 +60,7 @@ public class ChunkMapperBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        // 绑定工具右键时让工具优先执行，不打开状态面板。
         if (stack.getItem() instanceof CoordinateDesignatorItem) {
             return InteractionResult.PASS;
         }
@@ -67,6 +69,7 @@ public class ChunkMapperBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        // 空手右键打开状态面板，面板里的档位修改再发包回服务端。
         if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof ChunkMapperBlockEntity mapper)) {
             return InteractionResult.SUCCESS;
         }

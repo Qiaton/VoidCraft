@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTransferBlockEntity {
+    // 区块映射器只收电不输出，缓存能量后按档位持续消耗来维持区块加载。
     public static final long CACHE_CAPACITY = 10_000L;
     public static final long MAX_INSERT = 1_000L;
     public static final int MAX_INPUT_BINDINGS = 1;
@@ -49,6 +50,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
             return;
         }
 
+        // tick 顺序：先同步档位外观，再从输入源补电，最后按档位扣电维持加载。
         mapper.updateTierState();
         mapper.pullFromInputSource();
 
@@ -66,6 +68,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
         this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", 0L));
         this.running = input.getBooleanOr("Running", false);
 
+        // 映射器只允许一个输入源，读档时也限制数量，避免旧数据或手改数据超上限。
         this.inputSources.clear();
         for (ValueInput child : input.childrenListOrEmpty("InputSources")) {
             if (this.inputSources.size() >= MAX_INPUT_BINDINGS) {
@@ -137,12 +140,14 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
         this.tier = nextTier;
         updateTierState();
         if (this.running) {
+            // 运行中改档位时要马上重算加载范围。
             refreshForcedChunks();
         }
         onVoidEnergyNetworkChanged();
     }
 
     private void pullFromInputSource() {
+        // 单输入方块只检查第 0 个来源；来源失效时清掉绑定，来源未加载时保留等待。
         if (level == null || level.isClientSide() || !canReceiveVoidEnergy() || this.inputSources.isEmpty()) {
             return;
         }
@@ -178,6 +183,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     private boolean tryUseEnergy(long amount) {
+        // 映射器的运行耗电直接扣自己的缓存，不走外部传输接口。
         if (amount <= 0L) {
             return true;
         }
@@ -196,6 +202,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
         }
 
         if (!this.running) {
+            // 第一次有电运行时申请区块票，并把 running 同步到客户端状态面板。
             this.running = true;
             refreshForcedChunks(serverLevel);
             onVoidEnergyNetworkChanged();
@@ -214,6 +221,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     private void refreshForcedChunks(ServerLevel serverLevel) {
+        // 目标范围由档位决定；先释放不需要的，再补上缺少的。
         Set<Long> desired = buildDesiredChunks();
 
         for (long chunk : List.copyOf(this.forcedChunks)) {
@@ -235,6 +243,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
             return;
         }
 
+        // 没电时释放所有区块票，避免方块停机后仍然强加载。
         releaseForcedChunks();
         this.running = false;
         onVoidEnergyNetworkChanged();
@@ -242,6 +251,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
 
     public void releaseForcedChunks() {
         if (!(level instanceof ServerLevel serverLevel)) {
+            // 世界对象不可用时只能清本地记录，真正票据由 NeoForge 校验器兜底清理。
             this.forcedChunks.clear();
             this.running = false;
             return;
@@ -269,6 +279,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     private Set<Long> buildDesiredChunks() {
+        // 以映射器所在区块为中心，按半径生成方形加载范围。
         ChunkPos center = new ChunkPos(this.worldPosition);
         int radius = getChunkRadius();
         Set<Long> chunks = new HashSet<>();
@@ -283,6 +294,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     private void updateTierState() {
+        // 档位存在方块状态里，模型/材质可以按这个值切换。
         if (level == null || level.isClientSide()) {
             return;
         }
@@ -367,6 +379,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
 
     @Override
     public long receiveVoidEnergy(long amount, boolean simulate) {
+        // 输入上限由 getMaxVoidEnergyInputPerTransfer 控制，这里只处理容量剩余。
         long accepted = Math.min(Math.max(0L, amount), getVoidEnergyCapacity() - this.voidEnergy);
         if (!simulate && accepted > 0L) {
             this.voidEnergy = clampEnergy(this.voidEnergy + accepted);
@@ -383,10 +396,11 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     @Override
     public void onVoidEnergyNetworkChanged() {
         setChanged();
-        syncToClient();
+        syncClient();
     }
 
-    private void syncToClient() {
+    private void syncClient() {
+        // 状态面板和方块实体数据都依赖这个服务端同步。
         if (level != null && !level.isClientSide()) {
             BlockState state = getBlockState();
             level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);

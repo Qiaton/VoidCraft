@@ -20,7 +20,7 @@ public class VoidClock {
     public static Map<UUID,Integer> VOID_PLAYER_TOTAL_TICKS = new HashMap<>();
     public static final int DEFAULT_VOID_PLAYER_FLASH_TOTAL = 1;
     @SubscribeEvent
-    public static void VOID_TICK_SERVER(PlayerTickEvent.Post event) {
+    public static void tickVoidServer(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         if(player.level().isClientSide()){
             return;
@@ -41,7 +41,7 @@ public class VoidClock {
         }
     }
  @SubscribeEvent
-    public static void VOID_PLAYER_TICK_CLIENT(PlayerTickEvent.Post event) {
+    public static void tickVoidClient(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         if(!player.level().isClientSide()){
             return;
@@ -57,18 +57,18 @@ public class VoidClock {
             VOID_PLAYER_TOTAL_TICKS.remove(uuid);
         }
     }
-    public static void VOID_PLAYER_FLASH(Player player){
-        VOID_PLAYER_FLASH(player, DEFAULT_VOID_PLAYER_FLASH_TOTAL);
+    public static void flashVoidPlayer(Player player){
+        flashVoidPlayer(player, DEFAULT_VOID_PLAYER_FLASH_TOTAL);
     }
-    public static void VOID_PLAYER_FLASH(Player player, int totalTicks){
+    public static void flashVoidPlayer(Player player, int totalTicks){
         int clampedTicks = Math.max(1, totalTicks);
         VOID_PLAYER_TICKS.put(player.getUUID(), clampedTicks);
         VOID_PLAYER_TOTAL_TICKS.put(player.getUUID(), clampedTicks);
     }
-    public static void SET_VOID_TICKS(Player player,Integer ticks){
+    public static void setVoidTicks(Player player,Integer ticks){
         VOID_TICKS.put(player.getUUID(),ticks);
     }
-    public static void STOP_VOID(Player player){
+    public static void stopVoid(Player player){
         ModSound.playOutVoid(player.level(), player);
         ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
         VOID_TICKS.remove(player.getUUID());

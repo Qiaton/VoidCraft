@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "void_craft:block/void_phenomenon_collector"
+    },
+    "active=true": {
+      "model": "void_craft:block/void_phenomenon_collector_active"
+    }
+  }
+}

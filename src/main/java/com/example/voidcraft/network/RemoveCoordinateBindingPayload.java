@@ -7,6 +7,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
+// 解绑面板点击删除时发送：owner 是当前方块，target 是要删掉的另一端。
 public record RemoveCoordinateBindingPayload(
         BoundVoidPosition owner,
         boolean outputList,

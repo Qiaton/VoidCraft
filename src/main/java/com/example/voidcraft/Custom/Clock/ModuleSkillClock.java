@@ -32,7 +32,7 @@ public class ModuleSkillClock {
     private static final int ENERGY_HUD_SYNC_INTERVAL_TICKS = 2;
     private static final int FEEDBACK_ACTIONBAR_LOCK_TICKS = 40;
     @SubscribeEvent
-    public static void CHANNEL_CLOCK(PlayerTickEvent.Post event) {
+    public static void tickChannel(PlayerTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
@@ -49,7 +49,7 @@ public class ModuleSkillClock {
             return;
         }
 
-        if (cleanupInvalidChannels(player, data)) {
+        if (clearBadChannels(player, data)) {
             data = CHANNEL_ENERGY.get(playerId);
             if (data == null || data.isEmpty()) {
                 return;
@@ -72,10 +72,10 @@ public class ModuleSkillClock {
         }
 
         // 手动炮台的持续开火跟随 channel 能量 tick；辅助炮台有自己的服务端 tick。
-        PhaseTurretModule.tickAutoFire(player);
+        PhaseTurretModule.tickFire(player);
     }
     @SubscribeEvent
-    public static void ENERGY_RECHARGE(PlayerTickEvent.Post event) {
+    public static void tickCharge(PlayerTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
@@ -88,7 +88,7 @@ public class ModuleSkillClock {
 
         Map<Integer, Long> channelData = CHANNEL_ENERGY.get(playerId);
 
-        if (hasDrainingChannel(channelData)) {
+        if (hasCostChannel(channelData)) {
             return;
         }
 
@@ -100,11 +100,11 @@ public class ModuleSkillClock {
         PhaseWatch.RechargeResult rechargeResult = PhaseWatch.rechargeFromCore(watchStack);
         if (rechargeResult == PhaseWatch.RechargeResult.CORE_DEPLETED
                 || rechargeResult == PhaseWatch.RechargeResult.CORE_SCRAPPED) {
-            tryShowFeedbackActionbar(player, Component.translatable("message.void_craft.energy_core.depleted"));
+            tryShowTip(player, Component.translatable("message.void_craft.energy_core.depleted"));
         }
     }
 
-    private static boolean hasDrainingChannel(Map<Integer, Long> channelData) {
+    private static boolean hasCostChannel(Map<Integer, Long> channelData) {
         if (channelData == null || channelData.isEmpty()) {
             return false;
         }
@@ -118,7 +118,7 @@ public class ModuleSkillClock {
         return false;
     }
     @SubscribeEvent
-    public static void ENERGY_HUD_SYNC(PlayerTickEvent.Post event) {
+    public static void tickEnergyHud(PlayerTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
@@ -127,11 +127,11 @@ public class ModuleSkillClock {
             return;
         }
 
-        tickActionbarLock(player.getUUID());
-        syncEnergyHud(player);
+        tickTipLock(player.getUUID());
+        sendEnergyHud(player);
     }
     @SubscribeEvent
-    public static void COOLDOWN(PlayerTickEvent.Post event){
+    public static void tickCooldown(PlayerTickEvent.Post event){
         if(event.getEntity().level().isClientSide()){
             return;
         }
@@ -172,7 +172,7 @@ public class ModuleSkillClock {
         return playerCooldowns.getOrDefault(slot,0L);
     }
 
-    public static boolean checkCooldown(ServerPlayer player, int slot) {
+    public static boolean canUseNow(ServerPlayer player, int slot) {
         long cooldownTicks = getCooldown(player, slot);
         return cooldownTicks <= 0;
     }
@@ -195,7 +195,7 @@ public class ModuleSkillClock {
         return true;
     }
 
-    private static void syncEnergyHud(ServerPlayer player){
+    private static void sendEnergyHud(ServerPlayer player){
         if(player.tickCount % ENERGY_HUD_SYNC_INTERVAL_TICKS != 0){
             return;
         }
@@ -216,19 +216,19 @@ public class ModuleSkillClock {
         return (int) Math.max(0L, Math.min(100L, Math.round(energy * 100.0D / maxEnergy)));
     }
 
-    private static void showFeedbackActionbar(ServerPlayer player, Component message){
+    private static void showTip(ServerPlayer player, Component message){
         player.displayClientMessage(message, true);
         ACTIONBAR_LOCK_TICKS.put(player.getUUID(), FEEDBACK_ACTIONBAR_LOCK_TICKS);
     }
 
-    private static void tryShowFeedbackActionbar(ServerPlayer player, Component message) {
+    private static void tryShowTip(ServerPlayer player, Component message) {
         if (ACTIONBAR_LOCK_TICKS.containsKey(player.getUUID())) {
             return;
         }
-        showFeedbackActionbar(player, message);
+        showTip(player, message);
     }
 
-    private static void tickActionbarLock(UUID playerId){
+    private static void tickTipLock(UUID playerId){
         Integer ticks = ACTIONBAR_LOCK_TICKS.get(playerId);
         if(ticks == null){
             return;
@@ -248,8 +248,8 @@ public class ModuleSkillClock {
 
         for (Integer slot : channel.keySet()) {
             // channel 停止时通知两种炮台模块分别清自己的状态。
-            PhaseTurretModule.onChannelStopped(player, slot);
-            AssistPhaseTurretModule.onChannelStopped(player, slot);
+            PhaseTurretModule.onChannelStop(player, slot);
+            AssistPhaseTurretModule.onChannelStop(player, slot);
         }
     }
     public static void stopChannel(ServerPlayer player, int slot) {
@@ -261,8 +261,8 @@ public class ModuleSkillClock {
 
         if (channel.remove(slot) != null) {
             // 单槽停止也走同一条清理入口，避免炮台球或锁定目标残留。
-            PhaseTurretModule.onChannelStopped(player, slot);
-            AssistPhaseTurretModule.onChannelStopped(player, slot);
+            PhaseTurretModule.onChannelStop(player, slot);
+            AssistPhaseTurretModule.onChannelStop(player, slot);
         }
 
         if (channel.isEmpty()) {
@@ -274,7 +274,7 @@ public class ModuleSkillClock {
                 CHANNEL_ENERGY.computeIfAbsent(player.getUUID(), k -> new HashMap<>());
         channel.put(slot, offEnergy);
     }
-    public static boolean getChannel(ServerPlayer player, int slot) {
+    public static boolean hasChannel(ServerPlayer player, int slot) {
         Map<Integer, Long> channel = CHANNEL_ENERGY.get(player.getUUID());
 
         if (channel == null) {
@@ -285,13 +285,13 @@ public class ModuleSkillClock {
     }
 
     @SubscribeEvent
-    public static void PLAYER_LOGOUT(PlayerEvent.PlayerLoggedOutEvent event) {
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            clearPlayerState(player);
+            clearPlayer(player);
         }
     }
 
-    public static void clearPlayerState(ServerPlayer player) {
+    public static void clearPlayer(ServerPlayer player) {
         if (player == null) {
             return;
         }
@@ -301,11 +301,11 @@ public class ModuleSkillClock {
         COOLDOWN_TICKS.remove(playerId);
         ACTIONBAR_LOCK_TICKS.remove(playerId);
         // 登出时只清服务器运行时状态，避免 UUID 表一直挂到进程结束。
-        PhaseTurretModule.clearPlayerState(player);
-        AssistPhaseTurretModule.clearPlayerState(player);
+        PhaseTurretModule.clearPlayer(player);
+        AssistPhaseTurretModule.clearPlayer(player);
     }
 
-    private static boolean cleanupInvalidChannels(ServerPlayer player, Map<Integer, Long> channel) {
+    private static boolean clearBadChannels(ServerPlayer player, Map<Integer, Long> channel) {
         ItemStack watchStack = player.getOffhandItem();
         if (!(watchStack.getItem() instanceof PhaseWatch)) {
             stopChannel(player);

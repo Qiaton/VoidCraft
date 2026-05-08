@@ -18,7 +18,7 @@ public class VoidArrowRenderer {
             method = "extractRenderState(Lnet/minecraft/world/entity/projectile/arrow/AbstractArrow;Lnet/minecraft/client/renderer/entity/state/ArrowRenderState;F)V",
             at = @At("TAIL")
     )
-    private void VOIDCRAFT_MARK_HIDDEN_ARROW(AbstractArrow arrow, ArrowRenderState state, float partialTick, CallbackInfo ci) {
+    private void markHiddenArrow(AbstractArrow arrow, ArrowRenderState state, float partialTick, CallbackInfo ci) {
         if (arrow.isInvisible() || VoidTrailManager.isTrackedEntity(arrow.getId())) {
             state.isInvisible = true;
         }
@@ -29,7 +29,7 @@ public class VoidArrowRenderer {
             at = @At("HEAD"),
             cancellable = true
     )
-    private void VOIDCRAFT_SKIP_HIDDEN_ARROW(
+    private void skipHiddenArrow(
             ArrowRenderState state,
             PoseStack poseStack,
             SubmitNodeCollector collector,

@@ -24,7 +24,7 @@ public final class PhaseDimensions {
         return PHASE_MIRROR.equals(dimension);
     }
 
-    public static ResourceKey<Level> resolveTransitionTarget(ResourceKey<Level> currentDimension) {
+    public static ResourceKey<Level> getTargetWorld(ResourceKey<Level> currentDimension) {
         if (currentDimension == null) {
             return null;
         }

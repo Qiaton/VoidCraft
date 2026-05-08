@@ -31,6 +31,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class CoordinateDesignatorItem extends Item {
+    // 区块映射器只有一个输入口；覆盖前给玩家一个短时间二次确认。
     private static final long CHUNK_MAPPER_OVERWRITE_CONFIRM_TICKS = 100L;
     private static final Map<UUID, PendingChunkMapperInputOverwrite> PENDING_CHUNK_MAPPER_OVERWRITES = new HashMap<>();
 
@@ -52,6 +53,7 @@ public class CoordinateDesignatorItem extends Item {
 
         ItemStack stack = context.getItemInHand();
         if (player.isSecondaryUseActive()) {
+            // 潜行右键方块只切模式，不参与绑定。
             switchMode(stack, player);
             return InteractionResult.SUCCESS;
         }
@@ -62,6 +64,7 @@ public class CoordinateDesignatorItem extends Item {
 
         BlockEntity clickedBlockEntity = level.getBlockEntity(context.getClickedPos());
         if (!(clickedBlockEntity instanceof VoidEnergyTransferBlockEntity clickedEndpoint)) {
+            // 点到非虚空能方块时清掉已记录的第一点，避免下次误连。
             sendActionbar(player, Component.translatable("message.void_craft.coordinate_designator.use_functional_block"));
             setData(stack, getData(stack).clearFirstTarget());
             return InteractionResult.SUCCESS;
@@ -70,6 +73,7 @@ public class CoordinateDesignatorItem extends Item {
         CoordinateDesignatorData data = getData(stack);
         BoundVoidPosition clicked = BoundVoidPosition.of(level, context.getClickedPos());
         if (data.mode() == CoordinateDesignatorData.Mode.UNBIND) {
+            // 解绑模式不记录两点，直接打开当前方块的连接列表。
             setData(stack, data.clearFirstTarget());
             ModNetworking.sendCoordinateBindings(serverPlayer, clicked, clickedEndpoint);
             return InteractionResult.CONSUME;
@@ -77,6 +81,7 @@ public class CoordinateDesignatorItem extends Item {
 
         Optional<BoundVoidPosition> firstTarget = data.firstTarget();
         if (firstTarget.isEmpty()) {
+            // 第一次点击只保存坐标；第二次点击才真正创建连接。
             setData(stack, data.withFirstTarget(clicked));
             sendActionbar(player, Component.translatable("message.void_craft.coordinate_designator.first_recorded"));
             return InteractionResult.SUCCESS;
@@ -86,6 +91,7 @@ public class CoordinateDesignatorItem extends Item {
         MinecraftServer server = serverPlayer.level().getServer();
         ChunkMapperOverwriteTarget overwriteTarget = getChunkMapperOverwriteTarget(server, first, clicked, data.mode());
         if (overwriteTarget != null && !hasConfirmedChunkMapperOverwrite(serverPlayer, overwriteTarget, data.mode())) {
+            // 映射器已有输入口时先提示，玩家再次点同一组方块才覆盖。
             PENDING_CHUNK_MAPPER_OVERWRITES.put(
                     serverPlayer.getUUID(),
                     new PendingChunkMapperInputOverwrite(
@@ -99,6 +105,7 @@ public class CoordinateDesignatorItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        // replaceTargetInput 只在二次确认通过时为 true，用来覆盖映射器旧输入。
         VoidEnergyTransfer.BindResult result = VoidEnergyTransfer.bind(server, first, clicked, data.mode(), overwriteTarget != null);
         PENDING_CHUNK_MAPPER_OVERWRITES.remove(serverPlayer.getUUID());
         setData(stack, data.clearFirstTarget());
@@ -155,6 +162,7 @@ public class CoordinateDesignatorItem extends Item {
     }
 
     private static void setData(ItemStack stack, CoordinateDesignatorData data) {
+        // 数据组件负责保存模式，CustomModelData 负责让物品模型跟着模式切换。
         stack.set(ModDataComponents.COORDINATE_DESIGNATOR_DATA.value(), data);
         stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(
                 List.of(),
@@ -174,6 +182,7 @@ public class CoordinateDesignatorItem extends Item {
             BoundVoidPosition secondary,
             CoordinateDesignatorData.Mode mode
     ) {
+        // 先按当前模式算出真正的供能端和收能端。
         BoundVoidPosition source;
         BoundVoidPosition target;
         if (mode == CoordinateDesignatorData.Mode.INPUT) {
@@ -194,6 +203,7 @@ public class CoordinateDesignatorItem extends Item {
             return null;
         }
 
+        // 只有“来源能输出，并且目标是已满输入的区块映射器”时才需要覆盖确认。
         VoidEnergyTransferBlockEntity sourceEndpoint = sourceResult.endpoint();
         if (!sourceEndpoint.canExtractVoidEnergy()
                 || (!sourceEndpoint.hasOutputTarget(target) && !sourceEndpoint.canAddOutputTarget(target))) {
@@ -212,6 +222,7 @@ public class CoordinateDesignatorItem extends Item {
             ChunkMapperOverwriteTarget target,
             CoordinateDesignatorData.Mode mode
     ) {
+        // 确认必须来自同一玩家、同一模式、同一组来源/目标，并且还没过期。
         PendingChunkMapperInputOverwrite pending = PENDING_CHUNK_MAPPER_OVERWRITES.get(player.getUUID());
         if (pending == null || pending.expiresAt() < player.level().getGameTime()) {
             return false;

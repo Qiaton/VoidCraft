@@ -10,21 +10,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Player.class)
 public class VoidPlayer {
     @Inject(method = "canBeHitByProjectile", at = @At("HEAD"), cancellable = true) //虚空内不会被弹射物命中
-    private void NO_HIT(CallbackInfoReturnable<Boolean> cir) {
+    private void noArrowHit(CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player)(Object)this;
         if (player.getData(ModAttachments.IN_VOID.get())) {
             cir.setReturnValue(false);
         }
     }
     @Inject(method = "isPushedByFluid", at = @At("HEAD"), cancellable = true)
-    private void NO_FLUID(CallbackInfoReturnable<Boolean> cir) {
+    private void noFluid(CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player)(Object)this;
         if (player.getData(ModAttachments.IN_VOID.get())) {
             cir.setReturnValue(false);
         }
     }
     @Inject(method = "getSpeed", at = @At("HEAD"), cancellable = true)              //虚空内陆地上固定移速
-    private void SPEED(CallbackInfoReturnable<Float> cir) {
+    private void setVoidSpeed(CallbackInfoReturnable<Float> cir) {
         Player player = (Player)(Object)this;
 
         if (player.getData(ModAttachments.IN_VOID.get())) {

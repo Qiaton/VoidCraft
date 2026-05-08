@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Entity.class)
 public class VoidEntity {
     @Inject(method = "canCollideWith", at = @At("HEAD"), cancellable = true)
-    private void VOID_COLLIDE(Entity other, CallbackInfoReturnable<Boolean> cir) {
+    private void noCollide(Entity other, CallbackInfoReturnable<Boolean> cir) {
         Entity self = (Entity)(Object)this;
 
         if (!(self instanceof Player player)) {
@@ -24,7 +24,7 @@ public class VoidEntity {
         }
     }
     @Inject(method = "push", at = @At("HEAD"), cancellable = true)
-    private void VOID_PUSH(Entity other, CallbackInfo ci) {
+    private void noPush(Entity other, CallbackInfo ci) {
         Entity self = (Entity)(Object)this;
 
         if (!(self instanceof Player player)) {

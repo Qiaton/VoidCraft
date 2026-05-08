@@ -335,9 +335,9 @@ public class PhaseEmitterClientManager {
             VoidBeamInstance.Config beamConfig
     ) {
         // 炮台白光跟随现有射击包本地生成，所有收到 S2C 的客户端都能看到。
-        VoidRingInstance muzzleFlash = VoidRingManager.addRing(origin, 1.0F, PhaseTurretModule.getMuzzleFlashPreset());
+        VoidRingInstance muzzleFlash = VoidRingManager.addRing(origin, 1.0F, PhaseTurretModule.getMuzzleFlash());
         ACTIVE_MUZZLE_FLASHES.add(new FollowedMuzzleFlash(playerId, slot, muzzleFlash));
-        VoidRingManager.addRing(targetPos, 1.0F, PhaseTurretModule.getHitFlashPreset(beamConfig.glowColor()));
+        VoidRingManager.addRing(targetPos, 1.0F, PhaseTurretModule.getHitFlash(beamConfig.glowColor()));
     }
 
     private static void updateMuzzleFlashes(float partialTick, boolean snapToRenderPosition) {

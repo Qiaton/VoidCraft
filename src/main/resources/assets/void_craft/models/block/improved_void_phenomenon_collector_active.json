@@ -1,0 +1,13 @@
+{
+  "parent": "minecraft:block/cube",
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "particle": "void_craft:block/void_phenomenon_collector_tier_2_side",
+    "up": "void_craft:block/void_phenomenon_collector_active",
+    "down": "void_craft:block/void_phenomenon_collector_tier_2_side",
+    "north": "void_craft:block/void_phenomenon_collector_tier_2_side",
+    "south": "void_craft:block/void_phenomenon_collector_tier_2_side",
+    "east": "void_craft:block/void_phenomenon_collector_tier_2_side",
+    "west": "void_craft:block/void_phenomenon_collector_tier_2_side"
+  }
+}

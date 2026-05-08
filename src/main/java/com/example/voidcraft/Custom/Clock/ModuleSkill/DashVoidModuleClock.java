@@ -19,7 +19,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public class DashVoidModuleClock {
 
     @SubscribeEvent
-    public static void CHANNEL_DASH_VOID(PlayerTickEvent.Post event) {
+    public static void tickDashVoid(PlayerTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
@@ -43,7 +43,7 @@ public class DashVoidModuleClock {
         contents.copyInto(items);
 
         for (int slot = 0; slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT; slot++) {
-            if (!ModuleSkillClock.getChannel(player, slot)) {
+            if (!ModuleSkillClock.hasChannel(player, slot)) {
                 continue;
             }
 
@@ -60,9 +60,9 @@ public class DashVoidModuleClock {
                     continue;
                 }
 
-                VoidClock.SET_VOID_TICKS(player, 2);
-                DashClock.REFRESH_DASH(player, 2, stats.strength());
-                FlowEffect.fov_effect= (DashClock.GET_DASH_STRENGTH(player)*0.16F);
+                VoidClock.setVoidTicks(player, 2);
+                DashClock.keepDash(player, 2, stats.strength());
+                FlowEffect.fov_effect= (DashClock.getDashPower(player)*0.16F);
                 return;
             }
         }

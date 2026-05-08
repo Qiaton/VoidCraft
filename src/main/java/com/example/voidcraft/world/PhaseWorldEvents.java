@@ -23,14 +23,14 @@ public final class PhaseWorldEvents {
 
     @SubscribeEvent
     public static void onSpawnPlacementCheck(MobSpawnEvent.SpawnPlacementCheck event) {
-        if (PhaseWorldRules.shouldBlockMobSpawn(event.getLevel().getLevel())) {
+        if (PhaseWorldRules.noMobSpawn(event.getLevel().getLevel())) {
             event.setResult(MobSpawnEvent.SpawnPlacementCheck.Result.FAIL);
         }
     }
 
     @SubscribeEvent
     public static void onSpawnPositionCheck(MobSpawnEvent.PositionCheck event) {
-        if (PhaseWorldRules.shouldBlockMobSpawn(event.getLevel().getLevel())) {
+        if (PhaseWorldRules.noMobSpawn(event.getLevel().getLevel())) {
             event.setResult(MobSpawnEvent.PositionCheck.Result.FAIL);
         }
     }
@@ -41,7 +41,7 @@ public final class PhaseWorldEvents {
             return;
         }
 
-        if (!PhaseWorldRules.shouldClearGeneratedLootContainers(event.getLevel())) {
+        if (!PhaseWorldRules.needClearLoot(event.getLevel())) {
             return;
         }
 
@@ -55,7 +55,7 @@ public final class PhaseWorldEvents {
 
     @SubscribeEvent
     public static void onChunkLoad(ChunkEvent.Load event) {
-        if (!(event.getLevel() instanceof ServerLevel serverLevel) || !PhaseWorldRules.shouldClearGeneratedLootContainers(serverLevel)) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel) || !PhaseWorldRules.needClearLoot(serverLevel)) {
             return;
         }
 
@@ -65,7 +65,7 @@ public final class PhaseWorldEvents {
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Level level = event.getLevel();
-        if (level.isClientSide() || !PhaseWorldRules.shouldClearGeneratedLootContainers(level)) {
+        if (level.isClientSide() || !PhaseWorldRules.needClearLoot(level)) {
             return;
         }
 
@@ -100,7 +100,7 @@ public final class PhaseWorldEvents {
     }
 
     private static void clearGeneratedLootContainerOnInteract(Level level, Entity entity) {
-        if (level.isClientSide() || !PhaseWorldRules.shouldClearGeneratedLootContainers(level)) {
+        if (level.isClientSide() || !PhaseWorldRules.needClearLoot(level)) {
             return;
         }
 

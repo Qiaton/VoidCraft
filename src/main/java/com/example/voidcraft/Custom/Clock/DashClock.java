@@ -16,7 +16,7 @@ public class DashClock {
     private static final Map<UUID, Float> DASH_STRENGTH = new HashMap<>();
 
     @SubscribeEvent
-    public static void DASH_TICK(PlayerTickEvent.Post event){ //event可以获取很多玩家的信息
+    public static void tickDash(PlayerTickEvent.Post event){ //event可以获取很多玩家的信息
         Player player = event.getEntity();
         if(player.level().isClientSide()){ //如果在客户端时
             return;
@@ -26,7 +26,7 @@ public class DashClock {
         Integer tick = DASH_TICKS.get(playerId);
 
         if(tick == null || tick <= 0){
-            CLEAR_DASH(player);
+            clearDash(player);
             return;
         }
 
@@ -37,7 +37,7 @@ public class DashClock {
             DASH_TICKS.put(playerId, nextTick);
         }
         else{
-            CLEAR_DASH(player);
+            clearDash(player);
         }
     }
 
@@ -59,9 +59,9 @@ public class DashClock {
         player.hurtMarked = true;
     }
 
-    public static void SET_DASH(Player player, int tick, float strength) {
+    public static void setDash(Player player, int tick, float strength) {
         if(tick <= 0){
-            CLEAR_DASH(player);
+            clearDash(player);
             return;
         }
 
@@ -71,9 +71,9 @@ public class DashClock {
         DASH_DIRECTION.put(playerId, getDashDirection(player));
     }
 
-    public static void REFRESH_DASH(Player player, int tick, float strength) {
+    public static void keepDash(Player player, int tick, float strength) {
         if(tick <= 0){
-            CLEAR_DASH(player);
+            clearDash(player);
             return;
         }
 
@@ -83,30 +83,30 @@ public class DashClock {
         DASH_DIRECTION.computeIfAbsent(playerId, unused -> getDashDirection(player));
     }
 
-    public static void SET_DASH(Player player, int tick) {
+    public static void setDash(Player player, int tick) {
         if(tick <= 0){
-            CLEAR_DASH(player);
+            clearDash(player);
             return;
         }
 
         DASH_TICKS.put(player.getUUID(), tick);
     }
-    public static float GET_DASH_STRENGTH(Player player){
+    public static float getDashPower(Player player){
         return DASH_STRENGTH.get(player.getUUID());
     }
 
-    public static void CLEAR_DASH(Player player){
+    public static void clearDash(Player player){
         UUID playerId = player.getUUID();
         DASH_TICKS.remove(playerId);
         DASH_DIRECTION.remove(playerId);
         DASH_STRENGTH.remove(playerId);
     }
 
-    public static void SET_DIRECTION(Player player){
+    public static void setDashDir(Player player){
         DASH_DIRECTION.put(player.getUUID(), getDashDirection(player));
     }
 
-    public static void SET_DASH_STRENGTH(Player player, float strength){
+    public static void setDashPower(Player player, float strength){
         DASH_STRENGTH.put(player.getUUID(), strength);
     }
 

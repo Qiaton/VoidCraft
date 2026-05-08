@@ -165,7 +165,7 @@ public class VoidEffect {
 
     }
     @SubscribeEvent
-    public static void NO_INVISIBLE(RegisterRenderStateModifiersEvent event) {
+    public static void noInvisible(RegisterRenderStateModifiersEvent event) {
         event.registerEntityModifier(
                 new TypeToken<LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>>() {},
                 (entity, state) -> {
@@ -192,7 +192,7 @@ public class VoidEffect {
         );
     }
     @SubscribeEvent
-    public static void VOID_PLAYER_EFFECT(EntityRenderersEvent.AddLayers event) {
+    public static void addVoidPlayerLayer(EntityRenderersEvent.AddLayers event) {
         for(PlayerModelType type : event.getSkins()) {
             AvatarRenderer<AbstractClientPlayer> playerRenderer = event.getPlayerRenderer(type);    //玩家模型闪光方法
             if (playerRenderer != null) {
@@ -202,7 +202,7 @@ public class VoidEffect {
 
     }
     @SubscribeEvent
-    public static void CLIENT_TICK(ClientTickEvent.Post event) {
+    public static void tickClientEffects(ClientTickEvent.Post event) {
           Minecraft mc = Minecraft.getInstance();
           VoidRingManager.clientTick(mc);
           VoidTrailManager.clientTick(mc);
@@ -214,7 +214,7 @@ public class VoidEffect {
           PhaseWorldTransitionClient.clientTick();
       }
     @SubscribeEvent
-    public static void VOID_RING(RenderLevelStageEvent.AfterParticles event) {
+    public static void renderVoidEffects(RenderLevelStageEvent.AfterParticles event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
             VoidPhasePostProcessor.resetFrame();
@@ -652,7 +652,7 @@ public class VoidEffect {
     }
 
     @SubscribeEvent
-    public static void NO_INVISIBLE(RenderPlayerEvent.Pre event) {
+    public static void noInvisible(RenderPlayerEvent.Pre event) {
         Boolean inVoid = event.getRenderState().getRenderData(IN_VOID_RENDER);
         Float alpha = event.getRenderState().getRenderData(VOID_PLAYER_ALPHA);//隐身效果实现
         if (Boolean.TRUE.equals(inVoid) && alpha != null && alpha <= 0.01F) {

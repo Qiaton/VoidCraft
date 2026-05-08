@@ -11,6 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
+// 区块映射器状态面板只需要这一份快照；修改档位后服务端会重新发送。
 public record ChunkMapperStatusPayload(
         BoundVoidPosition owner,
         int tier,
@@ -33,6 +34,7 @@ public record ChunkMapperStatusPayload(
     );
 
     private static void encode(ByteBuf buffer, ChunkMapperStatusPayload payload) {
+        // 输入源可能为空，所以先写一个 boolean 标记。
         CoordinateBindingsPayload.writePosition(buffer, payload.owner);
         buffer.writeInt(payload.tier);
         buffer.writeInt(payload.radius);
@@ -77,6 +79,7 @@ public record ChunkMapperStatusPayload(
     }
 
     private static VoidEnergyTransfer.BindingStatus readStatus(int ordinal) {
+        // 防止旧客户端/坏数据把状态枚举读越界。
         VoidEnergyTransfer.BindingStatus[] values = VoidEnergyTransfer.BindingStatus.values();
         return ordinal >= 0 && ordinal < values.length ? values[ordinal] : VoidEnergyTransfer.BindingStatus.NOT_FUNCTIONAL;
     }

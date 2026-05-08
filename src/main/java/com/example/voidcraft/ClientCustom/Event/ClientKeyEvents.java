@@ -9,6 +9,7 @@ import com.example.voidcraft.network.UseWatchModulePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -25,9 +26,10 @@ public final class ClientKeyEvents {
 
     // 记录取消键上一 tick 是否已经按下，防止按住 Q 时每 tick 重复触发取消逻辑。
     private static boolean wasCancelDown;
+    private static final int HOLD_RELEASE_HINT_INTERVAL_TICKS = 20;
 
     @SubscribeEvent
-    public static void ON_CLIENT_TICK(ClientTickEvent.Post event) {
+    public static void onClientTick(ClientTickEvent.Pre event) {
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.player == null || mc.level == null) {
@@ -51,7 +53,7 @@ public final class ClientKeyEvents {
     }
 
     @SubscribeEvent
-    public static void ON_KEY_INPUT(InputEvent.Key event) {
+    public static void onKeyInput(InputEvent.Key event) {
         // 只在按下瞬间抢占冲突键；REPEAT/RELEASE 不需要重复清理点击缓存。
         if (event.getAction() != InputConstants.PRESS) {
             return;
@@ -204,7 +206,25 @@ public final class ClientKeyEvents {
                 phase,                                                     // PRESS/HOLD/RELEASE 都交给分发器处理
                 ticks
         );
+        showHoldReleaseCancelHint(mc, phase, ticks);
         return claimed;
+    }
+
+    private static void showHoldReleaseCancelHint(Minecraft mc, HoldReleaseInputState.Phase phase, int ticks) {
+        if (mc.player == null) {
+            return;
+        }
+
+        // 长按开始时提示一次，长时间蓄力时每秒刷新一次，让玩家知道可以按取消键中断技能。
+        if (phase != HoldReleaseInputState.Phase.PRESS
+                && (phase != HoldReleaseInputState.Phase.HOLD || ticks % HOLD_RELEASE_HINT_INTERVAL_TICKS != 0)) {
+            return;
+        }
+
+        mc.player.displayClientMessage(Component.translatable(
+                "message.void_craft.hold_release_cancel_hint",
+                ModKeyMappings.CANCEL_HOLD_RELEASE_KEY.getTranslatedKeyMessage()
+        ), true);
     }
 
     private static int resolveSkillSlotForKeyEvent(Minecraft mc, InputEvent.Key event) {

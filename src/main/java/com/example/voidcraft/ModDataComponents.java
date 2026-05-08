@@ -2,6 +2,7 @@ package com.example.voidcraft;
 
 
 
+import com.mojang.serialization.Codec;
 import com.example.voidcraft.Item.custom.EnergyCoreData;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
@@ -38,6 +39,11 @@ public class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>,DataComponentType<CoordinateDesignatorData>> COORDINATE_DESIGNATOR_DATA = DATA_COMPONENTS.registerComponentType(
             "coordinate_designator_data",
             builder -> builder.persistent(CoordinateDesignatorData.CODEC)
+    );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<Integer>> VOID_CRYSTAL_PROGRESS = DATA_COMPONENTS.registerComponentType(
+            "void_crystal_progress",
+            // 结晶自己的发电进度存在物品栈上，机器只负责读取和推进。
+            builder -> builder.persistent(Codec.INT)
     );
 
     public static void register(IEventBus bus){

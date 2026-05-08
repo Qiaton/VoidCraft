@@ -25,6 +25,23 @@ public class ModBlockItem {
             "chunk_mapper_block",
             ModBlock.CHUNK_MAPPER_BLOCK
     );
+    public static final DeferredItem<BlockItem> VOID_PHENOMENON_COLLECTOR = BLOCK_ITEMS.registerSimpleBlockItem(
+            "void_phenomenon_collector",
+            // 方块物品只负责放置，逻辑都在 VoidPhenomenonCollectorBlockEntity 里。
+            ModBlock.VOID_PHENOMENON_COLLECTOR
+    );
+    public static final DeferredItem<BlockItem> IMPROVED_VOID_PHENOMENON_COLLECTOR = BLOCK_ITEMS.registerSimpleBlockItem(
+            "improved_void_phenomenon_collector",
+            ModBlock.IMPROVED_VOID_PHENOMENON_COLLECTOR
+    );
+    public static final DeferredItem<BlockItem> ADVANCED_VOID_PHENOMENON_COLLECTOR = BLOCK_ITEMS.registerSimpleBlockItem(
+            "advanced_void_phenomenon_collector",
+            ModBlock.ADVANCED_VOID_PHENOMENON_COLLECTOR
+    );
+    public static final DeferredItem<BlockItem> VOID_ATTUNER = BLOCK_ITEMS.registerSimpleBlockItem(
+            "void_attuner",
+            ModBlock.VOID_ATTUNER
+    );
     public static void register(IEventBus bus) {
         BLOCK_ITEMS.register(bus);
     }
