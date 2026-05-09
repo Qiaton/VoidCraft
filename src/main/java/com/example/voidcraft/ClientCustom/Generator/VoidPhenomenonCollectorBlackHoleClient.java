@@ -1,6 +1,6 @@
 package com.example.voidcraft.ClientCustom.Generator;
 
-import com.example.voidcraft.Block.VoidPhenomenonCollectorBlock;
+import com.example.voidcraft.Block.Block.VoidPhenomenonCollectorBlock;
 import com.example.voidcraft.Block.entity.VoidPhenomenonCollectorBlockEntity;
 import com.example.voidcraft.Effect.VoidBlackHoleInstance;
 import com.example.voidcraft.Effect.VoidBlackHoleManager;

@@ -1,7 +1,7 @@
 package com.example.voidcraft.Gui;
 
 import com.example.voidcraft.Block.ModBlock;
-import com.example.voidcraft.Block.VoidChargerBlock;
+import com.example.voidcraft.Block.Block.VoidChargerBlock;
 import com.example.voidcraft.Block.entity.VoidChargerBlockEntity;
 import com.example.voidcraft.ModMenuType;
 import net.minecraft.core.BlockPos;

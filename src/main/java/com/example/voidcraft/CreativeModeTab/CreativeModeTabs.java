@@ -1,6 +1,6 @@
 package com.example.voidcraft.CreativeModeTab;
 
-import com.example.voidcraft.Block.BatteryBlock;
+import com.example.voidcraft.Block.Block.BatteryBlock;
 import com.example.voidcraft.Block.ModBlockEntities;
 import com.example.voidcraft.Block.ModBlockItem;
 import com.example.voidcraft.Item.ModItem;
@@ -38,6 +38,7 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.BATTERY_BLOCK.get());
                         output.accept(getEmptyBatteryBlockItem());
                         output.accept(ModBlockItem.CHUNK_MAPPER_BLOCK.get());
+                        output.accept(ModBlockItem.VOID_ENERGY_CONVERTER.get());
                         output.accept(ModBlockItem.VOID_PHENOMENON_COLLECTOR.get());
                         output.accept(ModBlockItem.IMPROVED_VOID_PHENOMENON_COLLECTOR.get());
                         output.accept(ModBlockItem.ADVANCED_VOID_PHENOMENON_COLLECTOR.get());
@@ -63,6 +64,10 @@ public class CreativeModeTabs {
                         output.accept(ModItem.HIGH_PURITY_VOID_CRYSTAL);
                         output.accept(ModItem.PURE_VOID_CRYSTAL);
                         output.accept(ModItem.VOID_CRYSTAL_RESIDUE);
+                        output.accept(ModItem.CHAOS_ENERGY);
+                        output.accept(ModItem.NEUTRAL_ENERGY);
+                        output.accept(ModItem.PURE_ENERGY);
+                        output.accept(ModItem.VOID_ENERGY);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
                         output.accept(getModuleItem());
                         output.accept(getModuleModifierItem(ModuleModifierType.COOLDOWN_REDUCTION));

@@ -5,7 +5,7 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
-import com.example.voidcraft.world.PhaseDimensions;
+import com.example.voidcraft.World.PhaseDimensions;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;

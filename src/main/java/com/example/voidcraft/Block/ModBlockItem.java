@@ -1,4 +1,5 @@
 package com.example.voidcraft.Block;
+import com.example.voidcraft.Block.Block.BatteryBlockItem;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.world.item.BlockItem;
 import net.neoforged.bus.api.IEventBus;
@@ -24,6 +25,10 @@ public class ModBlockItem {
     public static final DeferredItem<BlockItem> CHUNK_MAPPER_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
             "chunk_mapper_block",
             ModBlock.CHUNK_MAPPER_BLOCK
+    );
+    public static final DeferredItem<BlockItem> VOID_ENERGY_CONVERTER = BLOCK_ITEMS.registerSimpleBlockItem(
+            "void_energy_converter",
+            ModBlock.VOID_ENERGY_CONVERTER
     );
     public static final DeferredItem<BlockItem> VOID_PHENOMENON_COLLECTOR = BLOCK_ITEMS.registerSimpleBlockItem(
             "void_phenomenon_collector",

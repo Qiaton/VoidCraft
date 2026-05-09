@@ -5,7 +5,7 @@ import com.example.voidcraft.Effect.VoidBlackHoleManager;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.Item.custom.SpatialSword;
-import com.example.voidcraft.world.PhaseDimensions;
+import com.example.voidcraft.World.PhaseDimensions;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;

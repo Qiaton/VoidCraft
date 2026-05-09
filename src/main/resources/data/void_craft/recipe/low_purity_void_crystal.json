@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": "#void_craft:energies",
+    "V": "void_craft:void_ore"
+  },
+  "pattern": [
+    "EEE",
+    "EVE",
+    "EEE"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:low_purity_void_crystal"
+  }
+}

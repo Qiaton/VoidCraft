@@ -1,7 +1,7 @@
 package com.example.voidcraft.Block.entity;
 
 import com.example.voidcraft.Block.ModBlockEntities;
-import com.example.voidcraft.Block.VoidChargerBlock;
+import com.example.voidcraft.Block.Block.VoidChargerBlock;
 import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;

@@ -5,7 +5,7 @@ import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
-import com.example.voidcraft.network.ReleaseBlinkModulePayload;
+import com.example.voidcraft.Network.ReleaseBlinkModulePayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;

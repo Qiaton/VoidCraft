@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "void_craft:high_purity_void_crystal",
+    "G": "void_craft:improved_void_phenomenon_collector",
+    "R": "minecraft:redstone_block",
+    "V": "void_craft:void_energy"
+  },
+  "pattern": [
+    "VCV",
+    "VGV",
+    "RVR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:advanced_void_phenomenon_collector"
+  }
+}

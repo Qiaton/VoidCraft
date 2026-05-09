@@ -10,7 +10,7 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Item.custom.ModuleItem.*;
 import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.Sound.ModSound;
-import com.example.voidcraft.network.ModNetworking;
+import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;

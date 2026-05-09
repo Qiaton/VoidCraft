@@ -1,5 +1,6 @@
 package com.example.voidcraft.ClientCustom.Void;
 
+import com.example.voidcraft.Gui.PhaseWorldTransitionOverlay;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Custom.Clock.VoidClock;
 import com.example.voidcraft.Effect.VoidBlackHoleInstance;
@@ -16,7 +17,7 @@ import com.example.voidcraft.Effect.VoidTrailManager;
 import com.example.voidcraft.Effect.VoidTrailRenderer;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
-import com.example.voidcraft.world.PhaseDimensions;
+import com.example.voidcraft.World.PhaseDimensions;
 import com.google.common.reflect.TypeToken;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

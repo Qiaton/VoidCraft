@@ -1,17 +1,18 @@
 package com.example.voidcraft;
 
-import com.example.voidcraft.ClientCustom.EnergyHud;
 import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingPreviewClient;
 import com.example.voidcraft.ClientCustom.Generator.VoidPhenomenonCollectorBlackHoleClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
-import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionOverlay;
-import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreen;
-import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreenRegistration;
+import com.example.voidcraft.Gui.EnergyHud;
 import com.example.voidcraft.Gui.ModuleBoostScreen;
 import com.example.voidcraft.Gui.ModuleScreen;
+import com.example.voidcraft.Gui.PhaseWorldTransitionOverlay;
+import com.example.voidcraft.Gui.PhaseWorldTransitionScreen;
+import com.example.voidcraft.Gui.PhaseWorldTransitionScreenRegistration;
 import com.example.voidcraft.Gui.VoidChargerScreen;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorScreen;
+import com.example.voidcraft.World.projection.PhaseProjectionClient;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.api.distmarker.Dist;
@@ -54,6 +55,7 @@ public class VoidCraftClient {
         PhaseEmitterClientManager.tickLocalAttackInput();
         CoordinateBindingPreviewClient.tick();
         VoidPhenomenonCollectorBlackHoleClient.tick();
+        PhaseProjectionClient.tick();
     }
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {

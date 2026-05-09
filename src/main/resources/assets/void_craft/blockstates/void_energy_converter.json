@@ -1,0 +1,115 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "void_craft:block/void_energy_converter"
+      }
+    },
+    {
+      "when": {
+        "down": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "north": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face"
+      }
+    },
+    {
+      "when": {
+        "south": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "east": "input"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_input_face",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "down": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "north": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face"
+      }
+    },
+    {
+      "when": {
+        "south": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "east": "output"
+      },
+      "apply": {
+        "model": "void_craft:block/void_energy_converter_output_face",
+        "y": 90
+      }
+    }
+  ]
+}
