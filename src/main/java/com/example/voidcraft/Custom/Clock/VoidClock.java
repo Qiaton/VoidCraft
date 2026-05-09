@@ -70,6 +70,9 @@ public class VoidClock {
             VOID_PLAYER_TOTAL_TICKS.remove(uuid);
         }
     }
+    public static boolean getInVoid(Player player) {
+        return VOID_TICKS.getOrDefault(player.getUUID(), 0) != 0;
+    }
     @SubscribeEvent
     public static void clearRemovedEntity(EntityLeaveLevelEvent event) {
         if (!(event.getEntity() instanceof LivingEntity entity)) {

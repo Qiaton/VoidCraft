@@ -44,14 +44,14 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 public class PhaseTurretModule extends ModuleItem {
 
     // 手动炮台的基础数值集中在这里；后续接入配置文件时优先替换这些常量或对应的 getter。
-    private static final double RANGE = 128.0D;
+    private static final double RANGE = 512.0D;
     private static final double AIM_ASSIST_RADIUS = 0.5D;
     private static final int BASE_MODULE_LEVEL = 1;
     private static final int BASE_EMITTER_COUNT = 1;
     private static final float SHOT_DAMAGE = 1.0F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 1F;
     private static final int FIRE_INTERVAL_TICKS = 5;
-    private static final float SPEED_BOOST_PER_LEVEL = 0.25F;
+    private static final float SPEED_BOOST_PER_LEVEL = 1F;
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
     private static final int BURST_ACTIVE_TICKS = 5*20 ;
@@ -61,6 +61,8 @@ public class PhaseTurretModule extends ModuleItem {
     private static final float VOLLEY_DAMAGE_MULTIPLIER = 0.25F;
     private static final double VOLLEY_SCATTER_SCREEN_RATIO = 0.20D;
     private static final float HIT_FLASH_ALPHA_SCALE = 0.60F;
+    private static final double FIRE_TICK_EPSILON = 1.0E-6D;
+    private static final int MAX_DUE_SHOTS_PER_TICK = 20;
 
     // 服务端按玩家和模块槽位保存开火状态，客户端只同步视觉和输入请求。
     private static final Map<UUID, Map<Integer, FireState>> FIRE_STATES = new HashMap<>();
@@ -404,24 +406,26 @@ public class PhaseTurretModule extends ModuleItem {
                 FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
         FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
 
-        if (!canFire(player, state)) {
+        int shotCount = getDueShotCount(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
+        if (shotCount <= 0) {
             return;
         }
 
         // 射击顺序只在服务端推进，客户端只负责按住左键发“请求开火”。
         int emitterCount = getEmitterCount(activeTurret.moduleStack());
-        int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
-        state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
-        setNextFire(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
+        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
+            int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
+            state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
 
-        ShotResult result = activeTurret.module().fire(
-                player,
-                activeTurret.moduleStack(),
-                emitterIndex
-        );
+            ShotResult result = activeTurret.module().fire(
+                    player,
+                    activeTurret.moduleStack(),
+                    emitterIndex
+            );
 
-        if (result != null) {
-            sendShotResult(player, emitterIndex, result);
+            if (result != null) {
+                sendShotResult(player, emitterIndex, result);
+            }
         }
     }
 
@@ -438,43 +442,50 @@ public class PhaseTurretModule extends ModuleItem {
                 FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
         FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
 
-        if (!canFire(player, state)) {
+        int shotCount = getDueShotCount(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
+        if (shotCount <= 0) {
             return;
         }
 
         int emitterCount = getEmitterCount(activeTurret.moduleStack());
-        setNextFire(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
 
-        // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
-        for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
-            ShotResult result = activeTurret.module().fire(
-                    player,
-                    activeTurret.moduleStack(),
-                    emitterIndex,
-                    getVolleyLook(player),
-                    VOLLEY_DAMAGE_MULTIPLIER
-            );
+        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
+            // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
+            for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
+                ShotResult result = activeTurret.module().fire(
+                        player,
+                        activeTurret.moduleStack(),
+                        emitterIndex,
+                        getVolleyLook(player),
+                        VOLLEY_DAMAGE_MULTIPLIER
+                );
 
-            if (result != null) {
-                sendShotResult(player, emitterIndex, result);
+                if (result != null) {
+                    sendShotResult(player, emitterIndex, result);
+                }
             }
         }
     }
 
-    private static boolean canFire(ServerPlayer player, FireState state) {
-        return player.tickCount + 1.0E-6D >= state.nextFireTick;
-    }
-
-    private static void setNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
+    private static int getDueShotCount(ServerPlayer player, FireState state, float fireIntervalTicks) {
         double interval = Math.max(0.05D, fireIntervalTicks);
-        double nextFireTick = state.nextFireTick <= 0.0D
-                ? player.tickCount + interval
-                : state.nextFireTick + interval;
-        if (nextFireTick <= player.tickCount) {
-            nextFireTick = player.tickCount + interval;
+        if (state.nextFireTick <= 0.0D || state.nextFireTick < player.tickCount - 1.0D) {
+            state.nextFireTick = player.tickCount;
         }
 
-        state.nextFireTick = nextFireTick;
+        int shotCount = 0;
+        while (player.tickCount + FIRE_TICK_EPSILON >= state.nextFireTick
+                && shotCount < MAX_DUE_SHOTS_PER_TICK) {
+            state.nextFireTick += interval;
+            shotCount++;
+        }
+
+        if (shotCount >= MAX_DUE_SHOTS_PER_TICK
+                && player.tickCount + FIRE_TICK_EPSILON >= state.nextFireTick) {
+            state.nextFireTick = player.tickCount + interval;
+        }
+
+        return shotCount;
     }
 
     public static void setInputState(ServerPlayer player, boolean shooting, boolean volleyShooting) {

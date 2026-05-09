@@ -3,6 +3,8 @@ package com.example.voidcraft.Item;
 import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import com.example.voidcraft.Item.custom.EnergyCoreItem;
+import com.example.voidcraft.Item.custom.PhaseWatchTier;
+import com.example.voidcraft.Item.custom.TieredPhaseWatch;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
@@ -13,7 +15,6 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
-import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModToolMaterial;
 import com.example.voidcraft.VoidCraft;
@@ -42,12 +43,40 @@ public class ModItem {
             .durability(100)
             .sword(ModToolMaterial.BLACK_BLOCK,5,-2.4F)//这是一把剑（材质，攻击加成，攻击速度 空手=4 所以这里-2.4F就是1.6）
     );
+    public static final DeferredItem<Item> CRUDE_PHASE_WATCH = ITEMS.registerItem(
+            "crude_phase_watch",
+            props -> new TieredPhaseWatch(props, PhaseWatchTier.CRUDE),
+            props-> props
+                    .stacksTo(1)
+                    .durability(100)
+    );
+    public static final DeferredItem<Item> ATTUNED_PHASE_WATCH = ITEMS.registerItem(
+            "attuned_phase_watch",
+            props -> new TieredPhaseWatch(props, PhaseWatchTier.ATTUNED),
+            props-> props
+                    .stacksTo(1)
+                    .durability(100)
+    );
     public static final DeferredItem<Item> PHASE_WATCH = ITEMS.registerItem(
             "phase_watch",
-            PhaseWatch::new,
+            props -> new TieredPhaseWatch(props, PhaseWatchTier.STABILIZED),
             props-> props
-            .stacksTo(1)
-            .durability(100)
+                    .stacksTo(1)
+                    .durability(100)
+    );
+    public static final DeferredItem<Item> RESONANT_PHASE_WATCH = ITEMS.registerItem(
+            "resonant_phase_watch",
+            props -> new TieredPhaseWatch(props, PhaseWatchTier.RESONANT),
+            props-> props
+                    .stacksTo(1)
+                    .durability(100)
+    );
+    public static final DeferredItem<Item> VOID_ENERGY_PHASE_WATCH = ITEMS.registerItem(
+            "void_energy_phase_watch",
+            props -> new TieredPhaseWatch(props, PhaseWatchTier.VOID_ENERGY),
+            props-> props
+                    .stacksTo(1)
+                    .durability(100)
     );
     public static final DeferredItem<EnergyCoreItem> BASIC_ENERGY_CORE = ITEMS.registerItem(
             "basic_energy_core",

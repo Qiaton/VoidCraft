@@ -49,7 +49,7 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 @EventBusSubscriber(modid = VoidCraft.MODID)
 public class AssistPhaseTurretModule extends ModuleItem {
     // 辅助炮台的基础数值集中在这里；以后要做配置文件或 UI 调参时，优先替换这些常量/getter。
-    private static  double RANGE = 512.0D;
+    private static  double RANGE = 32.0D;
     private static double RANGE_SQR = RANGE * RANGE;
     private static final double SAFE_DISTANCE = 4.0D;
     private static final double SAFE_DISTANCE_SQR = SAFE_DISTANCE * SAFE_DISTANCE;
@@ -58,7 +58,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static final float SHOT_DAMAGE = 1.0F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
     private static final int FIRE_INTERVAL_TICKS = 5;
-    private static final float SPEED_BOOST_PER_LEVEL = 0.25F;
+    private static final float SPEED_BOOST_PER_LEVEL = 1F;
     private static final int TARGET_LOCK_TICKS = 20;
     private static final int RECENT_ATTACK_TARGET_TICKS = 100;
     private static final int BURST_ACTIVE_TICKS = 5*20;
@@ -68,6 +68,8 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
     private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.50F;
     private static final float BURST_COOLDOWN_REDUCTION_PER_LEVEL = 0.10F;
+    private static final double FIRE_TICK_EPSILON = 1.0E-6D;
+    private static final int MAX_DUE_SHOTS_PER_TICK = 20;
 
     // 按玩家和模块槽位保存自动炮台运行状态，避免不同槽位的锁定目标和发射顺序互相污染。
     private static final Map<UUID, Map<Integer, FireState>> FIRE_STATES = new HashMap<>();
@@ -276,37 +278,68 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
         // 真正开火的统一入口：模式分支只负责算冷却/扣能量，然后进入这里。
         FireState state = getFire(player, slot);
-        if (player.tickCount < state.nextFireTick) {
+        if (player.tickCount + FIRE_TICK_EPSILON < state.nextFireTick) {
             return false;
         }
 
-        LivingEntity target = pickTarget(player, state);
-        if (target == null) {
+        LivingEntity firstTarget = pickTarget(player, state);
+        if (firstTarget == null) {
+            skipBadShotDebt(player, state);
+            return false;
+        }
+
+        int shotCount = getDueShotCount(player, state, getFireTicks(moduleStack, stats));
+        if (shotCount <= 0) {
             return false;
         }
 
         int emitterCount = PhaseTurretModule.getEmitterCount(moduleStack);
-        int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
-        state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
-        setNextFire(player, state, getFireTicks(moduleStack, stats));
+        boolean fired = false;
+        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
+            LivingEntity target = shotIndex == 0 ? firstTarget : pickTarget(player, state);
+            if (target == null) {
+                skipBadShotDebt(player, state);
+                break;
+            }
 
-        hurtTarget(player, target, getDamage(moduleStack, stats, target));
-        Vec3 targetPos = getTargetPos(target);
-        ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
-        ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getBeam(moduleStack, stats, target));
-        return true;
-    }
+            int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
+            state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
 
-    private static void setNextFire(ServerPlayer player, FireState state, float fireIntervalTicks) {
-        double interval = Math.max(0.05D, fireIntervalTicks);
-        double nextFireTick = state.nextFireTick <= 0.0D
-                ? player.tickCount + interval
-                : state.nextFireTick + interval;
-        if (nextFireTick <= player.tickCount) {
-            nextFireTick = player.tickCount + interval;
+            hurtTarget(player, target, getDamage(moduleStack, stats, target));
+            Vec3 targetPos = getTargetPos(target);
+            ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
+            ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getBeam(moduleStack, stats, target));
+            fired = true;
         }
 
-        state.nextFireTick = nextFireTick;
+        return fired;
+    }
+
+    private static int getDueShotCount(ServerPlayer player, FireState state, float fireIntervalTicks) {
+        double interval = Math.max(0.05D, fireIntervalTicks);
+        if (state.nextFireTick <= 0.0D || state.nextFireTick < player.tickCount - 1.0D) {
+            state.nextFireTick = player.tickCount;
+        }
+
+        int shotCount = 0;
+        while (player.tickCount + FIRE_TICK_EPSILON >= state.nextFireTick
+                && shotCount < MAX_DUE_SHOTS_PER_TICK) {
+            state.nextFireTick += interval;
+            shotCount++;
+        }
+
+        if (shotCount >= MAX_DUE_SHOTS_PER_TICK
+                && player.tickCount + FIRE_TICK_EPSILON >= state.nextFireTick) {
+            state.nextFireTick = player.tickCount + interval;
+        }
+
+        return shotCount;
+    }
+
+    private static void skipBadShotDebt(ServerPlayer player, FireState state) {
+        if (state.nextFireTick <= player.tickCount + FIRE_TICK_EPSILON) {
+            state.nextFireTick = player.tickCount + 1.0D;
+        }
     }
 
     protected float getFireTicks(ItemStack moduleStack, Stats stats) {

@@ -30,13 +30,17 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class PhaseWatch extends Item {
-    public static final int WATCH_MODULE_SLOT_COUNT = 2;      //手套内模块插槽数
+    public static final int WATCH_MODULE_SLOT_COUNT = 2;      // 手表内模块插槽数
     public static final int WATCH_CORE_SLOT = 2;              // 能量核心固定放在第 3 槽，避免影响 0/1 模块槽
     public static final int WATCH_CONTAINER_SLOT_COUNT = 3;
-    private static final long BASE_MAX_ENERGY = 1_000L;
     private static final long MIN_ENERGY = -10_000L;
+    private final PhaseWatchTier tier;
 
     public PhaseWatch(Properties properties) {
+        this(properties, PhaseWatchTier.STABILIZED);
+    }
+
+    protected PhaseWatch(Properties properties, PhaseWatchTier tier) {
         super(properties.component(
                 DataComponents.TOOLTIP_DISPLAY,
                 new TooltipDisplay(
@@ -44,7 +48,7 @@ public class PhaseWatch extends Item {
                         new LinkedHashSet<>(List.of(DataComponents.CONTAINER))
                 )
         ));
-
+        this.tier = tier == null ? PhaseWatchTier.STABILIZED : tier;
     }
 
     public static long getMaxEnergy(ItemStack watchStack) {
@@ -54,8 +58,19 @@ public class PhaseWatch extends Item {
         return watch.getBaseMaxEnergy(watchStack);
     }
 
+    public static PhaseWatchTier getTier(ItemStack watchStack) {
+        if (watchStack.isEmpty() || !(watchStack.getItem() instanceof PhaseWatch watch)) {
+            return PhaseWatchTier.STABILIZED;
+        }
+        return watch.getTier();
+    }
+
+    public PhaseWatchTier getTier() {
+        return tier;
+    }
+
     protected long getBaseMaxEnergy(ItemStack watchStack) {
-        return BASE_MAX_ENERGY;
+        return tier.maxEnergy();
     }
 
     public static long getEnergy(ItemStack watchStack) {
@@ -152,7 +167,7 @@ public class PhaseWatch extends Item {
             serverPlayer.openMenu(new SimpleMenuProvider(
                     (containerId,playerInventory,openingPlayer)->
                             new ModuleMenu(containerId,playerInventory,new WatchModuleContainer(itemStack)),//创建菜单方法
-                    Component.translatable("screen.void_craft.phase_watch")                                                //菜单标题名
+                    itemStack.getHoverName()                                                //菜单标题名
             ));
         }
 
@@ -168,8 +183,11 @@ public class PhaseWatch extends Item {
             TooltipFlag flag
     ) {
         super.appendHoverText(stack, context, tooltipDisplay, tooltip, flag);
-       NonNullList<ItemStack> items = getContainerItems(stack, WATCH_MODULE_SLOT_COUNT);
-       for(ItemStack itemStack : items){
+        PhaseWatchTier tier = getTier(stack);
+        tooltip.accept(Component.translatable("tooltip.void_craft.phase_watch.tier", tier.level(), tier.getDisplayName()));
+        tooltip.accept(Component.translatable("tooltip.void_craft.phase_watch.energy", getEnergy(stack), getMaxEnergy(stack)));
+        NonNullList<ItemStack> items = getContainerItems(stack, WATCH_MODULE_SLOT_COUNT);
+        for(ItemStack itemStack : items){
            if(!itemStack.isEmpty()){
                ModuleData data = itemStack.get(ModDataComponents.MODULE_DATA.get());
                if(data != null){

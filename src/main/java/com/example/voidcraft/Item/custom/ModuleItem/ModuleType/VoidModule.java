@@ -55,7 +55,13 @@ public class VoidModule extends ModuleItem {
         }
         if(mode == BURST){
             if(!ModuleSkillClock.canUseNow(player,slot)){
-                return;
+                if(VoidClock.getInVoid(player)){
+                    VoidClock.stopVoid(player);
+                    return;
+                }
+                if(!ModuleSkillClock.tryUseEnergy(player,stats.channelEnergyCost()*38)) {
+                    return;
+                }
             }
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
             ModSound.playEnterVoid(level, player);

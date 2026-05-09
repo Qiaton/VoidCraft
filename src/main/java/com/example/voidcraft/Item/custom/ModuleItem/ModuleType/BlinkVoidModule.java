@@ -116,6 +116,7 @@ public class BlinkVoidModule extends ModuleItem {
                 player.getYRot(),
                 player.getXRot()
         );
+        player.resetFallDistance();
     }
     public static Stats getStats(ItemStack moduleStack) {
         ModuleData data = moduleStack.get(ModDataComponents.MODULE_DATA.get());

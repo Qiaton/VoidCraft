@@ -49,7 +49,11 @@ public class CreativeModeTabs {
                         output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
+                        output.accept(ModItem.CRUDE_PHASE_WATCH);
+                        output.accept(ModItem.ATTUNED_PHASE_WATCH);
                         output.accept(ModItem.PHASE_WATCH);
+                        output.accept(ModItem.RESONANT_PHASE_WATCH);
+                        output.accept(ModItem.VOID_ENERGY_PHASE_WATCH);
                         output.accept(ModItem.BASIC_ENERGY_CORE);
                         output.accept(ModItem.ADVANCED_ENERGY_CORE);
                         output.accept(ModItem.ELITE_ENERGY_CORE);
