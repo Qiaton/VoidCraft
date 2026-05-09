@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "void_craft:item/void_module_item"
+    "layer0": "void_craft:item/elite_energy_core"
   }
 }

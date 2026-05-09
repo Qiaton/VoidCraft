@@ -1,8 +1,8 @@
 package com.example.voidcraft.ClientCustom.Coordinate;
 
-import com.example.voidcraft.Block.entity.VoidEnergyBinding;
-import com.example.voidcraft.Block.entity.VoidEnergyBindingType;
-import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBindingType;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.Effect.VoidBeamInstance;
 import com.example.voidcraft.Effect.VoidBeamManager;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;

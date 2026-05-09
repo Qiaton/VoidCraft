@@ -25,10 +25,10 @@ import org.jspecify.annotations.Nullable;
 public class VoidPhenomenonCollectorBlock extends BaseEntityBlock {
     public static final MapCodec<VoidPhenomenonCollectorBlock> CODEC = simpleCodec(VoidPhenomenonCollectorBlock::new);
     public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
-    private static final CollectorTierConfig BASE_CONFIG = new CollectorTierConfig(1, "I", 1L, 50_000L, 1_000L, 1);
-    private static final CollectorTierConfig IMPROVED_CONFIG = new CollectorTierConfig(2, "II", 2L, 70_000L, 1_000L, 3);
-    private static final CollectorTierConfig ADVANCED_CONFIG = new CollectorTierConfig(3, "III", 3L, 150_000L, 1_000L, 6);
-    private static final CollectorTierConfig ATTUNER_CONFIG = new CollectorTierConfig(4, "IV", 5L, 500_000L, 1_000L, 9);
+    private static final CollectorTierConfig BASE_CONFIG = new CollectorTierConfig(1, "I", 1L, 50_000L, 1);
+    private static final CollectorTierConfig IMPROVED_CONFIG = new CollectorTierConfig(2, "II", 2L, 70_000L, 3);
+    private static final CollectorTierConfig ADVANCED_CONFIG = new CollectorTierConfig(3, "III", 3L, 150_000L, 6);
+    private static final CollectorTierConfig ATTUNER_CONFIG = new CollectorTierConfig(4, "IV", 5L, 500_000L, 9);
 
     public VoidPhenomenonCollectorBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -108,7 +108,6 @@ public class VoidPhenomenonCollectorBlock extends BaseEntityBlock {
             String tierDisplayName,
             long baseGenerationPerTick,
             long cacheCapacity,
-            long maxExtract,
             int crystalSlotCount
     ) {
     }

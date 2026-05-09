@@ -1,6 +1,6 @@
 package com.example.voidcraft.Gui;
 
-import com.example.voidcraft.Block.entity.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -8,7 +8,6 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
 
 import java.util.List;
 
@@ -50,12 +49,11 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
         int y = this.topPos;
         int panelX = x + PANEL_LEFT;
 
-        // 背景全部用简单 fill 画，避免额外维护 GUI 贴图。
-        guiGraphics.fill(x, y, x + this.imageWidth, y + this.imageHeight, 0xE00B0E12);
-        guiGraphics.fill(panelX, y, panelX + VoidPhenomenonCollectorMenu.PANEL_WIDTH, y + VoidPhenomenonCollectorMenu.PANEL_HEIGHT, 0xF014181D);
-        guiGraphics.renderOutline(panelX, y, VoidPhenomenonCollectorMenu.PANEL_WIDTH, VoidPhenomenonCollectorMenu.PANEL_HEIGHT, 0x663A5368);
-        guiGraphics.fill(panelX, y + 39, panelX + VoidPhenomenonCollectorMenu.PANEL_WIDTH, y + 40, 0x44283844);
-        guiGraphics.fill(x + 6, y + VoidPhenomenonCollectorMenu.PLAYER_INVENTORY_Y - 5, x + this.imageWidth - 6, y + this.imageHeight - 6, 0xAA11161B);
+        // 背景、主面板、背包区域都走 GuiDraw，后面新机器 GUI 可以照这个顺序画。
+        GuiDraw.drawBg(guiGraphics, x, y, this.imageWidth, this.imageHeight);
+        GuiDraw.drawPanel(guiGraphics, panelX, y, VoidPhenomenonCollectorMenu.PANEL_WIDTH, VoidPhenomenonCollectorMenu.PANEL_HEIGHT);
+        GuiDraw.drawPanelLine(guiGraphics, panelX, y, VoidPhenomenonCollectorMenu.PANEL_WIDTH, 39);
+        GuiDraw.drawInv(guiGraphics, x + 6, y + VoidPhenomenonCollectorMenu.PLAYER_INVENTORY_Y - 5, this.imageWidth - 12, this.imageHeight - VoidPhenomenonCollectorMenu.PLAYER_INVENTORY_Y - 1);
 
         renderSlotBackgrounds(guiGraphics);
         if (isConnectionsPage()) {
@@ -87,11 +85,11 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
         int localY = (int) event.y() - this.topPos;
 
         // 页签是纯客户端切换，不需要发包。
-        if (isInRect(localX, localY, TAB_OVERVIEW_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)) {
+        if (GuiDraw.inRect(localX, localY, TAB_OVERVIEW_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)) {
             setSelectedTab(TAB_OVERVIEW);
             return true;
         }
-        if (isInRect(localX, localY, TAB_CONNECTIONS_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)) {
+        if (GuiDraw.inRect(localX, localY, TAB_CONNECTIONS_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)) {
             setSelectedTab(TAB_CONNECTIONS);
             return true;
         }
@@ -125,25 +123,19 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
                 TAB_OVERVIEW_X,
                 Component.translatable("screen.void_craft.void_phenomenon_collector.overview"),
                 this.selectedTab == TAB_OVERVIEW,
-                isInRect(mouseX, mouseY, TAB_OVERVIEW_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)
+                GuiDraw.inRect(mouseX, mouseY, TAB_OVERVIEW_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)
         );
         renderTab(
                 guiGraphics,
                 TAB_CONNECTIONS_X,
                 Component.translatable("screen.void_craft.void_phenomenon_collector.connections"),
                 this.selectedTab == TAB_CONNECTIONS,
-                isInRect(mouseX, mouseY, TAB_CONNECTIONS_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)
+                GuiDraw.inRect(mouseX, mouseY, TAB_CONNECTIONS_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)
         );
     }
 
     private void renderTab(GuiGraphics guiGraphics, int x, Component text, boolean selected, boolean hovered) {
-        int color = selected ? 0xFFB9F4FF : hovered ? 0xFFD8E8F6 : 0xFF8290A0;
-        int background = selected ? 0x552A4855 : hovered ? 0x33202B33 : 0x22181F26;
-        guiGraphics.fill(x, TAB_Y, x + TAB_WIDTH, TAB_Y + TAB_HEIGHT, background);
-        guiGraphics.drawCenteredString(this.font, text, x + TAB_WIDTH / 2, TAB_Y + 4, color);
-        if (selected) {
-            guiGraphics.fill(x + 5, TAB_Y + TAB_HEIGHT - 2, x + TAB_WIDTH - 5, TAB_Y + TAB_HEIGHT, 0xFF62D6E8);
-        }
+        GuiDraw.drawTab(guiGraphics, this.font, x, TAB_Y, TAB_WIDTH, TAB_HEIGHT, text, selected, hovered);
     }
 
     private void renderOverview(GuiGraphics guiGraphics) {
@@ -201,7 +193,7 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
             VoidEnergyBinding binding = outputs.get(row);
             int y = 60 + row * 14;
             String posText = binding.target().pos().getX() + ", " + binding.target().pos().getY() + ", " + binding.target().pos().getZ();
-            String clippedPos = clip(posText, 62);
+            String clippedPos = GuiDraw.clip(this.font, posText, 62);
             guiGraphics.drawString(this.font, Component.translatable("screen.void_craft.void_phenomenon_collector.output_short"), PANEL_LEFT + 12, y, 0xFF9FC7D6, false);
             guiGraphics.drawString(this.font, clippedPos, PANEL_LEFT + 40, y, 0xFFEAF4FF, false);
             guiGraphics.drawString(
@@ -228,22 +220,13 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
 
     private void renderSlotBackgrounds(GuiGraphics guiGraphics) {
         // 只给当前 active 的槽画背景，连接页隐藏结晶槽时这里也不会画出来。
-        for (Slot slot : this.menu.slots) {
-            if (!slot.isActive()) {
-                continue;
-            }
-            int x = this.leftPos + slot.x;
-            int y = this.topPos + slot.y;
-            guiGraphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF0A0D10);
-            guiGraphics.renderOutline(x - 1, y - 1, 18, 18, 0x774B6577);
-        }
+        GuiDraw.drawSlots(guiGraphics, this.menu.slots, this.leftPos, this.topPos);
     }
 
     private void renderConnectionListBackground(GuiGraphics guiGraphics) {
         int x = this.leftPos + PANEL_LEFT + 8;
         int y = this.topPos + 56;
-        guiGraphics.fill(x, y, x + CONNECTION_LIST_WIDTH, y + 45, 0x66090D11);
-        guiGraphics.renderOutline(x, y, CONNECTION_LIST_WIDTH, 45, 0x333A5368);
+        GuiDraw.drawBox(guiGraphics, x, y, CONNECTION_LIST_WIDTH, 45);
     }
 
     private boolean isOverviewPage() {
@@ -254,18 +237,4 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
         return this.selectedTab == TAB_CONNECTIONS;
     }
 
-    private boolean isInRect(double mouseX, double mouseY, int x, int y, int width, int height) {
-        return mouseX >= x
-                && mouseY >= y
-                && mouseX < x + width
-                && mouseY < y + height;
-    }
-
-    private String clip(String text, int width) {
-        // 坐标过长时截断，防止文字顶出面板。
-        if (this.font.width(text) <= width) {
-            return text;
-        }
-        return this.font.plainSubstrByWidth(text, width - this.font.width("...")) + "...";
-    }
 }

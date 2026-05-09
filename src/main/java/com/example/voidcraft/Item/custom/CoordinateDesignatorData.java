@@ -1,6 +1,6 @@
 package com.example.voidcraft.Item.custom;
 
-import com.example.voidcraft.Block.entity.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;

@@ -21,16 +21,14 @@ import com.google.common.reflect.TypeToken;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.player.PlayerModel;
-import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
-import net.minecraft.client.renderer.entity.player.AvatarRenderer;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.rendertype.LayeringTransform;
@@ -41,9 +39,8 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.context.ContextKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -52,7 +49,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 
 import java.util.ArrayList;
@@ -130,22 +127,23 @@ public class VoidEffect {
             return null;
         }
     }
-    public static class VoidPlayerEffect extends  RenderLayer<AvatarRenderState, PlayerModel> {
-        public VoidPlayerEffect(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
-            super(parent);          //玩家渲染类
+    public static class VoidLivingEffect<S extends LivingEntityRenderState, M extends EntityModel<? super S>>
+            extends RenderLayer<S, M> {
+        public VoidLivingEffect(RenderLayerParent<S, M> parent) {
+            super(parent);          //沿用当前实体自己的模型，只在外面叠一层虚空材质
         }
         @Override
         public void submit(PoseStack poseStack,
-                           SubmitNodeCollector collector,   //获取玩家渲染
-                           int packedLight,         //获取玩家光照信息
-                           AvatarRenderState state, //获取玩家当前状态
+                           SubmitNodeCollector collector,   //获取实体渲染
+                           int packedLight,         //获取实体光照信息
+                           S state,                  //获取实体当前状态
                            float yRot,              //y轴旋转信息
                            float xRot) {            //x轴旋转信息
             Float alpha = state.getRenderData(VOID_PLAYER_ALPHA);
             if (alpha == null || alpha < 0.01F) {
                 return;
             }
-            int a = Mth.clamp((int)(alpha*255), 0, 255);        //玩家闪光效果实现
+            int a = Mth.clamp((int)(alpha*255), 0, 255);        //虚空闪光效果实现
             int tintColor = (a<<24)|0xFFFFFF;
             collector.order(EntityRenderState.NO_OUTLINE)
                     .submitModel(
@@ -169,37 +167,38 @@ public class VoidEffect {
         event.registerEntityModifier(
                 new TypeToken<LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>>() {},
                 (entity, state) -> {
-                    if (entity instanceof Player player) {      //隐身效果
-                        boolean inVoid = player.getData(ModAttachments.IN_VOID.get());
-                        state.setRenderData(IN_VOID_RENDER, inVoid);
-                        if (!(VoidClock.VOID_PLAYER_TICKS.get(player.getUUID())==null) || inVoid) {               //清除影子
-                            int left = VoidClock.VOID_PLAYER_TICKS.getOrDefault(player.getUUID(),0);
-                            int total = VoidClock.VOID_PLAYER_TOTAL_TICKS.getOrDefault(
-                                    player.getUUID(),
-                                    VoidClock.DEFAULT_VOID_PLAYER_FLASH_TOTAL
-                            );
-                            float progress = 1 - (float) left / Math.max(1, total);
-                            float alpha = 1.0F - progress * progress;
-                            state.shadowRadius = 0.0F;
-                            state.shadowPieces.clear();
-                            state.setRenderData(VOID_PLAYER_ALPHA, alpha);
-
-
-
-                        }
+                    boolean inVoid = entity.getData(ModAttachments.IN_VOID.get());
+                    state.setRenderData(IN_VOID_RENDER, inVoid);
+                    if (VoidClock.hasVoidFlash(entity) || inVoid) {               //虚空实体不投普通影子
+                        float alpha = VoidClock.getVoidFlashAlpha(entity);
+                        state.shadowRadius = 0.0F;
+                        state.shadowPieces.clear();
+                        state.setRenderData(VOID_PLAYER_ALPHA, alpha);
                     }
                 }
         );
     }
     @SubscribeEvent
     public static void addVoidPlayerLayer(EntityRenderersEvent.AddLayers event) {
-        for(PlayerModelType type : event.getSkins()) {
-            AvatarRenderer<AbstractClientPlayer> playerRenderer = event.getPlayerRenderer(type);    //玩家模型闪光方法
-            if (playerRenderer != null) {
-                playerRenderer.addLayer(new VoidPlayerEffect(playerRenderer));
+        for(EntityType<?> entityType : event.getEntityTypes()) {
+            EntityRenderer<?, ?> renderer = event.getRenderer(entityType);
+            if (renderer instanceof LivingEntityRenderer<?, ?, ?> livingRenderer) {
+                addVoidLivingLayer(livingRenderer);
             }
         }
 
+        for(var type : event.getSkins()) {
+            LivingEntityRenderer<?, ?, ?> playerRenderer = event.getPlayerRenderer(type);    //玩家模型单独注册在皮肤表里
+            if (playerRenderer != null) {
+                addVoidLivingLayer(playerRenderer);
+            }
+        }
+
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void addVoidLivingLayer(LivingEntityRenderer renderer) {
+        renderer.addLayer(new VoidLivingEffect(renderer));
     }
     @SubscribeEvent
     public static void tickClientEffects(ClientTickEvent.Post event) {
@@ -652,7 +651,7 @@ public class VoidEffect {
     }
 
     @SubscribeEvent
-    public static void noInvisible(RenderPlayerEvent.Pre event) {
+    public static void noInvisible(RenderLivingEvent.Pre<?, ?, ?> event) {
         Boolean inVoid = event.getRenderState().getRenderData(IN_VOID_RENDER);
         Float alpha = event.getRenderState().getRenderData(VOID_PLAYER_ALPHA);//隐身效果实现
         if (Boolean.TRUE.equals(inVoid) && alpha != null && alpha <= 0.01F) {

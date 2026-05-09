@@ -4,9 +4,11 @@ import com.example.voidcraft.Item.ModItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleMode;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType;
 import com.example.voidcraft.ModDataComponents;
 import net.minecraft.resources.Identifier;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
@@ -14,6 +16,7 @@ import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
 import net.minecraft.world.level.storage.loot.functions.SetComponentsFunction;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.minecraft.world.item.component.CustomModelData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 
@@ -335,6 +338,15 @@ public final class ModLootTables {
                 .apply(SetComponentsFunction.setComponent(
                         ModDataComponents.MODULE_MODIFIER_DATA.get(),
                         new ModuleModifierData(type, level)
+                ))
+                .apply(SetComponentsFunction.setComponent(
+                        DataComponents.CUSTOM_MODEL_DATA,
+                        new CustomModelData(
+                                List.of(),
+                                List.of(),
+                                List.of(type.getId()),
+                                List.of()
+                        )
                 ));
     }
 

@@ -2,6 +2,11 @@ package com.example.voidcraft.Block.entity;
 
 import com.example.voidcraft.Block.BatteryBlock;
 import com.example.voidcraft.Block.ModBlockEntities;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -22,11 +27,15 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     // 电池既能收也能发，是虚空能网络里的中转缓存。
     public static final long CAPACITY = 40_000L;
     public static final long DEFAULT_ENERGY = 40_000L;
-    public static final long MAX_INSERT = 1_000L;
-    public static final long MAX_EXTRACT = 1_000L;
+    public static final long MAX_INSERT = VoidEnergyProfile.DEFAULT_MAX_INPUT_PER_TRANSFER;
     public static final int MAX_INPUT_BINDINGS = 8;
     public static final int MAX_OUTPUT_BINDINGS = 8;
-    private static final int TRANSFER_INTERVAL_TICKS = 5;
+    private static final VoidEnergyProfile ENERGY_PROFILE = VoidEnergyProfile.bidirectional(
+            CAPACITY,
+            MAX_INSERT,
+            MAX_INPUT_BINDINGS,
+            MAX_OUTPUT_BINDINGS
+    );
 
     private long voidEnergy = DEFAULT_ENERGY;
     private final List<VoidEnergyBinding> inputSources = new ArrayList<>();
@@ -45,13 +54,13 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     }
 
     public static void serverTick(net.minecraft.world.level.Level level, BlockPos pos, BlockState state, BatteryBlockEntity battery) {
-        if (level.isClientSide() || level.getGameTime() % TRANSFER_INTERVAL_TICKS != 0L) {
+        if (level.isClientSide() || !VoidEnergyTransfer.shouldRunTransfer(level, battery)) {
             return;
         }
 
-        // 每隔几 tick 更新外观并从所有输入来源拉电。
+        // 每隔几 tick 更新外观，并把自己的缓存公平分给输出目标。
         battery.updateEnergyStage();
-        battery.pullFromInputSources();
+        VoidEnergyTransfer.pushToOutputTargets(battery);
     }
 
     @Override
@@ -109,48 +118,6 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
         }
     }
 
-    private void pullFromInputSources() {
-        // 电池主动从输入端拉电，来源没加载就暂时跳过，来源失效才删除绑定。
-        if (level == null || level.isClientSide() || !canReceiveVoidEnergy()) {
-            return;
-        }
-
-        long remainingRequest = Math.min(getMaxVoidEnergyInputPerTransfer(), getVoidEnergyCapacity() - getVoidEnergyStored());
-        if (remainingRequest <= 0L) {
-            return;
-        }
-
-        for (VoidEnergyBinding binding : List.copyOf(this.inputSources)) {
-            VoidEnergyTransfer.ResolveResult sourceResult = VoidEnergyTransfer.resolve(level.getServer(), binding.target());
-            if (sourceResult.status() == VoidEnergyTransfer.BindingStatus.UNLOADED) {
-                continue;
-            }
-            if (sourceResult.status() != VoidEnergyTransfer.BindingStatus.OK) {
-                removeInputSource(binding.target());
-                continue;
-            }
-
-            VoidEnergyTransferBlockEntity source = sourceResult.endpoint();
-            if (!source.canExtractVoidEnergy()) {
-                removeInputSource(binding.target());
-                source.removeOutputTarget(getVoidPosition());
-                continue;
-            }
-
-            if (!source.hasOutputTarget(getVoidPosition())) {
-                removeInputSource(binding.target());
-                continue;
-            }
-
-            VoidEnergyTransfer.TransferResult result = VoidEnergyTransfer.tryUseEnergy(source, this, remainingRequest);
-            remainingRequest -= result.movedEnergy();
-            if (remainingRequest <= 0L) {
-                // 本次需求已经填满，剩下的来源等下一轮再拉。
-                return;
-            }
-        }
-    }
-
     @Override
     public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
@@ -180,43 +147,13 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     }
 
     @Override
-    public boolean canReceiveVoidEnergy() {
-        return true;
-    }
-
-    @Override
-    public boolean canExtractVoidEnergy() {
-        return true;
-    }
-
-    @Override
-    public int getMaxInputBindings() {
-        return MAX_INPUT_BINDINGS;
-    }
-
-    @Override
-    public int getMaxOutputBindings() {
-        return MAX_OUTPUT_BINDINGS;
+    public VoidEnergyProfile getVoidEnergyProfile() {
+        return ENERGY_PROFILE;
     }
 
     @Override
     public long getVoidEnergyStored() {
         return this.voidEnergy;
-    }
-
-    @Override
-    public long getVoidEnergyCapacity() {
-        return CAPACITY;
-    }
-
-    @Override
-    public long getMaxVoidEnergyInputPerTransfer() {
-        return MAX_INSERT;
-    }
-
-    @Override
-    public long getMaxVoidEnergyOutputPerTransfer() {
-        return MAX_EXTRACT;
     }
 
     @Override
@@ -258,6 +195,6 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     }
 
     private static long clampEnergy(long energy) {
-        return Math.max(0L, Math.min(CAPACITY, energy));
+        return ENERGY_PROFILE.clampEnergy(energy);
     }
 }

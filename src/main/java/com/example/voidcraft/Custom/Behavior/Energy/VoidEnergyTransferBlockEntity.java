@@ -1,37 +1,59 @@
-package com.example.voidcraft.Block.entity;
+package com.example.voidcraft.Custom.Behavior.Energy;
+
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.List;
 
 // 能接入虚空能网络的方块实体都实现这个接口。
 // 具体方块只负责存能量和列表，通用的添加/删除绑定逻辑放在默认方法里。
 public interface VoidEnergyTransferBlockEntity {
+    VoidEnergyProfile getVoidEnergyProfile();
+
     BoundVoidPosition getVoidPosition();
 
     List<VoidEnergyBinding> getInputSources();
 
     List<VoidEnergyBinding> getOutputTargets();
 
-    boolean canReceiveVoidEnergy();
+    default boolean canReceiveVoidEnergy() {
+        return getVoidEnergyProfile().canReceive();
+    }
 
-    boolean canExtractVoidEnergy();
+    default boolean canExtractVoidEnergy() {
+        return getVoidEnergyProfile().canExtract();
+    }
 
-    int getMaxInputBindings();
+    default int getMaxInputBindings() {
+        return getVoidEnergyProfile().maxInputBindings();
+    }
 
-    int getMaxOutputBindings();
+    default int getMaxOutputBindings() {
+        return getVoidEnergyProfile().maxOutputBindings();
+    }
 
     long getVoidEnergyStored();
 
-    long getVoidEnergyCapacity();
+    default long getVoidEnergyCapacity() {
+        return getVoidEnergyProfile().capacity();
+    }
 
-    long getMaxVoidEnergyInputPerTransfer();
-
-    long getMaxVoidEnergyOutputPerTransfer();
+    default long getMaxVoidEnergyInputPerTransfer() {
+        return getVoidEnergyProfile().maxInputPerTransfer();
+    }
 
     long receiveVoidEnergy(long amount, boolean simulate);
 
     long extractVoidEnergy(long amount, boolean simulate);
 
     void onVoidEnergyNetworkChanged();
+
+    default Level getVoidEnergyLevel() {
+        if (this instanceof BlockEntity blockEntity) {
+            return blockEntity.getLevel();
+        }
+        return null;
+    }
 
     // 输入列表保存“谁给我供能”。
     default boolean hasInputSource(BoundVoidPosition source) {

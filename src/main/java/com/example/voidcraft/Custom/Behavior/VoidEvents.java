@@ -5,7 +5,7 @@ import com.example.voidcraft.VoidCraft;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.TriState;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -16,7 +16,7 @@ import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 @EventBusSubscriber
 public class VoidEvents {
@@ -24,9 +24,9 @@ public class VoidEvents {
     @SubscribeEvent
     //虚空内无法受伤
     public static void noVoidHurt(EntityInvulnerabilityCheckEvent event){//这一大串相当于 造成伤害时
-        if(event.getEntity() instanceof Player player){ //如果获取的实体为玩家类型 player就是event的别名
-            if (!player.level().isClientSide()) {
-                if (player.getData(ModAttachments.IN_VOID.get())) { //如果player获取IN_VOID的数据为true
+        if(event.getEntity() instanceof LivingEntity livingEntity){ //虚空状态挂在活体实体上，玩家和生物都走同一条规则
+            if (!livingEntity.level().isClientSide()) {
+                if (livingEntity.getData(ModAttachments.IN_VOID.get())) { //如果实体获取IN_VOID的数据为true
                     event.setInvulnerable(true);    //开启无敌效果
                 }
             }
@@ -34,32 +34,30 @@ public class VoidEvents {
     }
     @SubscribeEvent
     public static void onVoidJump(net.neoforged.neoforge.event.entity.living.LivingEvent.LivingJumpEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+        LivingEntity entity = event.getEntity();
+
+        if (!entity.getData(ModAttachments.IN_VOID.get())) {
             return;
         }
 
-        if (!player.getData(ModAttachments.IN_VOID.get())) {
-            return;
-        }
-
-        Vec3 motion = player.getDeltaMovement();
+        Vec3 motion = entity.getDeltaMovement();
 
         // 当前水平速度
         double horizontal = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
 
-        double minHorizontalSpeed = player.getData(ModAttachments.VOID_SPEED)+0.2;
+        double minHorizontalSpeed = entity.getData(ModAttachments.VOID_SPEED)+0.2;
 
         // 只有“起跳后水平速度不够”时才补
         if (horizontal > 1.0E-6 && horizontal < minHorizontalSpeed) {
             double scale = minHorizontalSpeed / horizontal;
 
-            player.setDeltaMovement(
+            entity.setDeltaMovement(
                     motion.x * scale,
                     motion.y,
                     motion.z * scale
             );
 
-            player.hurtMarked = true;
+            entity.hurtMarked = true;
         }
     }
     @SubscribeEvent
@@ -106,32 +104,34 @@ public class VoidEvents {
         }
     }
     @SubscribeEvent
-    //怪物无法看见玩家
+    //怪物无法看见进入虚空的活体实体
     public static void noMobTarget(LivingChangeTargetEvent event){ //生物准备更换目标时
-        if(event.getNewAboutToBeSetTarget() instanceof Player player && player.getData(ModAttachments.IN_VOID.get())) {
-            if (player.getData(ModAttachments.IN_VOID.get())) {
-                event.setNewAboutToBeSetTarget(null);
-            }
+        if(event.getNewAboutToBeSetTarget() instanceof LivingEntity target
+                && target.getData(ModAttachments.IN_VOID.get())) {
+            event.setNewAboutToBeSetTarget(null);
         }
     }
     @SubscribeEvent
-    //让原来锁定玩家的怪物让他们听话别锁定
-    public static void clearMobTarget(PlayerTickEvent.Post event){
-        Player player = event.getEntity();
-        if (player.level().isClientSide() || !player.getData(ModAttachments.IN_VOID.get())) {
+    //让原来锁定虚空实体的怪物让他们听话别锁定
+    public static void clearMobTarget(EntityTickEvent.Post event){
+        if (!(event.getEntity() instanceof Mob mob) || mob.level().isClientSide()) {
             return;
         }
-        //getEntitiesOfClass查找实体（实体类型，范围） getBoundingBox().inflate(32)获取碰撞箱32范围内
-        for(Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(32))) {
+
+        LivingEntity target = mob.getTarget();
+        if (target != null && target.getData(ModAttachments.IN_VOID.get())) {
             mob.setTarget(null);
         }
     }
     @SubscribeEvent
     //虚空内无法溺死
-    public static void keepAir(PlayerTickEvent.Post event){
-        Player player = event.getEntity();      //从玩家刻中提取玩家
-        if(player.getData(ModAttachments.IN_VOID.get())){ //如果玩家在虚空内
-            player.setAirSupply(player.getAirSupply());   //将氧气值锁定满值
+    public static void keepAir(EntityTickEvent.Post event){
+        if (!(event.getEntity() instanceof LivingEntity entity) || entity.level().isClientSide()) {
+            return;
+        }
+
+        if(entity.getData(ModAttachments.IN_VOID.get())){ //如果实体在虚空内
+            entity.setAirSupply(entity.getMaxAirSupply());   //将氧气值锁定满值
         }
     }
     @SubscribeEvent

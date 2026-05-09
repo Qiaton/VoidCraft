@@ -2,6 +2,11 @@ package com.example.voidcraft.Block.entity;
 
 import com.example.voidcraft.Block.ModBlockEntities;
 import com.example.voidcraft.Block.VoidPhenomenonCollectorBlock;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorMenu;
 import com.example.voidcraft.Item.ModItem;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
@@ -44,7 +49,6 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
     private static final int DATA_RUNNING = 1;
     private static final int DATA_OUTPUT_COUNT = 2;
     private static final int DATA_MAX_OUTPUTS = 3;
-    private static final int TRANSFER_INTERVAL_TICKS = 5;
 
     private long voidEnergy;
     private boolean running;
@@ -95,9 +99,9 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
             return;
         }
 
-        if (level.getGameTime() % TRANSFER_INTERVAL_TICKS == 0L) {
+        if (VoidEnergyTransfer.shouldRunTransfer(level, collector)) {
             // 输出不需要每 tick 都扫，降低绑定列表检查频率。
-            collector.pushToOutputTargets();
+            VoidEnergyTransfer.pushToOutputTargets(collector);
         }
 
         // 产能每 tick 尝试一次，返回值用于切换 ACTIVE 方块状态。
@@ -226,48 +230,6 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
         return generatedAny;
     }
 
-    private void pushToOutputTargets() {
-        // 发电机主动把缓存推给输出目标；目标未加载先保留，目标失效才删绑定。
-        if (level == null || level.isClientSide() || !canExtractVoidEnergy() || this.outputTargets.isEmpty()) {
-            return;
-        }
-
-        long remainingRequest = Math.min(getMaxVoidEnergyOutputPerTransfer(), getVoidEnergyStored());
-        if (remainingRequest <= 0L) {
-            return;
-        }
-
-        for (VoidEnergyBinding binding : List.copyOf(this.outputTargets)) {
-            VoidEnergyTransfer.ResolveResult targetResult = VoidEnergyTransfer.resolve(level.getServer(), binding.target());
-            if (targetResult.status() == VoidEnergyTransfer.BindingStatus.UNLOADED) {
-                continue;
-            }
-            if (targetResult.status() != VoidEnergyTransfer.BindingStatus.OK) {
-                removeOutputTarget(binding.target());
-                continue;
-            }
-
-            VoidEnergyTransferBlockEntity target = targetResult.endpoint();
-            if (!target.canReceiveVoidEnergy()) {
-                removeOutputTarget(binding.target());
-                target.removeInputSource(getVoidPosition());
-                continue;
-            }
-
-            if (!target.hasInputSource(getVoidPosition())) {
-                removeOutputTarget(binding.target());
-                continue;
-            }
-
-            VoidEnergyTransfer.TransferResult result = VoidEnergyTransfer.tryUseEnergy(this, target, remainingRequest);
-            remainingRequest -= result.movedEnergy();
-            if (remainingRequest <= 0L) {
-                // 本轮可输出的量已经发完，剩下目标等下一次输出周期。
-                return;
-            }
-        }
-    }
-
     private void updateRunningState(boolean running) {
         // running 只代表本 tick 是否成功发电，用来控制发电机发光/动画状态。
         if (this.running == running) {
@@ -375,45 +337,14 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
     }
 
     @Override
-    public boolean canReceiveVoidEnergy() {
-        // 发电机是来源端，不接受外部输入。
-        return false;
-    }
-
-    @Override
-    public boolean canExtractVoidEnergy() {
-        // 发电机可以把内部缓存输出给电池、区块映射器等目标。
-        return true;
-    }
-
-    @Override
-    public int getMaxInputBindings() {
-        return MAX_INPUT_BINDINGS;
-    }
-
-    @Override
-    public int getMaxOutputBindings() {
-        return MAX_OUTPUT_BINDINGS;
+    public VoidEnergyProfile getVoidEnergyProfile() {
+        VoidPhenomenonCollectorBlock.CollectorTierConfig config = getTierConfig();
+        return VoidEnergyProfile.outputOnly(config.cacheCapacity(), MAX_OUTPUT_BINDINGS);
     }
 
     @Override
     public long getVoidEnergyStored() {
         return this.voidEnergy;
-    }
-
-    @Override
-    public long getVoidEnergyCapacity() {
-        return getTierConfig().cacheCapacity();
-    }
-
-    @Override
-    public long getMaxVoidEnergyInputPerTransfer() {
-        return 0L;
-    }
-
-    @Override
-    public long getMaxVoidEnergyOutputPerTransfer() {
-        return getTierConfig().maxExtract();
     }
 
     @Override
@@ -451,6 +382,6 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
     }
 
     private long clampEnergy(long energy) {
-        return Math.max(0L, Math.min(getTierConfig().cacheCapacity(), energy));
+        return getVoidEnergyProfile().clampEnergy(energy);
     }
 }

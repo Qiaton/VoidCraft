@@ -2,6 +2,10 @@ package com.example.voidcraft.Block.entity;
 
 import com.example.voidcraft.Block.ChunkMapperBlock;
 import com.example.voidcraft.Block.ModBlockEntities;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.world.ChunkMapperChunkTickets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -28,9 +32,15 @@ import java.util.Set;
 public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTransferBlockEntity {
     // 区块映射器只收电不输出，缓存能量后按档位持续消耗来维持区块加载。
     public static final long CACHE_CAPACITY = 10_000L;
-    public static final long MAX_INSERT = 1_000L;
+    public static final long MAX_INSERT = VoidEnergyProfile.DEFAULT_MAX_INPUT_PER_TRANSFER;
     public static final int MAX_INPUT_BINDINGS = 1;
     public static final int MAX_OUTPUT_BINDINGS = 0;
+    private static final VoidEnergyProfile ENERGY_PROFILE = VoidEnergyProfile.inputOnly(
+            CACHE_CAPACITY,
+            MAX_INSERT,
+            MAX_INPUT_BINDINGS,
+            1
+    );
     private static final int[] RADIUS_BY_TIER = {0, 1, 2, 3};
     private static final long[] ENERGY_COST_BY_TIER = {1L, 16L, 32L, 128L};
 
@@ -50,9 +60,8 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
             return;
         }
 
-        // tick 顺序：先同步档位外观，再从输入源补电，最后按档位扣电维持加载。
+        // 输入端不主动抢电；供能源会按输出列表公平分配给它。
         mapper.updateTierState();
-        mapper.pullFromInputSource();
 
         if (mapper.tryUseEnergy(mapper.getEnergyCostPerTick())) {
             mapper.ensureForcedChunks();
@@ -144,42 +153,6 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
             refreshForcedChunks();
         }
         onVoidEnergyNetworkChanged();
-    }
-
-    private void pullFromInputSource() {
-        // 单输入方块只检查第 0 个来源；来源失效时清掉绑定，来源未加载时保留等待。
-        if (level == null || level.isClientSide() || !canReceiveVoidEnergy() || this.inputSources.isEmpty()) {
-            return;
-        }
-
-        long request = Math.min(getMaxVoidEnergyInputPerTransfer(), getVoidEnergyCapacity() - getVoidEnergyStored());
-        if (request <= 0L) {
-            return;
-        }
-
-        VoidEnergyBinding binding = this.inputSources.get(0);
-        VoidEnergyTransfer.ResolveResult sourceResult = VoidEnergyTransfer.resolve(level.getServer(), binding.target());
-        if (sourceResult.status() == VoidEnergyTransfer.BindingStatus.UNLOADED) {
-            return;
-        }
-        if (sourceResult.status() != VoidEnergyTransfer.BindingStatus.OK) {
-            removeInputSource(binding.target());
-            return;
-        }
-
-        VoidEnergyTransferBlockEntity source = sourceResult.endpoint();
-        if (!source.canExtractVoidEnergy()) {
-            removeInputSource(binding.target());
-            source.removeOutputTarget(getVoidPosition());
-            return;
-        }
-
-        if (!source.hasOutputTarget(getVoidPosition())) {
-            removeInputSource(binding.target());
-            return;
-        }
-
-        VoidEnergyTransfer.tryUseEnergy(source, this, request);
     }
 
     private boolean tryUseEnergy(long amount) {
@@ -338,43 +311,13 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     @Override
-    public boolean canReceiveVoidEnergy() {
-        return true;
-    }
-
-    @Override
-    public boolean canExtractVoidEnergy() {
-        return false;
-    }
-
-    @Override
-    public int getMaxInputBindings() {
-        return MAX_INPUT_BINDINGS;
-    }
-
-    @Override
-    public int getMaxOutputBindings() {
-        return MAX_OUTPUT_BINDINGS;
+    public VoidEnergyProfile getVoidEnergyProfile() {
+        return ENERGY_PROFILE;
     }
 
     @Override
     public long getVoidEnergyStored() {
         return this.voidEnergy;
-    }
-
-    @Override
-    public long getVoidEnergyCapacity() {
-        return CACHE_CAPACITY;
-    }
-
-    @Override
-    public long getMaxVoidEnergyInputPerTransfer() {
-        return MAX_INSERT;
-    }
-
-    @Override
-    public long getMaxVoidEnergyOutputPerTransfer() {
-        return 0L;
     }
 
     @Override
@@ -412,6 +355,6 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
     }
 
     private static long clampEnergy(long energy) {
-        return Math.max(0L, Math.min(CACHE_CAPACITY, energy));
+        return ENERGY_PROFILE.clampEnergy(energy);
     }
 }

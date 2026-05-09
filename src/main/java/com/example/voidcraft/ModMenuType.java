@@ -1,6 +1,8 @@
 package com.example.voidcraft;
 
 import com.example.voidcraft.Gui.ModuleMenu;
+import com.example.voidcraft.Gui.ModuleBoostMenu;
+import com.example.voidcraft.Gui.VoidChargerMenu;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorMenu;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -22,10 +24,18 @@ public class ModMenuType {
             "module_menu",
             () -> new MenuType<>(ModuleMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
+    public static final Supplier<MenuType<ModuleBoostMenu>> MODULE_BOOST_MENU = MENU_TYPE.register(
+            "module_boost_menu",
+            () -> new MenuType<>(ModuleBoostMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
     public static final Supplier<MenuType<VoidPhenomenonCollectorMenu>> VOID_PHENOMENON_COLLECTOR_MENU = MENU_TYPE.register(
             "void_phenomenon_collector",
             // create 扩展会把服务端写入的 BlockPos 交给客户端菜单构造器。
             () -> IMenuTypeExtension.create(VoidPhenomenonCollectorMenu::new)
+    );
+    public static final Supplier<MenuType<VoidChargerMenu>> VOID_CHARGER_MENU = MENU_TYPE.register(
+            "void_charger",
+            () -> IMenuTypeExtension.create(VoidChargerMenu::new)
     );
     public static void register(IEventBus bus) {
         MENU_TYPE.register(bus);

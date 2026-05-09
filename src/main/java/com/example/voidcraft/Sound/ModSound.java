@@ -4,6 +4,7 @@ import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.IEventBus;
@@ -56,6 +57,10 @@ public class ModSound {
         playAtPlayer(level, player, OUT_VOID.get(), OUT_VOID_VOLUME, OUT_VOID_PITCH);
     }
 
+    public static void playOutVoid(Level level, LivingEntity entity) {
+        playAtEntity(level, entity, OUT_VOID.get(), OUT_VOID_VOLUME, OUT_VOID_PITCH);
+    }
+
     public static void playPhaseTurretShot(Level level, Player player, int emitterIndex) {
         float pitch = switch (Math.floorMod(emitterIndex, 4)) {
             case 0 -> 0.96F;
@@ -67,13 +72,17 @@ public class ModSound {
     }
 
     private static void playAtPlayer(Level level, Player player, SoundEvent event, float volume, float pitch) {
+        playAtEntity(level, player, event, volume, pitch);
+    }
+
+    private static void playAtEntity(Level level, LivingEntity entity, SoundEvent event, float volume, float pitch) {
         if (level.isClientSide()) {
             return;
         }
 
         level.playSound(
                 null,
-                player.getX(), player.getY(), player.getZ(),
+                entity.getX(), entity.getY(), entity.getZ(),
                 event,
                 VOID_SOUND_SOURCE,
                 volume,

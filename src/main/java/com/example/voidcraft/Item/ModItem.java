@@ -4,7 +4,6 @@ import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import com.example.voidcraft.Item.custom.EnergyCoreItem;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
-import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
@@ -57,12 +56,17 @@ public class ModItem {
     );
     public static final DeferredItem<EnergyCoreItem> ADVANCED_ENERGY_CORE = ITEMS.registerItem(
             "advanced_energy_core",
-            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.ADVANCED),
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.PLUS),
             props -> props.stacksTo(1)
     );
     public static final DeferredItem<EnergyCoreItem> ELITE_ENERGY_CORE = ITEMS.registerItem(
             "elite_energy_core",
-            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.ELITE),
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.PRO),
+            props -> props.stacksTo(1)
+    );
+    public static final DeferredItem<EnergyCoreItem> MAX_ENERGY_CORE = ITEMS.registerItem(
+            "max_energy_core",
+            props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.MAX),
             props -> props.stacksTo(1)
     );
     public static final DeferredItem<Item> ENERGY_CORE_RESIDUE = ITEMS.registerItem(

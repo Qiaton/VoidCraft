@@ -1,6 +1,6 @@
 package com.example.voidcraft.network;
 
-import com.example.voidcraft.Block.entity.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
