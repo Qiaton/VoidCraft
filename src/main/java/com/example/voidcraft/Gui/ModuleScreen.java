@@ -34,7 +34,7 @@ public class ModuleScreen extends AbstractContainerScreen<ModuleMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawString(this.font, Component.translatable("screen.void_craft.phase_watch"), WATCH_PANEL_LEFT + 8, 7, 0xFFEAF4FF, false);
+        guiGraphics.drawString(this.font, this.title, WATCH_PANEL_LEFT + 8, 7, 0xFFEAF4FF, false);
 
         drawSlotLabel(guiGraphics, ModuleMenu.WATCH_SLOT_START_X, Component.translatable("screen.void_craft.phase_watch.module_1"));
         drawSlotLabel(guiGraphics, ModuleMenu.WATCH_SLOT_START_X + ModuleMenu.WATCH_SLOT_SPACING, Component.translatable("screen.void_craft.phase_watch.module_2"));

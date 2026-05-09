@@ -146,6 +146,7 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
                 player.getYRot(),
                 player.getXRot()
         );
+        player.resetFallDistance();
     }
     public record Stats(ModuleMode mode, float cooldownDuration, float maxDistance, float speed) {
         public long energyCost() {
