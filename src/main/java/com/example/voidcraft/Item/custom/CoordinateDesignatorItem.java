@@ -5,7 +5,7 @@ import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.ModDataComponents;
-import com.example.voidcraft.network.ModNetworking;
+import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;

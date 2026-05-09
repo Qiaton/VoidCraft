@@ -12,6 +12,7 @@
     "VoidPlayer"
   ],
   "client": [
+    "PhaseProjectionSectionCompilerMixin",
     "VoidArrowRenderer"
   ],
   "server": []

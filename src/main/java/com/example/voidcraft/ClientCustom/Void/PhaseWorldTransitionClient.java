@@ -1,7 +1,7 @@
 package com.example.voidcraft.ClientCustom.Void;
 
-import com.example.voidcraft.network.ModNetworking;
-import com.example.voidcraft.network.PhaseWorldTransitionReadyPayload;
+import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.Network.PhaseWorldTransitionReadyPayload;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;

@@ -1,6 +1,6 @@
 package com.example.voidcraft;
 
-import com.example.voidcraft.tags.ItemTag;
+import com.example.voidcraft.Tags.ItemTag;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.ToolMaterial;
 

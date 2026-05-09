@@ -130,6 +130,26 @@ public class ModItem {
             Item::new,
             props -> props
     );
+    public static final DeferredItem<Item> CHAOS_ENERGY = ITEMS.registerItem(
+            "chaos_energy",
+            Item::new,
+            props -> props
+    );
+    public static final DeferredItem<Item> NEUTRAL_ENERGY = ITEMS.registerItem(
+            "neutral_energy",
+            Item::new,
+            props -> props
+    );
+    public static final DeferredItem<Item> PURE_ENERGY = ITEMS.registerItem(
+            "pure_energy",
+            Item::new,
+            props -> props
+    );
+    public static final DeferredItem<Item> VOID_ENERGY = ITEMS.registerItem(
+            "void_energy",
+            Item::new,
+            props -> props
+    );
     public static final DeferredItem<CoordinateDesignatorItem> COORDINATE_DESIGNATOR = ITEMS.registerItem(
             "coordinate_designator",
             CoordinateDesignatorItem::new,

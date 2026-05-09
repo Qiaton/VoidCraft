@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "void_craft:chaos_energy",
+    "void_craft:neutral_energy",
+    "void_craft:pure_energy",
+    "void_craft:void_energy"
+  ]
+}

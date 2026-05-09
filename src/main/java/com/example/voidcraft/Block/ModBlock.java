@@ -1,4 +1,5 @@
 package com.example.voidcraft.Block;
+import com.example.voidcraft.Block.Block.*;
 import com.example.voidcraft.VoidCraft;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -21,9 +22,9 @@ public class ModBlock {
                     .requiresCorrectToolForDrops() //加这个属性代表着如果不被正确的挖掘等级挖掘 将不掉落物品
     );
 
-    public static final DeferredBlock<PhaseBlock> VOID_ORE_BLOCK = BLOCKS.registerBlock(
+    public static final DeferredBlock<VoidOreBlock> VOID_ORE_BLOCK = BLOCKS.registerBlock(
             "void_ore_block",
-            PhaseBlock::new,
+            VoidOreBlock::new,
             props -> props
                     .friction(0.6F)
                     .noOcclusion()
@@ -50,6 +51,17 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 3)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
+                    .requiresCorrectToolForDrops()
+    );
+
+    public static final DeferredBlock<VoidEnergyConverterBlock> VOID_ENERGY_CONVERTER = BLOCKS.registerBlock(
+            "void_energy_converter",
+            VoidEnergyConverterBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> 4)
                     .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );

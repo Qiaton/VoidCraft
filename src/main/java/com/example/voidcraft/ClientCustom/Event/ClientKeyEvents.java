@@ -5,7 +5,7 @@ import com.example.voidcraft.ClientCustom.ModuleInputMode;
 import com.example.voidcraft.Custom.ModuleSlotHelper;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.VoidCraft;
-import com.example.voidcraft.network.UseWatchModulePayload;
+import com.example.voidcraft.Network.UseWatchModulePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;

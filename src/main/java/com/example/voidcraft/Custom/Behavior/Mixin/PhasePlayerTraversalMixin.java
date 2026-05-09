@@ -1,6 +1,6 @@
 package com.example.voidcraft.Custom.Behavior.Mixin;
 
-import com.example.voidcraft.world.PhasePlayerStateHandler;
+import com.example.voidcraft.World.PhasePlayerStateHandler;
 import net.minecraft.world.entity.player.Player;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;

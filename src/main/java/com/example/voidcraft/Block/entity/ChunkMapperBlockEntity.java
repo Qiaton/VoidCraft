@@ -1,12 +1,12 @@
 package com.example.voidcraft.Block.entity;
 
-import com.example.voidcraft.Block.ChunkMapperBlock;
+import com.example.voidcraft.Block.Block.ChunkMapperBlock;
 import com.example.voidcraft.Block.ModBlockEntities;
 import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
-import com.example.voidcraft.world.ChunkMapperChunkTickets;
+import com.example.voidcraft.World.ChunkMapperChunkTickets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;

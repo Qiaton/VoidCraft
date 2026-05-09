@@ -5,7 +5,7 @@ import com.example.voidcraft.Effect.VoidBlackHoleInstance; // 黑洞特效实例
 import com.example.voidcraft.Effect.VoidRingInstance; // 白光特效预设类型。
 import com.example.voidcraft.Effect.VoidTrailInstance; // 拉丝特效预设类型。
 import com.example.voidcraft.ModDamageTypes;
-import com.example.voidcraft.network.ModNetworking; // 发送白光和拉丝网络包的工具类。
+import com.example.voidcraft.Network.ModNetworking; // 发送白光和拉丝网络包的工具类。
 import net.minecraft.core.Holder; // 附魔 Holder 类型。
 import net.minecraft.core.HolderLookup; // 注册表查询器类型。
 import net.minecraft.core.registries.Registries; // 原版注册表常量。

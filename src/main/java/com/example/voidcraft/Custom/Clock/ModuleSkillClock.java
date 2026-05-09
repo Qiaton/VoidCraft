@@ -4,7 +4,7 @@ import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
-import com.example.voidcraft.network.ModNetworking;
+import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;

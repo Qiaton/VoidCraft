@@ -3,6 +3,7 @@ package com.example.voidcraft.Block;
 import com.example.voidcraft.Block.entity.BatteryBlockEntity;
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
 import com.example.voidcraft.Block.entity.VoidChargerBlockEntity;
+import com.example.voidcraft.Block.entity.VoidEnergyConverterBlockEntity;
 import com.example.voidcraft.Block.entity.VoidPhenomenonCollectorBlockEntity;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,6 +28,11 @@ public class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChunkMapperBlockEntity>> CHUNK_MAPPER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "chunk_mapper_block",
             () -> new BlockEntityType<>(ChunkMapperBlockEntity::new, Set.of(ModBlock.CHUNK_MAPPER_BLOCK.get()))
+    );
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidEnergyConverterBlockEntity>> VOID_ENERGY_CONVERTER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "void_energy_converter",
+            () -> new BlockEntityType<>(VoidEnergyConverterBlockEntity::new, Set.of(ModBlock.VOID_ENERGY_CONVERTER.get()))
     );
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidPhenomenonCollectorBlockEntity>> VOID_PHENOMENON_COLLECTOR_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(

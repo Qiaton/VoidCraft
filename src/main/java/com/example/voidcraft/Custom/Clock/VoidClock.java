@@ -3,7 +3,7 @@ package com.example.voidcraft.Custom.Clock;
 import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.Sound.ModSound;
-import com.example.voidcraft.network.ModNetworking;
+import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
