@@ -2,7 +2,7 @@ package com.example.voidcraft.Gui;
 
 import com.example.voidcraft.Block.ModBlock;
 import com.example.voidcraft.Block.VoidPhenomenonCollectorBlock;
-import com.example.voidcraft.Block.entity.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Block.entity.VoidPhenomenonCollectorBlockEntity;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
 import com.example.voidcraft.ModMenuType;

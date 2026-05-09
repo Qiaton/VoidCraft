@@ -7,6 +7,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class ModBlock {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(VoidCraft.MODID);//创建方块注册器
+    private static final float FUNCTIONAL_BLOCK_STRENGTH = 3.0F;
+    private static final float FUNCTIONAL_BLOCK_BLAST_RESISTANCE = 3.0F;
 
     public static final DeferredBlock<PhaseBlock> BLACK_BLOCK = BLOCKS.registerBlock(
             "black_block",
@@ -37,7 +39,7 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
 
@@ -48,7 +50,7 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
 
@@ -60,7 +62,7 @@ public class ModBlock {
                     .noOcclusion()
                     // ACTIVE 时发光更强，用来反馈发电机正在消耗结晶。
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> IMPROVED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
@@ -70,7 +72,7 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> ADVANCED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
@@ -80,7 +82,7 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> VOID_ATTUNER = BLOCKS.registerBlock(
@@ -90,7 +92,45 @@ public class ModBlock {
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
-                    .strength(2.5F, 6.0F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<ModuleBoostBlock> MODULE_BOOST_TABLE = BLOCKS.registerBlock(
+            "module_boost_table",
+            ModuleBoostBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidChargerBlock> LOW_VOID_CHARGER = BLOCKS.registerBlock(
+            "low_void_charger",
+            VoidChargerBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 7 : 3)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidChargerBlock> MID_VOID_CHARGER = BLOCKS.registerBlock(
+            "mid_void_charger",
+            VoidChargerBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 8 : 3)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
+                    .requiresCorrectToolForDrops()
+    );
+    public static final DeferredBlock<VoidChargerBlock> HIGH_VOID_CHARGER = BLOCKS.registerBlock(
+            "high_void_charger",
+            VoidChargerBlock::new,
+            props -> props
+                    .friction(0.6F)
+                    .noOcclusion()
+                    .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 10 : 3)
+                    .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
     );
 

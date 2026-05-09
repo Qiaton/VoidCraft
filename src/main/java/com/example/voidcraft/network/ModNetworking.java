@@ -1,11 +1,11 @@
 package com.example.voidcraft.network;
 
 import com.example.voidcraft.Block.ChunkMapperBlock;
-import com.example.voidcraft.Block.entity.BoundVoidPosition;
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
-import com.example.voidcraft.Block.entity.VoidEnergyBinding;
-import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
-import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.ClientCustom.Coordinate.ChunkMapperStatusScreen;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingScreen;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
@@ -34,6 +34,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -613,8 +614,8 @@ public final class ModNetworking {
             );
         }
 
-        if (trackedEntity instanceof Player player) {
-            VoidClock.flashVoidPlayer(player);
+        if (trackedEntity instanceof LivingEntity livingEntity) {
+            VoidClock.flashVoidEntity(livingEntity);
         }
     }
     private static void onUseTurretShotServer(

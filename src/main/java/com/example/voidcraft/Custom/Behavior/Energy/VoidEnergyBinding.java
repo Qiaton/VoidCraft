@@ -1,4 +1,4 @@
-package com.example.voidcraft.Block.entity;
+package com.example.voidcraft.Custom.Behavior.Energy;
 
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;

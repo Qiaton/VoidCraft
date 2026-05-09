@@ -1,4 +1,4 @@
-package com.example.voidcraft.Block.entity;
+package com.example.voidcraft.Custom.Behavior.Energy;
 
 import com.example.voidcraft.Item.custom.CoordinateDesignatorData;
 import net.minecraft.core.registries.Registries;
@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class VoidEnergyTransfer {
@@ -115,40 +116,135 @@ public final class VoidEnergyTransfer {
         return BindResult.SUCCESS;
     }
 
-    public static TransferResult tryUseEnergy(
-            VoidEnergyTransferBlockEntity source,
-            VoidEnergyTransferBlockEntity target,
-            long requestedEnergy
-    ) {
-        // 所有传电都先走能力检查，避免调用方忘记判断输入/输出方向。
-        if (source == null || target == null || requestedEnergy <= 0L) {
-            return TransferResult.failed(BindingStatus.NOT_FUNCTIONAL);
-        }
-        if (!source.canExtractVoidEnergy()) {
-            return TransferResult.failed(BindingStatus.SOURCE_CANNOT_OUTPUT);
-        }
-        if (!target.canReceiveVoidEnergy()) {
-            return TransferResult.failed(BindingStatus.TARGET_CANNOT_INPUT);
+    public static boolean shouldRunTransfer(Level level, VoidEnergyTransferBlockEntity endpoint) {
+        return level != null
+                && !level.isClientSide()
+                && level.getGameTime() % endpoint.getVoidEnergyProfile().transferIntervalTicks() == 0L;
+    }
+
+    public static long pushToOutputTargets(VoidEnergyTransferBlockEntity source) {
+        Level level = source.getVoidEnergyLevel();
+        if (level == null || level.isClientSide() || level.getServer() == null || !source.canExtractVoidEnergy()) {
+            return 0L;
         }
 
-        long request = Math.min(requestedEnergy, source.getMaxVoidEnergyOutputPerTransfer());
-        request = Math.min(request, target.getMaxVoidEnergyInputPerTransfer());
-        // 先模拟抽取和插入，算出双方都能接受的真实数量，再执行实际移动。
-        long simulatedExtract = source.extractVoidEnergy(request, true);
-        long simulatedInsert = target.receiveVoidEnergy(simulatedExtract, true);
-        long moved = Math.min(simulatedExtract, simulatedInsert);
-        if (moved <= 0L) {
-            return TransferResult.failed(BindingStatus.NO_ENERGY_MOVED);
+        long availableEnergy = source.extractVoidEnergy(source.getVoidEnergyStored(), true);
+        if (availableEnergy <= 0L) {
+            return 0L;
         }
 
-        long extracted = source.extractVoidEnergy(moved, false);
-        long inserted = target.receiveVoidEnergy(extracted, false);
-        if (inserted < extracted) {
-            // 理论上模拟后不会少插；这里兜底把没插进去的能量退回来源。
-            source.receiveVoidEnergy(extracted - inserted, false);
+        List<TargetNeed> requests = getTargetRequests(level, source);
+        if (requests.isEmpty()) {
+            return 0L;
         }
 
-        return TransferResult.success(inserted);
+        long[] allocations = splitEnergy(availableEnergy, requests);
+        long movedEnergy = 0L;
+        for (int i = 0; i < requests.size(); i++) {
+            long allocation = allocations[i];
+            if (allocation <= 0L) {
+                continue;
+            }
+
+            long extracted = source.extractVoidEnergy(allocation, false);
+            if (extracted <= 0L) {
+                break;
+            }
+
+            long inserted = requests.get(i).target().receiveVoidEnergy(extracted, false);
+            movedEnergy += inserted;
+            if (inserted < extracted) {
+                source.receiveVoidEnergy(extracted - inserted, false);
+            }
+        }
+        return movedEnergy;
+    }
+
+    private static List<TargetNeed> getTargetRequests(Level level, VoidEnergyTransferBlockEntity source) {
+        List<VoidEnergyBinding> bindings = List.copyOf(source.getOutputTargets());
+        List<TargetNeed> requests = new ArrayList<>();
+        if (bindings.isEmpty()) {
+            return requests;
+        }
+
+        BoundVoidPosition sourcePosition = source.getVoidPosition();
+        int start = getStartIndex(level, source, bindings.size());
+        for (int step = 0; step < bindings.size(); step++) {
+            VoidEnergyBinding binding = bindings.get((start + step) % bindings.size());
+            ResolveResult targetResult = resolve(level.getServer(), binding.target());
+            if (targetResult.status() == BindingStatus.UNLOADED) {
+                continue;
+            }
+            if (targetResult.status() != BindingStatus.OK) {
+                source.removeOutputTarget(binding.target());
+                continue;
+            }
+
+            VoidEnergyTransferBlockEntity target = targetResult.endpoint();
+            if (!target.canReceiveVoidEnergy()) {
+                source.removeOutputTarget(binding.target());
+                target.removeInputSource(sourcePosition);
+                continue;
+            }
+
+            if (!target.hasInputSource(sourcePosition)) {
+                source.removeOutputTarget(binding.target());
+                continue;
+            }
+
+            long targetRequest = Math.min(
+                    target.getMaxVoidEnergyInputPerTransfer(),
+                    Math.max(0L, target.getVoidEnergyCapacity() - target.getVoidEnergyStored())
+            );
+            targetRequest = target.receiveVoidEnergy(targetRequest, true);
+            if (targetRequest > 0L) {
+                requests.add(new TargetNeed(target, targetRequest));
+            }
+        }
+        return requests;
+    }
+
+    private static int getStartIndex(Level level, VoidEnergyTransferBlockEntity source, int size) {
+        int interval = source.getVoidEnergyProfile().transferIntervalTicks();
+        long transferTurn = level.getGameTime() / Math.max(1, interval);
+        return (int) (transferTurn % size);
+    }
+
+    private static long[] splitEnergy(long availableEnergy, List<TargetNeed> requests) {
+        long[] allocations = new long[requests.size()];
+        long remainingEnergy = availableEnergy;
+        while (remainingEnergy > 0L) {
+            int activeTargets = 0;
+            for (int i = 0; i < requests.size(); i++) {
+                if (allocations[i] < requests.get(i).needEnergy()) {
+                    activeTargets++;
+                }
+            }
+
+            if (activeTargets <= 0) {
+                break;
+            }
+
+            long share = Math.max(1L, remainingEnergy / activeTargets);
+            boolean movedAny = false;
+            for (int i = 0; i < requests.size() && remainingEnergy > 0L; i++) {
+                long need = requests.get(i).needEnergy() - allocations[i];
+                if (need <= 0L) {
+                    continue;
+                }
+
+                long amount = Math.min(need, share);
+                amount = Math.min(amount, remainingEnergy);
+                allocations[i] += amount;
+                remainingEnergy -= amount;
+                movedAny = true;
+            }
+
+            if (!movedAny) {
+                break;
+            }
+        }
+        return allocations;
     }
 
     public static BindingStatus describeOutputBinding(MinecraftServer server, VoidEnergyTransferBlockEntity owner, VoidEnergyBinding binding) {
@@ -228,8 +324,7 @@ public final class VoidEnergyTransfer {
         NOT_FUNCTIONAL("message.void_craft.coordinate_designator.status.not_functional"),
         SOURCE_CANNOT_OUTPUT("message.void_craft.coordinate_designator.status.source_cannot_output"),
         TARGET_CANNOT_INPUT("message.void_craft.coordinate_designator.status.target_cannot_input"),
-        NOT_RECIPROCAL("message.void_craft.coordinate_designator.status.not_reciprocal"),
-        NO_ENERGY_MOVED("message.void_craft.coordinate_designator.status.no_energy_moved");
+        NOT_RECIPROCAL("message.void_craft.coordinate_designator.status.not_reciprocal");
 
         private final String translationKey;
 
@@ -256,13 +351,6 @@ public final class VoidEnergyTransfer {
         }
     }
 
-    public record TransferResult(boolean success, long movedEnergy, BindingStatus status) {
-        public static TransferResult success(long movedEnergy) {
-            return new TransferResult(true, movedEnergy, BindingStatus.OK);
-        }
-
-        public static TransferResult failed(BindingStatus status) {
-            return new TransferResult(false, 0L, status);
-        }
+    private record TargetNeed(VoidEnergyTransferBlockEntity target, long needEnergy) {
     }
 }

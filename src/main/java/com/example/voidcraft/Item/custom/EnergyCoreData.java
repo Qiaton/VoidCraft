@@ -16,11 +16,11 @@ public record EnergyCoreData(
             Codec.LONG.fieldOf("maxLifetimeWearProgress").forGetter(EnergyCoreData::maxLifetimeWearProgress)
     ).apply(instance, EnergyCoreData::new));
 
-    public EnergyCoreData clamp(long initialMaxLifetime) {
+    public EnergyCoreData clamp(long initialMaxLifetime, long currentMaxLifetime) {
         long safeInitialMax = Math.max(0L, initialMaxLifetime);
-        long safeMaxLoss = Math.max(0L, maxLifetimeLoss);
-        long currentMaxLifetime = Math.max(0L, safeInitialMax - safeMaxLoss);
-        long safeCurrentLifetime = Math.max(0L, Math.min(currentLifetime, currentMaxLifetime));
+        long safeMaxLoss = Math.max(0L, Math.min(maxLifetimeLoss, safeInitialMax));
+        long safeCurrentMax = Math.max(0L, Math.min(currentMaxLifetime, safeInitialMax));
+        long safeCurrentLifetime = Math.max(0L, Math.min(currentLifetime, safeCurrentMax));
         long safeLifetimeProgress = Math.max(0L, lifetimeWearProgress);
         long safeMaxProgress = Math.max(0L, maxLifetimeWearProgress);
 

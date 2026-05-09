@@ -1,8 +1,8 @@
 package com.example.voidcraft.network;
 
-import com.example.voidcraft.Block.entity.BoundVoidPosition;
-import com.example.voidcraft.Block.entity.VoidEnergyBindingType;
-import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBindingType;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
 import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.chat.Component;

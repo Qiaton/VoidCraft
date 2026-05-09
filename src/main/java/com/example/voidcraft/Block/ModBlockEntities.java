@@ -2,6 +2,7 @@ package com.example.voidcraft.Block;
 
 import com.example.voidcraft.Block.entity.BatteryBlockEntity;
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
+import com.example.voidcraft.Block.entity.VoidChargerBlockEntity;
 import com.example.voidcraft.Block.entity.VoidPhenomenonCollectorBlockEntity;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -38,6 +39,17 @@ public class ModBlockEntities {
                             ModBlock.IMPROVED_VOID_PHENOMENON_COLLECTOR.get(),
                             ModBlock.ADVANCED_VOID_PHENOMENON_COLLECTOR.get(),
                             ModBlock.VOID_ATTUNER.get()
+                    )
+            )
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidChargerBlockEntity>> VOID_CHARGER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "void_charger",
+            () -> new BlockEntityType<>(
+                    VoidChargerBlockEntity::new,
+                    Set.of(
+                            ModBlock.LOW_VOID_CHARGER.get(),
+                            ModBlock.MID_VOID_CHARGER.get(),
+                            ModBlock.HIGH_VOID_CHARGER.get()
                     )
             )
     );

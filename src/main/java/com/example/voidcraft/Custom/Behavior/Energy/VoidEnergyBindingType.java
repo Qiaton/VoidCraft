@@ -1,4 +1,4 @@
-package com.example.voidcraft.Block.entity;
+package com.example.voidcraft.Custom.Behavior.Energy;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.network.chat.Component;

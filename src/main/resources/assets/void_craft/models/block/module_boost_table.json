@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "void_craft:block/module_boost_table_side",
+    "up": "void_craft:block/module_boost_table_top",
+    "down": "void_craft:block/module_boost_table_side",
+    "north": "void_craft:block/module_boost_table_side",
+    "south": "void_craft:block/module_boost_table_side",
+    "east": "void_craft:block/module_boost_table_side",
+    "west": "void_craft:block/module_boost_table_side"
+  }
+}

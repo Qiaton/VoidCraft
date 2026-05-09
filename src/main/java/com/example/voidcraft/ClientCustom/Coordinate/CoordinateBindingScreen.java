@@ -1,6 +1,7 @@
 package com.example.voidcraft.ClientCustom.Coordinate;
 
-import com.example.voidcraft.Block.entity.VoidEnergyBindingType;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBindingType;
+import com.example.voidcraft.Gui.GuiDraw;
 import com.example.voidcraft.network.CoordinateBindingsPayload;
 import com.example.voidcraft.network.ModNetworking;
 import com.example.voidcraft.network.RemoveCoordinateBindingPayload;
@@ -136,7 +137,7 @@ public class CoordinateBindingScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (isInRect(mouseX, mouseY, listX(), listY(), LIST_WIDTH, LIST_HEIGHT)) {
+        if (GuiDraw.inRect(mouseX, mouseY, listX(), listY(), LIST_WIDTH, LIST_HEIGHT)) {
             if (scrollY < 0.0D) {
                 scrollBy(1);
             } else if (scrollY > 0.0D) {
@@ -177,7 +178,7 @@ public class CoordinateBindingScreen extends Screen {
             int rowX = x;
             int rowY = y + row * ROW_HEIGHT;
 
-            boolean hovered = isInRect(mouseX, mouseY, rowX, rowY, LIST_WIDTH, ENTRY_HEIGHT);
+            boolean hovered = GuiDraw.inRect(mouseX, mouseY, rowX, rowY, LIST_WIDTH, ENTRY_HEIGHT);
             boolean selected = this.selectedIndex == entryIndex;
 
             if (selected) {
@@ -259,7 +260,7 @@ public class CoordinateBindingScreen extends Screen {
         int x = listX();
         int y = listY();
 
-        if (!isInRect(mouseX, mouseY, x, y, LIST_WIDTH, LIST_HEIGHT)) {
+        if (!GuiDraw.inRect(mouseX, mouseY, x, y, LIST_WIDTH, LIST_HEIGHT)) {
             return -1;
         }
 
@@ -300,13 +301,6 @@ public class CoordinateBindingScreen extends Screen {
 
     private int visibleRows() {
         return Math.max(1, LIST_HEIGHT / ROW_HEIGHT);
-    }
-
-    private boolean isInRect(double mouseX, double mouseY, int x, int y, int width, int height) {
-        return mouseX >= x
-                && mouseY >= y
-                && mouseX < x + width
-                && mouseY < y + height;
     }
 
     private int panelLeft() {

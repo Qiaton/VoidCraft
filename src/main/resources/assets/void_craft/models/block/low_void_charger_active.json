@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "void_craft:block/low_void_charger_side_active",
+    "up": "void_craft:block/low_void_charger_top_active",
+    "down": "void_craft:block/low_void_charger_side_active",
+    "north": "void_craft:block/low_void_charger_side_active",
+    "south": "void_craft:block/low_void_charger_side_active",
+    "east": "void_craft:block/low_void_charger_side_active",
+    "west": "void_craft:block/low_void_charger_side_active"
+  }
+}

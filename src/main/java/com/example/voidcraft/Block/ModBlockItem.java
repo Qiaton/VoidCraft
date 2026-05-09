@@ -42,6 +42,22 @@ public class ModBlockItem {
             "void_attuner",
             ModBlock.VOID_ATTUNER
     );
+    public static final DeferredItem<BlockItem> MODULE_BOOST_TABLE = BLOCK_ITEMS.registerSimpleBlockItem(
+            "module_boost_table",
+            ModBlock.MODULE_BOOST_TABLE
+    );
+    public static final DeferredItem<BlockItem> LOW_VOID_CHARGER = BLOCK_ITEMS.registerSimpleBlockItem(
+            "low_void_charger",
+            ModBlock.LOW_VOID_CHARGER
+    );
+    public static final DeferredItem<BlockItem> MID_VOID_CHARGER = BLOCK_ITEMS.registerSimpleBlockItem(
+            "mid_void_charger",
+            ModBlock.MID_VOID_CHARGER
+    );
+    public static final DeferredItem<BlockItem> HIGH_VOID_CHARGER = BLOCK_ITEMS.registerSimpleBlockItem(
+            "high_void_charger",
+            ModBlock.HIGH_VOID_CHARGER
+    );
     public static void register(IEventBus bus) {
         BLOCK_ITEMS.register(bus);
     }

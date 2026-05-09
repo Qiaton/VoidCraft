@@ -8,7 +8,9 @@ import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionOverlay;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreen;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionScreenRegistration;
+import com.example.voidcraft.Gui.ModuleBoostScreen;
 import com.example.voidcraft.Gui.ModuleScreen;
+import com.example.voidcraft.Gui.VoidChargerScreen;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorScreen;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
@@ -69,7 +71,9 @@ public class VoidCraftClient {
     public static void registerModuleMenu(RegisterMenuScreensEvent event){
         // 客户端把服务端菜单类型绑定到对应 Screen。
         event.register(ModMenuType.registerModuleMenu.get(), ModuleScreen::new);
+        event.register(ModMenuType.MODULE_BOOST_MENU.get(), ModuleBoostScreen::new);
         event.register(ModMenuType.VOID_PHENOMENON_COLLECTOR_MENU.get(), VoidPhenomenonCollectorScreen::new);
+        event.register(ModMenuType.VOID_CHARGER_MENU.get(), VoidChargerScreen::new);
     }
 
     @SubscribeEvent

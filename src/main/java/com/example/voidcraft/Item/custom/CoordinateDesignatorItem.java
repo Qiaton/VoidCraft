@@ -1,9 +1,9 @@
 package com.example.voidcraft.Item.custom;
 
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
-import com.example.voidcraft.Block.entity.BoundVoidPosition;
-import com.example.voidcraft.Block.entity.VoidEnergyTransfer;
-import com.example.voidcraft.Block.entity.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
+import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
 import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.network.ModNetworking;
 import net.minecraft.core.component.DataComponents;

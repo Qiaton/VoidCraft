@@ -42,6 +42,10 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.IMPROVED_VOID_PHENOMENON_COLLECTOR.get());
                         output.accept(ModBlockItem.ADVANCED_VOID_PHENOMENON_COLLECTOR.get());
                         output.accept(ModBlockItem.VOID_ATTUNER.get());
+                        output.accept(ModBlockItem.MODULE_BOOST_TABLE.get());
+                        output.accept(ModBlockItem.LOW_VOID_CHARGER.get());
+                        output.accept(ModBlockItem.MID_VOID_CHARGER.get());
+                        output.accept(ModBlockItem.HIGH_VOID_CHARGER.get());
                         output.accept(ModItem.VOID_ORE.get());
                         output.accept(ModItem.FLOW_TYPE.get());
                         output.accept(ModItem.SPATIAL_SWORD);
@@ -49,6 +53,7 @@ public class CreativeModeTabs {
                         output.accept(ModItem.BASIC_ENERGY_CORE);
                         output.accept(ModItem.ADVANCED_ENERGY_CORE);
                         output.accept(ModItem.ELITE_ENERGY_CORE);
+                        output.accept(ModItem.MAX_ENERGY_CORE);
                         output.accept(ModItem.ENERGY_CORE_RESIDUE);
                         output.accept(ModItem.LOW_PURITY_VOID_CRYSTAL);
                         output.accept(ModItem.HIGH_PURITY_VOID_CRYSTAL);
@@ -56,7 +61,9 @@ public class CreativeModeTabs {
                         output.accept(ModItem.VOID_CRYSTAL_RESIDUE);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
                         output.accept(getModuleItem());
-                        output.accept(getModuleModifierItem());
+                        output.accept(getModuleModifierItem(ModuleModifierType.COOLDOWN_REDUCTION));
+                        output.accept(getModuleModifierItem(ModuleModifierType.SPEED_BOOST));
+                        output.accept(getModuleModifierItem(ModuleModifierType.ACTIVE_DURATION));
                         output.accept(getHealthModuleItem());
                         output.accept(getDashVoidModuleItem());
                         output.accept(getBlinkVoidModuleItem());
@@ -114,9 +121,9 @@ public class CreativeModeTabs {
         stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
-    public static ItemStack getModuleModifierItem(){
+    public static ItemStack getModuleModifierItem(ModuleModifierType type){
         ItemStack stack = new ItemStack(ModItem.MODULE_MODIFIER_ITEM.get());
-        stack.set(ModDataComponents.MODULE_MODIFIER_DATA.value(),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,3));
+        ModuleModifierItem.setData(stack, new ModuleModifierData(type,3));
         return stack;
     }
     public static ItemStack getDashVoidModuleItem(){

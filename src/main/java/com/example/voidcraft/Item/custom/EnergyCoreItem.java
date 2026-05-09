@@ -15,6 +15,7 @@ public class EnergyCoreItem extends Item {
     public static final long BASE_LIFETIME = 200L;
     public static final long LIFETIME_WEAR_ENERGY = 2_000L;
     public static final long MAX_LIFETIME_WEAR_ENERGY = 10_000L;
+    private static final double MIN_MAX_LIFETIME_SCALE = 0.8D;
 
     private final CoreTier tier;
 
@@ -40,16 +41,39 @@ public class EnergyCoreItem extends Item {
         if (data == null) {
             return new EnergyCoreData(getInitialMaxLifetime(), 0L, 0L, 0L);
         }
-        return data.clamp(getInitialMaxLifetime());
+        long initialMaxLifetime = getInitialMaxLifetime();
+        return data.clamp(initialMaxLifetime, getMaxLifetimeByCoreLife(initialMaxLifetime, data.maxLifetimeLoss()));
     }
 
     public long getCurrentMaxLifetime(ItemStack stack) {
         EnergyCoreData data = getCoreData(stack);
-        return Math.max(0L, getInitialMaxLifetime() - data.maxLifetimeLoss());
+        return getMaxLifetimeByCoreLife(getInitialMaxLifetime(), data.maxLifetimeLoss());
     }
 
     public long getCurrentLifetime(ItemStack stack) {
         return getCoreData(stack).currentLifetime();
+    }
+
+    public long restoreLifetime(ItemStack stack, long amount) {
+        if (amount <= 0L) {
+            return 0L;
+        }
+
+        EnergyCoreData data = getCoreData(stack);
+        long currentMaxLifetime = getCurrentMaxLifetime(stack);
+        long currentLifetime = Math.min(data.currentLifetime(), currentMaxLifetime);
+        if (currentMaxLifetime <= 0L || currentLifetime >= currentMaxLifetime) {
+            return 0L;
+        }
+
+        long restored = Math.min(amount, currentMaxLifetime - currentLifetime);
+        stack.set(ModDataComponents.ENERGY_CORE_DATA.value(), new EnergyCoreData(
+                currentLifetime + restored,
+                data.maxLifetimeLoss(),
+                data.lifetimeWearProgress(),
+                data.maxLifetimeWearProgress()
+        ));
+        return restored;
     }
 
     public WearResult applyRecoveredEnergy(ItemStack stack, long actualRecoveredEnergy) {
@@ -60,7 +84,7 @@ public class EnergyCoreItem extends Item {
 
         EnergyCoreData data = getCoreData(stack);
         long initialMaxLifetime = getInitialMaxLifetime();
-        long currentMaxLifetime = Math.max(0L, initialMaxLifetime - data.maxLifetimeLoss());
+        long currentMaxLifetime = getMaxLifetimeByCoreLife(initialMaxLifetime, data.maxLifetimeLoss());
         if (currentMaxLifetime <= 0L) {
             return new WearResult(0L, 0L, true);
         }
@@ -74,8 +98,8 @@ public class EnergyCoreItem extends Item {
         long maxLifetimeProgress = data.maxLifetimeWearProgress() + actualRecoveredEnergy;
         long maxLifetimeDamage = maxLifetimeProgress / MAX_LIFETIME_WEAR_ENERGY;
         maxLifetimeProgress = maxLifetimeProgress % MAX_LIFETIME_WEAR_ENERGY;
-        long maxLifetimeLoss = data.maxLifetimeLoss() + maxLifetimeDamage;
-        long nextMaxLifetime = Math.max(0L, initialMaxLifetime - maxLifetimeLoss);
+        long maxLifetimeLoss = Math.min(initialMaxLifetime, data.maxLifetimeLoss() + maxLifetimeDamage);
+        long nextMaxLifetime = getMaxLifetimeByCoreLife(initialMaxLifetime, maxLifetimeLoss);
 
         if (currentLifetime > nextMaxLifetime) {
             currentLifetime = nextMaxLifetime;
@@ -131,11 +155,7 @@ public class EnergyCoreItem extends Item {
     }
 
     private String getMaxLifetimeStateKey(ItemStack stack) {
-        long initialMaxLifetime = getInitialMaxLifetime();
-        long currentMaxLifetime = getCurrentMaxLifetime(stack);
-        double percent = initialMaxLifetime <= 0L
-                ? 0.0D
-                : currentMaxLifetime * 100.0D / initialMaxLifetime;
+        double percent = getCoreLifePercent(stack);
 
         if (percent >= 95.0D) {
             return "tooltip.void_craft.energy_core.max_lifetime.excellent_plus";
@@ -159,10 +179,41 @@ public class EnergyCoreItem extends Item {
         return String.format(Locale.ROOT, "%.1f%%", percent);
     }
 
+    private double getCoreLifePercent(ItemStack stack) {
+        long initialMaxLifetime = getInitialMaxLifetime();
+        if (initialMaxLifetime <= 0L) {
+            return 0.0D;
+        }
+
+        EnergyCoreData data = getCoreData(stack);
+        return getRemainingCoreLife(initialMaxLifetime, data.maxLifetimeLoss()) * 100.0D / initialMaxLifetime;
+    }
+
+    private static long getMaxLifetimeByCoreLife(long initialMaxLifetime, long maxLifetimeLoss) {
+        if (initialMaxLifetime <= 0L) {
+            return 0L;
+        }
+
+        long remainingLife = getRemainingCoreLife(initialMaxLifetime, maxLifetimeLoss);
+        if (remainingLife <= 0L) {
+            return 0L;
+        }
+
+        // 寿命只影响最高 20% 的可用耐久，避免老化后直接把核心耐久砍穿。
+        double lifePercent = remainingLife / (double) initialMaxLifetime;
+        double scale = MIN_MAX_LIFETIME_SCALE + lifePercent * (1.0D - MIN_MAX_LIFETIME_SCALE);
+        return Math.max(1L, Math.round(initialMaxLifetime * scale));
+    }
+
+    private static long getRemainingCoreLife(long initialMaxLifetime, long maxLifetimeLoss) {
+        return Math.max(0L, initialMaxLifetime - Math.max(0L, maxLifetimeLoss));
+    }
+
     public enum CoreTier {
         BASIC(1L, 1.0D),
-        ADVANCED(2L, 1.5D),
-        ELITE(3L, 2.0D);
+        PLUS(2L, 1.5D),
+        PRO(3L, 2.0D),
+        MAX(4L, 3.0D);
 
         private final long rechargePerTick;
         private final double lifetimeMultiplier;
