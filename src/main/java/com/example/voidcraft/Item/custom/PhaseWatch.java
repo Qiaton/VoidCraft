@@ -21,6 +21,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.NonNull;
 
@@ -164,6 +165,12 @@ public class PhaseWatch extends Item {
 
         return InteractionResultHolder.consume(itemStack);
     }
+
+    @Override
+    public boolean doesSneakBypassUse(ItemStack stack, LevelReader level, net.minecraft.core.BlockPos pos, Player player) {
+        return true;
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public void appendHoverText(
