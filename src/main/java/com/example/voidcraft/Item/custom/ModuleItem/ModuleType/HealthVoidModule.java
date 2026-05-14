@@ -16,6 +16,8 @@ import java.util.List;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 public class HealthVoidModule extends ModuleItem {
     private static final long ENERGY_COST = 25L;
@@ -79,13 +81,13 @@ public class HealthVoidModule extends ModuleItem {
             ModuleModifierType modifierType = modifier.type();
             if(modifierType == null) continue;
             if(modifierType == COOLDOWN_REDUCTION){
-                cooldownDuration += 0.2F*(float)(modifier.level());
+                cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.2F);
             }
             if(modifierType == SPEED_BOOST){
-                moveSpeedOffset = 0.1F*(float)(modifier.level());
+                moveSpeedOffset = shrink(moveSpeedOffset, modifier.level(), 0.1F);
             }
             if(modifierType == ACTIVE_DURATION){
-                activeDuration += 0.15F*(float)(modifier.level());
+                activeDuration = addLess(activeDuration, modifier.level(), 0.15F);
             }
         }
 

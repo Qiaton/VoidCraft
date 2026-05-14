@@ -16,6 +16,7 @@ import java.util.List;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
 
 public class WorldModule extends ModuleItem {
     private static final long ENERGY_COST = 600L;
@@ -64,13 +65,13 @@ public class WorldModule extends ModuleItem {
         for (ModuleModifierData modifier : modifiers) {
             ModuleModifierType modifierType = modifier.type();
             if (modifierType == COOLDOWN_REDUCTION) {
-                cooldownReduction += 0.15F * modifier.level();
+                cooldownReduction = addLess(cooldownReduction, modifier.level(), 0.15F);
             }
             if(modifierType == ACTIVE_DURATION){
-                offEnergy += 0.2F * modifier.level();
+                offEnergy = addLess(offEnergy, modifier.level(), 0.2F);
             }
             if(modifierType == SPEED_BOOST){
-                offEnergy += 0.2F * modifier.level();
+                offEnergy = addLess(offEnergy, modifier.level(), 0.2F);
             }
 
         }

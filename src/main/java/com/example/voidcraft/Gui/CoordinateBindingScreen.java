@@ -7,7 +7,6 @@ import com.example.voidcraft.Network.RemoveCoordinateBindingPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -15,22 +14,26 @@ import net.minecraft.util.Mth;
 public class CoordinateBindingScreen extends Screen {
     private static final int PANEL_WIDTH = 460;
     private static final int PANEL_HEIGHT = 220;
-
-    private static final int LIST_WIDTH = 286;
-    private static final int LIST_TOP_OFFSET = 52;
-    private static final int LIST_HEIGHT = 132;
-
+    private static final int PADDING = 12;
+    private static final int LIST_X = 12;
+    private static final int LIST_Y = 58;
+    private static final int LIST_WIDTH = 258;
+    private static final int LIST_HEIGHT = 114;
+    private static final int DETAIL_X = 286;
+    private static final int DETAIL_Y = 58;
+    private static final int DETAIL_WIDTH = 162;
+    private static final int DETAIL_HEIGHT = 114;
     private static final int ROW_HEIGHT = 24;
-    private static final int ENTRY_HEIGHT = 20;
-
+    private static final int ROW_INNER_HEIGHT = 21;
     private static final int SCROLLBAR_WIDTH = 4;
+    private static final int REMOVE_TAG_WIDTH = 72;
+    private static final int DONE_TAG_WIDTH = 54;
+    private static final int TAG_HEIGHT = 18;
 
     private final CoordinateBindingsPayload payload;
 
     private int selectedIndex = -1;
     private int scrollIndex = 0;
-
-    private Button removeButton;
 
     private CoordinateBindingScreen(CoordinateBindingsPayload payload) {
         super(Component.translatable("screen.void_craft.coordinate_bindings"));
@@ -44,232 +47,249 @@ public class CoordinateBindingScreen extends Screen {
     @Override
     protected void init() {
         clampScrollIndex();
-
-        int left = panelLeft();
-        int top = panelTop();
-
-        this.removeButton = Button.builder(
-                Component.translatable("button.void_craft.coordinate_bindings.remove"),
-                button -> removeSelected()
-        ).bounds(left + PANEL_WIDTH - 164, top + PANEL_HEIGHT - 32, 72, 20).build();
-
-        this.addRenderableWidget(this.removeButton);
-        updateRemoveButton();
-
-        this.addRenderableWidget(Button.builder(
-                Component.translatable("gui.done"),
-                button -> this.onClose()
-        ).bounds(left + PANEL_WIDTH - 84, top + PANEL_HEIGHT - 32, 72, 20).build());
+        if (this.selectedIndex >= this.payload.entries().size()) {
+            this.selectedIndex = -1;
+        }
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         int left = panelLeft();
         int top = panelTop();
+        int localMouseX = mouseX - left;
+        int localMouseY = mouseY - top;
 
-        guiGraphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xE0101010);
+        GuiDraw.drawBg(guiGraphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
+        GuiDraw.drawPanel(guiGraphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
+        GuiDraw.drawPanelLine(guiGraphics, left, top, PANEL_WIDTH, 39);
+        GuiDraw.drawBox(guiGraphics, left + LIST_X, top + LIST_Y, LIST_WIDTH, LIST_HEIGHT);
+        GuiDraw.drawBox(guiGraphics, left + DETAIL_X, top + DETAIL_Y, DETAIL_WIDTH, DETAIL_HEIGHT);
 
-        guiGraphics.drawCenteredString(
-                this.font,
-                this.title,
-                this.width / 2,
-                top + 12,
-                0xFFFFFFFF
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.literal(this.payload.owner().shortText()),
-                left + 12,
-                top + 30,
-                0xFFA7D7FF,
-                false
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable("screen.void_craft.coordinate_bindings.entries"),
-                left + 12,
-                top + 42,
-                0xFFDADADA,
-                false
-        );
-
-        if (this.payload.entries().isEmpty()) {
-            guiGraphics.drawString(
-                    this.font,
-                    Component.translatable("screen.void_craft.coordinate_bindings.empty"),
-                    listX() + 4,
-                    listY() + 6,
-                    0xFFDADADA,
-                    false
-            );
-        } else {
-            renderEntryList(guiGraphics, mouseX, mouseY);
-        }
-
-        CoordinateBindingsPayload.Entry selected = selectedEntry();
-        renderSelectedEntry(guiGraphics, selected, left + LIST_WIDTH + 28, top + 42);
+        renderHeader(guiGraphics, left, top);
+        renderListTitle(guiGraphics, left, top);
+        renderList(guiGraphics, left, top, localMouseX, localMouseY);
+        renderDetail(guiGraphics, left, top);
+        renderRemoveTag(guiGraphics, left, top, localMouseX, localMouseY);
+        renderDoneTag(guiGraphics, left, top, localMouseX, localMouseY);
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
+        int left = panelLeft();
+        int top = panelTop();
+        int localX = (int) event.x() - left;
+        int localY = (int) event.y() - top;
 
-        int entryIndex = entryIndexAt(mouseX, mouseY);
-
+        int entryIndex = entryIndexAt(localX, localY);
         if (entryIndex != -1) {
             this.selectedIndex = entryIndex;
-            updateRemoveButton();
-
-            GuiDraw.playClick();
+            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
             return true;
         }
 
-        return false;
+        if (GuiDraw.inRect(localX, localY, removeTagX(), tagY(), REMOVE_TAG_WIDTH, TAG_HEIGHT)) {
+            if (selectedEntry() != null) {
+                removeSelected();
+                AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+            }
+            return true;
+        }
+
+        if (GuiDraw.inRect(localX, localY, doneTagX(), tagY(), DONE_TAG_WIDTH, TAG_HEIGHT)) {
+            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+            this.onClose();
+            return true;
+        }
+
+        return super.mouseClicked(event, isDoubleClick);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (GuiDraw.inRect(mouseX, mouseY, listX(), listY(), LIST_WIDTH, LIST_HEIGHT)) {
+        int left = panelLeft();
+        int top = panelTop();
+        if (GuiDraw.inRect(mouseX, mouseY, left + LIST_X, top + LIST_Y, LIST_WIDTH, LIST_HEIGHT)) {
             if (scrollY < 0.0D) {
                 scrollBy(1);
             } else if (scrollY > 0.0D) {
                 scrollBy(-1);
             }
-
             return true;
         }
 
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    private void renderEntryList(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int x = listX();
-        int y = listY();
+    private void renderHeader(GuiGraphics guiGraphics, int left, int top) {
+        guiGraphics.drawString(this.font, this.title, left + PADDING, top + 9, GuiStyle.TEXT_TITLE, false);
+        GuiDraw.drawLine(guiGraphics, this.font, left + PADDING, top + 27, Component.literal(this.payload.owner().shortText()), GuiStyle.TEXT_MID, PANEL_WIDTH - PADDING * 2);
+    }
 
-        guiGraphics.fill(
-                x - 1,
-                y - 1,
-                x + LIST_WIDTH + 1,
-                y + LIST_HEIGHT + 1,
-                0x55000000
+    private void renderListTitle(GuiGraphics guiGraphics, int left, int top) {
+        GuiDraw.drawSection(
+                guiGraphics,
+                this.font,
+                left + LIST_X,
+                top + 45,
+                LIST_WIDTH,
+                Component.translatable("screen.void_craft.coordinate_bindings.entries")
         );
+    }
 
-        guiGraphics.enableScissor(x, y, x + LIST_WIDTH, y + LIST_HEIGHT);
+    private void renderList(GuiGraphics guiGraphics, int left, int top, int mouseX, int mouseY) {
+        if (this.payload.entries().isEmpty()) {
+            GuiDraw.drawLine(
+                    guiGraphics,
+                    this.font,
+                    left + LIST_X + 8,
+                    top + LIST_Y + 9,
+                    Component.translatable("screen.void_craft.coordinate_bindings.empty"),
+                    GuiStyle.TEXT_MUTED,
+                    LIST_WIDTH - 16
+            );
+            return;
+        }
+
+        guiGraphics.enableScissor(left + LIST_X, top + LIST_Y, left + LIST_X + LIST_WIDTH, top + LIST_Y + LIST_HEIGHT);
 
         int rows = visibleRows();
-
         for (int row = 0; row < rows; row++) {
             int entryIndex = this.scrollIndex + row;
-
             if (entryIndex >= this.payload.entries().size()) {
                 break;
             }
 
             CoordinateBindingsPayload.Entry entry = this.payload.entries().get(entryIndex);
-
-            int rowX = x;
-            int rowY = y + row * ROW_HEIGHT;
-
-            boolean hovered = GuiDraw.inRect(mouseX, mouseY, rowX, rowY, LIST_WIDTH, ENTRY_HEIGHT);
+            int rowX = left + LIST_X + 3;
+            int rowY = top + LIST_Y + 2 + row * ROW_HEIGHT;
             boolean selected = this.selectedIndex == entryIndex;
+            boolean hovered = GuiDraw.inRect(mouseX, mouseY, LIST_X, rowY - top - 2, LIST_WIDTH, ROW_INNER_HEIGHT);
 
             if (selected) {
-                guiGraphics.fill(
-                        rowX,
-                        rowY,
-                        rowX + LIST_WIDTH,
-                        rowY + ENTRY_HEIGHT,
-                        0x663A8DFF
-                );
+                guiGraphics.fill(rowX, rowY - 1, rowX + LIST_WIDTH - 10, rowY + ROW_INNER_HEIGHT - 1, GuiStyle.TAB_ON);
             } else if (hovered) {
-                guiGraphics.fill(
-                        rowX,
-                        rowY,
-                        rowX + LIST_WIDTH,
-                        rowY + ENTRY_HEIGHT,
-                        0x332A6CBA
-                );
+                guiGraphics.fill(rowX, rowY - 1, rowX + LIST_WIDTH - 10, rowY + ROW_INNER_HEIGHT - 1, GuiStyle.TAB_HOVER);
             }
 
-            int textColor = selected ? 0xFFFFFFFF : hovered ? 0xFFDDEEFF : 0xFFBFC7D5;
-
-            guiGraphics.drawString(
-                    this.font,
-                    entryLabel(entry),
-                    rowX + 4,
-                    rowY + 6,
-                    textColor,
-                    false
-            );
+            int sideColor = entry.outputList() ? GuiStyle.ACCENT : GuiStyle.TEXT_BAD;
+            guiGraphics.drawString(this.font, sideText(entry), rowX + 4, rowY + 1, sideColor, false);
+            GuiDraw.drawLine(guiGraphics, this.font, rowX + 44, rowY + 1, entry.targetName(), selected ? GuiStyle.TEXT_TITLE : GuiStyle.TEXT, LIST_WIDTH - 60);
+            GuiDraw.drawLine(guiGraphics, this.font, rowX + 4, rowY + 12, entryPos(entry), GuiStyle.TEXT_MUTED, LIST_WIDTH - 20);
         }
 
         guiGraphics.disableScissor();
-
-        renderScrollbar(guiGraphics);
+        renderScrollbar(guiGraphics, left, top);
     }
 
-    private void renderScrollbar(GuiGraphics guiGraphics) {
+    private void renderScrollbar(GuiGraphics guiGraphics, int left, int top) {
         int total = this.payload.entries().size();
         int visible = visibleRows();
-
         if (total <= visible) {
             return;
         }
 
-        int trackX = listX() + LIST_WIDTH + 4;
-        int trackY = listY();
-        int trackHeight = LIST_HEIGHT;
-
-        guiGraphics.fill(
-                trackX,
-                trackY,
-                trackX + SCROLLBAR_WIDTH,
-                trackY + trackHeight,
-                0x66000000
-        );
-
-        int maxScroll = maxScrollIndex();
-
-        int thumbHeight = Math.max(16, trackHeight * visible / total);
-        int availableHeight = trackHeight - thumbHeight;
-
+        int trackX = left + LIST_X + LIST_WIDTH - SCROLLBAR_WIDTH - 3;
+        int trackY = top + LIST_Y;
+        int thumbHeight = Math.max(16, LIST_HEIGHT * visible / total);
+        int moveHeight = LIST_HEIGHT - thumbHeight;
         int thumbY = trackY;
-
+        int maxScroll = maxScrollIndex();
         if (maxScroll > 0) {
-            thumbY = trackY + availableHeight * this.scrollIndex / maxScroll;
+            thumbY = trackY + moveHeight * this.scrollIndex / maxScroll;
         }
 
-        guiGraphics.fill(
-                trackX,
-                thumbY,
-                trackX + SCROLLBAR_WIDTH,
-                thumbY + thumbHeight,
-                0xFF8AB4FF
+        guiGraphics.fill(trackX, trackY + 2, trackX + SCROLLBAR_WIDTH, trackY + LIST_HEIGHT - 2, 0x66000000);
+        guiGraphics.fill(trackX, thumbY, trackX + SCROLLBAR_WIDTH, thumbY + thumbHeight, GuiStyle.ACCENT);
+    }
+
+    private void renderDetail(GuiGraphics guiGraphics, int left, int top) {
+        GuiDraw.drawSection(
+                guiGraphics,
+                this.font,
+                left + DETAIL_X + 6,
+                top + 45,
+                DETAIL_WIDTH - 12,
+                Component.translatable("screen.void_craft.coordinate_bindings.selected")
+        );
+
+        CoordinateBindingsPayload.Entry entry = selectedEntry();
+        if (entry == null) {
+            GuiDraw.drawLine(
+                    guiGraphics,
+                    this.font,
+                    left + DETAIL_X + 8,
+                    top + DETAIL_Y + 10,
+                    Component.translatable("screen.void_craft.coordinate_bindings.select_hint"),
+                    GuiStyle.TEXT_MUTED,
+                    DETAIL_WIDTH - 16
+            );
+            return;
+        }
+
+        int x = left + DETAIL_X + 8;
+        int y = top + DETAIL_Y + 9;
+        int width = DETAIL_WIDTH - 16;
+        GuiDraw.drawLine(guiGraphics, this.font, x, y, Component.translatable("screen.void_craft.coordinate_bindings.target_name", entry.targetName()), getEntryColor(entry), width);
+        GuiDraw.drawLine(guiGraphics, this.font, x, y + 16, Component.translatable("screen.void_craft.coordinate_bindings.target_dimension", entry.target().dimension().toString()), GuiStyle.TEXT_MID, width);
+        GuiDraw.drawLine(guiGraphics, this.font, x, y + 32, Component.translatable(
+                "screen.void_craft.coordinate_bindings.target_pos",
+                entry.target().pos().getX(),
+                entry.target().pos().getY(),
+                entry.target().pos().getZ()
+        ), GuiStyle.TEXT, width);
+        GuiDraw.drawLine(guiGraphics, this.font, x, y + 48, Component.translatable("screen.void_craft.coordinate_bindings.target_port", sideText(entry), entry.type().getDisplayName()), GuiStyle.TEXT, width);
+        GuiDraw.drawLine(guiGraphics, this.font, x, y + 64, Component.translatable(entry.status().translationKey()), GuiStyle.TEXT_MUTED, width);
+    }
+
+    private void renderRemoveTag(GuiGraphics guiGraphics, int left, int top, int mouseX, int mouseY) {
+        boolean active = selectedEntry() != null;
+        boolean hovered = active && GuiDraw.inRect(mouseX, mouseY, removeTagX(), tagY(), REMOVE_TAG_WIDTH, TAG_HEIGHT);
+        GuiDraw.drawTab(
+                guiGraphics,
+                this.font,
+                left + removeTagX(),
+                top + tagY(),
+                REMOVE_TAG_WIDTH,
+                TAG_HEIGHT,
+                Component.translatable("button.void_craft.coordinate_bindings.remove"),
+                false,
+                hovered,
+                active ? GuiStyle.TEXT_BAD : GuiStyle.TEXT_MUTED
+        );
+        if (!active) {
+            guiGraphics.fill(left + removeTagX(), top + tagY(), left + removeTagX() + REMOVE_TAG_WIDTH, top + tagY() + TAG_HEIGHT, 0x33000000);
+        }
+    }
+
+    private void renderDoneTag(GuiGraphics guiGraphics, int left, int top, int mouseX, int mouseY) {
+        boolean hovered = GuiDraw.inRect(mouseX, mouseY, doneTagX(), tagY(), DONE_TAG_WIDTH, TAG_HEIGHT);
+        GuiDraw.drawTab(
+                guiGraphics,
+                this.font,
+                left + doneTagX(),
+                top + tagY(),
+                DONE_TAG_WIDTH,
+                TAG_HEIGHT,
+                Component.translatable("gui.done"),
+                false,
+                hovered,
+                GuiStyle.TEXT_MUTED
         );
     }
 
     private int entryIndexAt(double mouseX, double mouseY) {
-        int x = listX();
-        int y = listY();
-
-        if (!GuiDraw.inRect(mouseX, mouseY, x, y, LIST_WIDTH, LIST_HEIGHT)) {
+        if (!GuiDraw.inRect(mouseX, mouseY, LIST_X, LIST_Y, LIST_WIDTH, LIST_HEIGHT)) {
             return -1;
         }
 
-        int row = (int) ((mouseY - y) / ROW_HEIGHT);
-
+        int row = (int) ((mouseY - LIST_Y) / ROW_HEIGHT);
         if (row < 0 || row >= visibleRows()) {
             return -1;
         }
 
         int entryIndex = this.scrollIndex + row;
-
         if (entryIndex < 0 || entryIndex >= this.payload.entries().size()) {
             return -1;
         }
@@ -277,20 +297,46 @@ public class CoordinateBindingScreen extends Screen {
         return entryIndex;
     }
 
+    private void removeSelected() {
+        CoordinateBindingsPayload.Entry selected = selectedEntry();
+        if (selected == null) {
+            return;
+        }
+
+        ModNetworking.sendToServer(new RemoveCoordinateBindingPayload(
+                this.payload.owner(),
+                selected.outputList(),
+                selected.target()
+        ));
+    }
+
+    private CoordinateBindingsPayload.Entry selectedEntry() {
+        if (this.selectedIndex < 0 || this.selectedIndex >= this.payload.entries().size()) {
+            return null;
+        }
+        return this.payload.entries().get(this.selectedIndex);
+    }
+
+    private Component sideText(CoordinateBindingsPayload.Entry entry) {
+        return Component.translatable(entry.outputList()
+                ? "screen.void_craft.coordinate_bindings.output"
+                : "screen.void_craft.coordinate_bindings.input");
+    }
+
+    private Component entryPos(CoordinateBindingsPayload.Entry entry) {
+        return Component.literal(entry.target().pos().getX() + ", " + entry.target().pos().getY() + ", " + entry.target().pos().getZ());
+    }
+
+    private int getEntryColor(CoordinateBindingsPayload.Entry entry) {
+        return entry.type() == VoidEnergyBindingType.OUTPUT ? GuiStyle.TEXT_OK : GuiStyle.TEXT_BAD;
+    }
+
     private void scrollBy(int rows) {
-        this.scrollIndex = Mth.clamp(
-                this.scrollIndex + rows,
-                0,
-                maxScrollIndex()
-        );
+        this.scrollIndex = Mth.clamp(this.scrollIndex + rows, 0, maxScrollIndex());
     }
 
     private void clampScrollIndex() {
-        this.scrollIndex = Mth.clamp(
-                this.scrollIndex,
-                0,
-                maxScrollIndex()
-        );
+        this.scrollIndex = Mth.clamp(this.scrollIndex, 0, maxScrollIndex());
     }
 
     private int maxScrollIndex() {
@@ -309,132 +355,15 @@ public class CoordinateBindingScreen extends Screen {
         return Math.max(24, (this.height - PANEL_HEIGHT) / 2);
     }
 
-    private int listX() {
-        return panelLeft() + 12;
+    private int removeTagX() {
+        return PANEL_WIDTH - PADDING - DONE_TAG_WIDTH - 8 - REMOVE_TAG_WIDTH;
     }
 
-    private int listY() {
-        return panelTop() + LIST_TOP_OFFSET;
+    private int doneTagX() {
+        return PANEL_WIDTH - PADDING - DONE_TAG_WIDTH;
     }
 
-    private void removeSelected() {
-        CoordinateBindingsPayload.Entry selected = selectedEntry();
-
-        if (selected == null) {
-            return;
-        }
-
-        ModNetworking.sendToServer(new RemoveCoordinateBindingPayload(
-                this.payload.owner(),
-                selected.outputList(),
-                selected.target()
-        ));
-    }
-
-    private void updateRemoveButton() {
-        if (this.removeButton != null) {
-            this.removeButton.active = selectedEntry() != null;
-        }
-    }
-
-    private CoordinateBindingsPayload.Entry selectedEntry() {
-        if (this.selectedIndex < 0 || this.selectedIndex >= this.payload.entries().size()) {
-            return null;
-        }
-
-        return this.payload.entries().get(this.selectedIndex);
-    }
-
-    private void renderSelectedEntry(GuiGraphics guiGraphics, CoordinateBindingsPayload.Entry entry, int x, int y) {
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable("screen.void_craft.coordinate_bindings.selected"),
-                x,
-                y,
-                0xFFDADADA,
-                false
-        );
-
-        if (entry == null) {
-            guiGraphics.drawString(
-                    this.font,
-                    Component.translatable("screen.void_craft.coordinate_bindings.select_hint"),
-                    x,
-                    y + 18,
-                    0xFFA0A0A0,
-                    false
-            );
-            return;
-        }
-
-        int color = entry.type() == VoidEnergyBindingType.OUTPUT ? 0xFF79FF72 : 0xFFFF6565;
-
-        Component side = Component.translatable(entry.outputList()
-                ? "screen.void_craft.coordinate_bindings.output"
-                : "screen.void_craft.coordinate_bindings.input");
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable("screen.void_craft.coordinate_bindings.target_name", entry.targetName()),
-                x,
-                y + 18,
-                color,
-                false
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable("screen.void_craft.coordinate_bindings.target_dimension", entry.target().dimension().toString()),
-                x,
-                y + 32,
-                0xFFD0D0D0,
-                false
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable(
-                        "screen.void_craft.coordinate_bindings.target_pos",
-                        entry.target().pos().getX(),
-                        entry.target().pos().getY(),
-                        entry.target().pos().getZ()
-                ),
-                x,
-                y + 46,
-                0xFFD0D0D0,
-                false
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable("screen.void_craft.coordinate_bindings.target_port", side, entry.type().getDisplayName()),
-                x,
-                y + 60,
-                0xFFD0D0D0,
-                false
-        );
-
-        guiGraphics.drawString(
-                this.font,
-                Component.translatable(entry.status().translationKey()),
-                x,
-                y + 74,
-                0xFFD0D0D0,
-                false
-        );
-    }
-
-    private Component entryLabel(CoordinateBindingsPayload.Entry entry) {
-        Component side = Component.translatable(entry.outputList()
-                ? "screen.void_craft.coordinate_bindings.output"
-                : "screen.void_craft.coordinate_bindings.input");
-
-        return Component.translatable(
-                "screen.void_craft.coordinate_bindings.entry_label",
-                side,
-                entry.targetName(),
-                entry.target().dimension().toString(),
-                entry.target().pos().getX() + ", " + entry.target().pos().getY() + ", " + entry.target().pos().getZ()
-        );
+    private int tagY() {
+        return PANEL_HEIGHT - 30;
     }
 }

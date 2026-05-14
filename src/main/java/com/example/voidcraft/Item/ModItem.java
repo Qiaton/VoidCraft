@@ -8,6 +8,7 @@ import com.example.voidcraft.Item.custom.TieredPhaseWatch;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.DashVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
@@ -209,6 +210,12 @@ public class ModItem {
             "assist_phase_turret_module_item",
             AssistPhaseTurretModule::new,
             new Item.Properties()
+
+    );
+    public static final DeferredItem<Item> BLACK_HOLE_MODULE = ITEMS.registerItem(
+            "black_hole_module_item",
+            BlackHoleModule::new,
+            props-> props
 
     );
     public static final DeferredItem<Item> WORLD_MODULE = ITEMS.registerItem(

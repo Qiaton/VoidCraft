@@ -404,8 +404,8 @@ public class VoidEffect {
                         buffer,
                         prepared.blackHole(),
                         prepared.partialTick(),
-                        prepared.diskFacingData(),
-                        prepared.coreFacingData()
+                        prepared.coreFacingData(),
+                        prepared.viewFacingData()
                 );
                 case SHADER_COMPAT -> VoidBlackHoleRenderer.renderShaderCompat(
                         poseStack,
@@ -413,8 +413,8 @@ public class VoidEffect {
                         prepared.blackHole(),
                         prepared.partialTick(),
                         light,
-                        prepared.diskFacingData(),
-                        prepared.coreFacingData()
+                        prepared.coreFacingData(),
+                        prepared.viewFacingData()
                 );
                 case SHADER_GLOW -> VoidBlackHoleRenderer.renderShaderGlow(
                         poseStack,
@@ -422,8 +422,8 @@ public class VoidEffect {
                         prepared.blackHole(),
                         prepared.partialTick(),
                         light,
-                        prepared.diskFacingData(),
-                        prepared.coreFacingData()
+                        prepared.coreFacingData(),
+                        prepared.viewFacingData()
                 );
             }
             poseStack.popPose();
@@ -635,8 +635,8 @@ public class VoidEffect {
                     center.y - cameraPos.y,
                     center.z - cameraPos.z,
                     partialTick,
-                    VoidBlackHoleRenderer.computeDiskFacingData(blackHole.config, center, cameraPos),
                     VoidBlackHoleRenderer.computeCoreFacingData(blackHole.config, center, cameraPos),
+                    VoidBlackHoleRenderer.computeViewFacingData(center, cameraPos),
                     VoidBlackHoleRenderer.computeDistortionFacingData(blackHole.config, center, cameraPos)
             ));
         }
@@ -686,8 +686,8 @@ public class VoidEffect {
             double renderY,
             double renderZ,
             float partialTick,
-            VoidBlackHoleRenderer.FacingData diskFacingData,
             VoidBlackHoleRenderer.FacingData coreFacingData,
+            VoidBlackHoleRenderer.FacingData viewFacingData,
             VoidBlackHoleRenderer.FacingData distortionFacingData
     ) {
     }

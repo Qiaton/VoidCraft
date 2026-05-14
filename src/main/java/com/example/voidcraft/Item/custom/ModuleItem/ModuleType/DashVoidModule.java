@@ -19,6 +19,7 @@ import java.util.List;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
 
 public class DashVoidModule extends ModuleItem {
     private static final long ENERGY_COST = 40L;
@@ -84,13 +85,14 @@ public class DashVoidModule extends ModuleItem {
             ModuleModifierType modifierType = modifier.type();
             if(modifierType == null) continue;
             if(modifierType == COOLDOWN_REDUCTION){
-                cooldownDuration += 0.15F*(float)(modifier.level());
+                cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                dashSpeed += (float) (0.15F*(modifier.level())+0.4*(data.level()));
+                dashSpeed += (float) (0.4F * data.level());
+                dashSpeed = addLess(dashSpeed, modifier.level(), 0.15F);
             }
             if(modifierType == ACTIVE_DURATION){
-                activeDuration += 0.3F*(float)(modifier.level());
+                activeDuration = addLess(activeDuration, modifier.level(), 0.3F);
             }
         }
 

@@ -3,6 +3,7 @@ package com.example.voidcraft;
 import com.example.voidcraft.Gui.ModuleMenu;
 import com.example.voidcraft.Gui.ModuleBoostMenu;
 import com.example.voidcraft.Gui.VoidChargerMenu;
+import com.example.voidcraft.Gui.VoidEnergyConverterMenu;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorMenu;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -36,6 +37,10 @@ public class ModMenuType {
     public static final Supplier<MenuType<VoidChargerMenu>> VOID_CHARGER_MENU = MENU_TYPE.register(
             "void_charger",
             () -> IMenuTypeExtension.create(VoidChargerMenu::new)
+    );
+    public static final Supplier<MenuType<VoidEnergyConverterMenu>> VOID_ENERGY_CONVERTER_MENU = MENU_TYPE.register(
+            "void_energy_converter",
+            () -> IMenuTypeExtension.create(VoidEnergyConverterMenu::new)
     );
     public static void register(IEventBus bus) {
         MENU_TYPE.register(bus);

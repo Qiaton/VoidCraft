@@ -17,8 +17,9 @@ public record VoidBlackHolePayload(
         int durationTicks,
         float centerYOffset,
         boolean coreFollowCameraPitch,
-        boolean diskFollowCameraPitch,
+        float coreYaw,
         boolean distortionFollowCameraPitch,
+        boolean flatGate,
         float startHalfHeight,
         float peakHalfHeight,
         float endHalfHeight,
@@ -28,7 +29,6 @@ public record VoidBlackHolePayload(
         int peakHoldTicks,
         float coreAlpha,
         float rimAlpha,
-        float diskAlpha,
         int coreColor,
         int color,
         float coreAlphaScale,
@@ -37,12 +37,6 @@ public record VoidBlackHolePayload(
         float horizonAlphaScale,
         float centerShadowScale,
         boolean hideFromOwnerInFirstPerson,
-        float diskInnerRadius,
-        float diskOuterRadius,
-        float diskVerticalScale,
-        float diskDepthScale,
-        float diskPitchFadeStart,
-        float diskPitchFadeEnd,
         float distortionAlpha,
         float swirlStrength,
         float suctionStrength,
@@ -82,8 +76,9 @@ public record VoidBlackHolePayload(
                 actualConfig.durationTicks(),
                 actualConfig.centerYOffset(),
                 actualConfig.coreFollowCameraPitch(),
-                actualConfig.diskFollowCameraPitch(),
+                actualConfig.coreYaw(),
                 actualConfig.distortionFollowCameraPitch(),
+                actualConfig.flatGate(),
                 actualConfig.startHalfHeight(),
                 actualConfig.peakHalfHeight(),
                 actualConfig.endHalfHeight(),
@@ -93,7 +88,6 @@ public record VoidBlackHolePayload(
                 actualConfig.peakHoldTicks(),
                 actualConfig.coreAlpha(),
                 actualConfig.rimAlpha(),
-                actualConfig.diskAlpha(),
                 actualConfig.coreColor(),
                 actualConfig.color(),
                 actualConfig.coreAlphaScale(),
@@ -102,12 +96,6 @@ public record VoidBlackHolePayload(
                 actualConfig.horizonAlphaScale(),
                 actualConfig.centerShadowScale(),
                 actualConfig.hideFromOwnerInFirstPerson(),
-                actualConfig.diskInnerRadius(),
-                actualConfig.diskOuterRadius(),
-                actualConfig.diskVerticalScale(),
-                actualConfig.diskDepthScale(),
-                actualConfig.diskPitchFadeStart(),
-                actualConfig.diskPitchFadeEnd(),
                 actualConfig.distortionAlpha(),
                 actualConfig.swirlStrength(),
                 actualConfig.suctionStrength(),
@@ -126,8 +114,9 @@ public record VoidBlackHolePayload(
                 .durationTicks(this.durationTicks)
                 .centerYOffset(this.centerYOffset)
                 .coreFollowCameraPitch(this.coreFollowCameraPitch)
-                .diskFollowCameraPitch(this.diskFollowCameraPitch)
+                .coreYaw(this.coreYaw)
                 .distortionFollowCameraPitch(this.distortionFollowCameraPitch)
+                .flatGate(this.flatGate)
                 .startHalfHeight(this.startHalfHeight)
                 .peakHalfHeight(this.peakHalfHeight)
                 .endHalfHeight(this.endHalfHeight)
@@ -137,7 +126,6 @@ public record VoidBlackHolePayload(
                 .peakHoldTicks(this.peakHoldTicks)
                 .coreAlpha(this.coreAlpha)
                 .rimAlpha(this.rimAlpha)
-                .diskAlpha(this.diskAlpha)
                 .coreColor(this.coreColor)
                 .color(this.color)
                 .coreAlphaScale(this.coreAlphaScale)
@@ -146,12 +134,6 @@ public record VoidBlackHolePayload(
                 .horizonAlphaScale(this.horizonAlphaScale)
                 .centerShadowScale(this.centerShadowScale)
                 .hideFromOwnerInFirstPerson(this.hideFromOwnerInFirstPerson)
-                .diskInnerRadius(this.diskInnerRadius)
-                .diskOuterRadius(this.diskOuterRadius)
-                .diskVerticalScale(this.diskVerticalScale)
-                .diskDepthScale(this.diskDepthScale)
-                .diskPitchFadeStart(this.diskPitchFadeStart)
-                .diskPitchFadeEnd(this.diskPitchFadeEnd)
                 .distortionAlpha(this.distortionAlpha)
                 .swirlStrength(this.swirlStrength)
                 .suctionStrength(this.suctionStrength)
@@ -183,8 +165,9 @@ public record VoidBlackHolePayload(
         ByteBufCodecs.VAR_INT.encode(buffer, payload.durationTicks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.centerYOffset);
         ByteBufCodecs.BOOL.encode(buffer, payload.coreFollowCameraPitch);
-        ByteBufCodecs.BOOL.encode(buffer, payload.diskFollowCameraPitch);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.coreYaw);
         ByteBufCodecs.BOOL.encode(buffer, payload.distortionFollowCameraPitch);
+        ByteBufCodecs.BOOL.encode(buffer, payload.flatGate);
         ByteBufCodecs.FLOAT.encode(buffer, payload.startHalfHeight);
         ByteBufCodecs.FLOAT.encode(buffer, payload.peakHalfHeight);
         ByteBufCodecs.FLOAT.encode(buffer, payload.endHalfHeight);
@@ -194,7 +177,6 @@ public record VoidBlackHolePayload(
         ByteBufCodecs.VAR_INT.encode(buffer, payload.peakHoldTicks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.coreAlpha);
         ByteBufCodecs.FLOAT.encode(buffer, payload.rimAlpha);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskAlpha);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.coreColor);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.color);
         ByteBufCodecs.FLOAT.encode(buffer, payload.coreAlphaScale);
@@ -203,12 +185,6 @@ public record VoidBlackHolePayload(
         ByteBufCodecs.FLOAT.encode(buffer, payload.horizonAlphaScale);
         ByteBufCodecs.FLOAT.encode(buffer, payload.centerShadowScale);
         ByteBufCodecs.BOOL.encode(buffer, payload.hideFromOwnerInFirstPerson);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskInnerRadius);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskOuterRadius);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskVerticalScale);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskDepthScale);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskPitchFadeStart);
-        ByteBufCodecs.FLOAT.encode(buffer, payload.diskPitchFadeEnd);
         ByteBufCodecs.FLOAT.encode(buffer, payload.distortionAlpha);
         ByteBufCodecs.FLOAT.encode(buffer, payload.swirlStrength);
         ByteBufCodecs.FLOAT.encode(buffer, payload.suctionStrength);
@@ -230,8 +206,9 @@ public record VoidBlackHolePayload(
         int durationTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         float centerYOffset = ByteBufCodecs.FLOAT.decode(buffer);
         boolean coreFollowCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
-        boolean diskFollowCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
+        float coreYaw = ByteBufCodecs.FLOAT.decode(buffer);
         boolean distortionFollowCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
+        boolean flatGate = ByteBufCodecs.BOOL.decode(buffer);
         float startHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
         float peakHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
         float endHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
@@ -241,7 +218,6 @@ public record VoidBlackHolePayload(
         int peakHoldTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         float coreAlpha = ByteBufCodecs.FLOAT.decode(buffer);
         float rimAlpha = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskAlpha = ByteBufCodecs.FLOAT.decode(buffer);
         int coreColor = ByteBufCodecs.VAR_INT.decode(buffer);
         int color = ByteBufCodecs.VAR_INT.decode(buffer);
         float coreAlphaScale = ByteBufCodecs.FLOAT.decode(buffer);
@@ -250,12 +226,6 @@ public record VoidBlackHolePayload(
         float horizonAlphaScale = ByteBufCodecs.FLOAT.decode(buffer);
         float centerShadowScale = ByteBufCodecs.FLOAT.decode(buffer);
         boolean hideFromOwnerInFirstPerson = ByteBufCodecs.BOOL.decode(buffer);
-        float diskInnerRadius = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskOuterRadius = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskVerticalScale = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskDepthScale = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskPitchFadeStart = ByteBufCodecs.FLOAT.decode(buffer);
-        float diskPitchFadeEnd = ByteBufCodecs.FLOAT.decode(buffer);
         float distortionAlpha = ByteBufCodecs.FLOAT.decode(buffer);
         float swirlStrength = ByteBufCodecs.FLOAT.decode(buffer);
         float suctionStrength = ByteBufCodecs.FLOAT.decode(buffer);
@@ -276,8 +246,9 @@ public record VoidBlackHolePayload(
                 durationTicks,
                 centerYOffset,
                 coreFollowCameraPitch,
-                diskFollowCameraPitch,
+                coreYaw,
                 distortionFollowCameraPitch,
+                flatGate,
                 startHalfHeight,
                 peakHalfHeight,
                 endHalfHeight,
@@ -287,7 +258,6 @@ public record VoidBlackHolePayload(
                 peakHoldTicks,
                 coreAlpha,
                 rimAlpha,
-                diskAlpha,
                 coreColor,
                 color,
                 coreAlphaScale,
@@ -296,12 +266,6 @@ public record VoidBlackHolePayload(
                 horizonAlphaScale,
                 centerShadowScale,
                 hideFromOwnerInFirstPerson,
-                diskInnerRadius,
-                diskOuterRadius,
-                diskVerticalScale,
-                diskDepthScale,
-                diskPitchFadeStart,
-                diskPitchFadeEnd,
                 distortionAlpha,
                 swirlStrength,
                 suctionStrength,

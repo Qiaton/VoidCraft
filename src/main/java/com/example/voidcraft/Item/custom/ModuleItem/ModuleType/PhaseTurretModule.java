@@ -40,6 +40,8 @@ import java.util.UUID;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 public class PhaseTurretModule extends ModuleItem {
 
@@ -677,25 +679,21 @@ public class PhaseTurretModule extends ModuleItem {
                 continue;
             }
             if (modifierType == COOLDOWN_REDUCTION) {
-                energyEfficiency += 0.20F * modifier.level();
+                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.20F);
                 cooldownReductionLevel += modifier.level();
             }
             if (modifierType == ACTIVE_DURATION) {
-                energyEfficiency += 0.20F * modifier.level();
+                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.20F);
                 activeDurationLevel += modifier.level();
             }
             if (modifierType == SPEED_BOOST) {
-                fireRate += SPEED_BOOST_PER_LEVEL * modifier.level();
+                fireRate = addLess(fireRate, modifier.level(), SPEED_BOOST_PER_LEVEL);
             }
         }
 
         float fireIntervalTicks = FIRE_INTERVAL_TICKS / Math.max(0.01F, fireRate);
-        float burstCooldownMultiplier = Math.max(
-                0.0F,
-                1.0F - BURST_COOLDOWN_REDUCTION_PER_LEVEL * Math.max(0, cooldownReductionLevel)
-        );
-        float burstActiveDuration = 1.0F
-                + BURST_ACTIVE_DURATION_PER_LEVEL * Math.max(0, activeDurationLevel);
+        float burstCooldownMultiplier = shrink(1.0F, Math.max(0, cooldownReductionLevel), BURST_COOLDOWN_REDUCTION_PER_LEVEL);
+        float burstActiveDuration = addLess(1.0F, Math.max(0, activeDurationLevel), BURST_ACTIVE_DURATION_PER_LEVEL);
         return new Stats(
                 data.moduleMode(),
                 energyEfficiency,

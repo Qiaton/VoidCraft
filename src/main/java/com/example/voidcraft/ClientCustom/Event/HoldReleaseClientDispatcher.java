@@ -1,6 +1,7 @@
 package com.example.voidcraft.ClientCustom.Event;
 
 import com.example.voidcraft.Custom.ModuleSlotHelper;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import net.minecraft.client.Minecraft;
@@ -25,6 +26,10 @@ public final class HoldReleaseClientDispatcher {
 
         ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot); // 从副手手表里取出这个技能槽的模块
 
+        if (moduleStack.getItem() instanceof BlackHoleModule) {
+            handleBlackHole(mc, slot, phase);
+            return;
+        }
         if (moduleStack.getItem() instanceof SafeBlinkVoidModule) {
             handleSafeBlink(mc, slot, phase, ticks);
             return;
@@ -47,8 +52,49 @@ public final class HoldReleaseClientDispatcher {
 
         // 根据当前槽位里的模块类型，把“取消蓄力”分发给对应模块的客户端控制器。
         ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
+        if (moduleStack.getItem() instanceof BlackHoleModule) {
+            BlackHoleAimClientController.onCancel(slot);
+            return;
+        }
         if (moduleStack.getItem() instanceof BlinkVoidModule || moduleStack.getItem() instanceof SafeBlinkVoidModule) {
             BlinkAimClientController.onCancel(slot);                      // Blink/SafeBlink 取消时只清本地瞄准/预览，不给服务端发释放包
+        }
+    }
+
+    public static boolean handleScroll(Minecraft mc, double scrollY) {
+        if (mc.player == null) {
+            return false;
+        }
+
+        for (int slot = 0; slot < 2; slot++) {
+            ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
+            if (moduleStack.getItem() instanceof BlackHoleModule && BlackHoleAimClientController.isActive(slot)) {
+                return BlackHoleAimClientController.onScroll(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, BlackHoleModule.getStats(moduleStack));
+            }
+            if (moduleStack.getItem() instanceof SafeBlinkVoidModule && BlinkAimClientController.isActive(slot)) {
+                return BlinkAimClientController.onScrollSafe(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, SafeBlinkVoidModule.getSafeStats(moduleStack));
+            }
+            if (moduleStack.getItem() instanceof BlinkVoidModule && BlinkAimClientController.isActive(slot)) {
+                return BlinkAimClientController.onScroll(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, BlinkVoidModule.getStats(moduleStack));
+            }
+        }
+
+        return false;
+    }
+
+    private static void handleBlackHole(
+            Minecraft mc,
+            int slot,
+            HoldReleaseInputState.Phase phase
+    ) {
+        ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
+        BlackHoleModule.Stats stats = BlackHoleModule.getStats(moduleStack);
+        switch (phase) {
+            case PRESS -> BlackHoleAimClientController.onPress(mc, slot, stats);
+            case HOLD -> BlackHoleAimClientController.onHold(mc, slot, HoldReleaseInputState.getChargeTicks(slot), stats);
+            case RELEASE -> BlackHoleAimClientController.onRelease(mc, slot, HoldReleaseInputState.getLastReleasedTicks(slot), stats);
+            case NONE -> {
+            }
         }
     }
 
