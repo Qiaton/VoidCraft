@@ -28,6 +28,9 @@ public class PhaseEmitterSet {
     private static final double THIRD_PERSON_ORBIT_SPEED = 0.1D;
     private static final double ORBIT_SPEED_PER_LEVEL = 0.12D;
     private static final double MAX_ORBIT_SPEED_MULTIPLIER = 1.85D;
+    private static final float ORB_MIN_SCALE = 0.95F;
+    private static final float ORB_MAX_SCALE = 1.05F;
+    private static final double ORB_SCALE_TIME = 3.0D;
 
     private final int emitterCount;
     private final int orbColorLevel;
@@ -150,13 +153,14 @@ public class PhaseEmitterSet {
     }
 
     public void render(PoseStack poseStack, VertexConsumer buffer, Vec3 cameraPos, float partialTick, int light, boolean shaderCompat) {
-        for (EmitterState emitter : this.emitters) {
+        for (int index = 0; index < this.emitters.size(); index++) {
+            EmitterState emitter = this.emitters.get(index);
             PhaseEmitterOrbRenderer.render(
                     poseStack,
                     buffer,
                     emitter.getCenter(partialTick),
                     cameraPos,
-                    emitter.radius(),
+                    emitter.radius() * getOrbScale(index, partialTick),
                     emitter.coreColor(),
                     emitter.rimColor(),
                     light,
@@ -217,6 +221,29 @@ public class PhaseEmitterSet {
 
     private static double getOrbitSpeedMultiplier(int level) {
         return Math.min(MAX_ORBIT_SPEED_MULTIPLIER, 1.0D + Math.max(0, level - 1) * ORBIT_SPEED_PER_LEVEL);
+    }
+
+    private static float getOrbScale(int index, float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return 1.0F;
+        }
+
+        double time = mc.level.getGameTime() + Mth.clamp(partialTick, 0.0F, 1.0F) + index * 1.7D;
+        long scaleTime = (long) Math.floor(time / ORB_SCALE_TIME);
+        float step = (float) ((time - scaleTime * ORB_SCALE_TIME) / ORB_SCALE_TIME);
+        float startScale = getScaleValue(index, scaleTime);
+        float endScale = getScaleValue(index, scaleTime + 1L);
+        return Mth.lerp(step, startScale, endScale);
+    }
+
+    private static float getScaleValue(int index, long scaleTime) {
+        long seed = scaleTime * 1103515245L + index * 12345L + 67890L;
+        seed ^= seed >> 16;
+        seed *= 214013L;
+        seed ^= seed >> 15;
+        float value = (seed & 1023L) / 1023.0F;
+        return Mth.lerp(value, ORB_MIN_SCALE, ORB_MAX_SCALE);
     }
 
     private EmitterState createEmitter(Player owner, Vec3 center) {

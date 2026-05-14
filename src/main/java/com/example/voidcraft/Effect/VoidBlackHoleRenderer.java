@@ -11,12 +11,12 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 public final class VoidBlackHoleRenderer {
-    private static final int ANGLE_SEGMENTS = 32;
-    private static final int MASK_RADIAL_SEGMENTS = 8;
+    private static final int ANGLE_SEGMENTS = 64;
+    private static final int GATE_RADIAL_SEGMENTS = 28;
+    private static final int GATE_EDGE_SEGMENTS = 4;
+    private static final int MASK_RADIAL_SEGMENTS = 10;
     private static final int HORIZONTAL_SEGMENTS = 32;
     private static final int VERTICAL_SEGMENTS = 16;
-    private static final int DISK_SEGMENTS = 64;
-    private static final int DISK_RADIAL_SEGMENTS = 6;
     private static final double BILLBOARD_EPSILON = 1.0E-8D;
 
     private VoidBlackHoleRenderer() {
@@ -27,17 +27,16 @@ public final class VoidBlackHoleRenderer {
             VertexConsumer buffer,
             VoidBlackHoleInstance blackHole,
             float partialTick,
-            FacingData diskFacingData,
-            FacingData coreFacingData
+            FacingData coreFacingData,
+            FacingData viewFacingData
     ) {
         RenderMetrics metrics = computeMetrics(blackHole, partialTick);
         renderBlackHole(
                 buffer,
                 facingMatrix(poseStack, coreFacingData, blackHole.config.coreFollowCameraPitch()),
-                facingMatrix(poseStack, diskFacingData, blackHole.config.diskFollowCameraPitch()),
+                facingMatrix(poseStack, viewFacingData, true),
                 blackHole.config,
                 metrics,
-                diskViewVisibility(blackHole.config, coreFacingData),
                 0,
                 false,
                 false,
@@ -51,17 +50,16 @@ public final class VoidBlackHoleRenderer {
             VoidBlackHoleInstance blackHole,
             float partialTick,
             int light,
-            FacingData diskFacingData,
-            FacingData coreFacingData
+            FacingData coreFacingData,
+            FacingData viewFacingData
     ) {
         RenderMetrics metrics = computeMetrics(blackHole, partialTick);
         renderBlackHole(
                 buffer,
                 facingMatrix(poseStack, coreFacingData, blackHole.config.coreFollowCameraPitch()),
-                facingMatrix(poseStack, diskFacingData, blackHole.config.diskFollowCameraPitch()),
+                facingMatrix(poseStack, viewFacingData, true),
                 blackHole.config,
                 metrics,
-                diskViewVisibility(blackHole.config, coreFacingData),
                 light,
                 true,
                 false,
@@ -75,17 +73,16 @@ public final class VoidBlackHoleRenderer {
             VoidBlackHoleInstance blackHole,
             float partialTick,
             int light,
-            FacingData diskFacingData,
-            FacingData coreFacingData
+            FacingData coreFacingData,
+            FacingData viewFacingData
     ) {
         RenderMetrics metrics = computeMetrics(blackHole, partialTick);
         renderBlackHole(
                 buffer,
                 facingMatrix(poseStack, coreFacingData, blackHole.config.coreFollowCameraPitch()),
-                facingMatrix(poseStack, diskFacingData, blackHole.config.diskFollowCameraPitch()),
+                facingMatrix(poseStack, viewFacingData, true),
                 blackHole.config,
                 metrics,
-                diskViewVisibility(blackHole.config, coreFacingData),
                 light,
                 true,
                 true,
@@ -181,36 +178,18 @@ public final class VoidBlackHoleRenderer {
     }
 
     public static FacingData computeCoreFacingData(VoidBlackHoleInstance.Config config, Vec3 center, Vec3 cameraPos) {
+        if (!config.coreFollowCameraPitch()) {
+            return fixedFacingData(config.coreYaw());
+        }
         return computeFacingData(center, cameraPos, config.coreFollowCameraPitch());
-    }
-
-    public static FacingData computeDiskFacingData(VoidBlackHoleInstance.Config config, Vec3 center, Vec3 cameraPos) {
-        return computeFacingData(center, cameraPos, config.diskFollowCameraPitch());
     }
 
     public static FacingData computeDistortionFacingData(VoidBlackHoleInstance.Config config, Vec3 center, Vec3 cameraPos) {
         return computeFacingData(center, cameraPos, config.distortionFollowCameraPitch());
     }
 
-    private static Vec3 projectPoint(Minecraft mc, Vec3 point) {
-        return projectPoint(mc, point, RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix());
-    }
-
-    private static Vec3 projectPoint(Minecraft mc, Vec3 point, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-        Vector4f clip = new Vector4f(
-                (float) (point.x - cameraPos.x),
-                (float) (point.y - cameraPos.y),
-                (float) (point.z - cameraPos.z),
-                1.0F
-        );
-        clip.mul(modelViewMatrix);
-        clip.mul(projectionMatrix);
-        if (clip.w() <= 1.0E-6F) {
-            return null;
-        }
-        float invW = 1.0F / clip.w();
-        return new Vec3(clip.x() * invW, clip.y() * invW, clip.z() * invW);
+    public static FacingData computeViewFacingData(Vec3 center, Vec3 cameraPos) {
+        return computeFacingData(center, cameraPos, true);
     }
 
     private static Matrix4f facingMatrix(
@@ -267,6 +246,16 @@ public final class VoidBlackHoleRenderer {
         return new FacingData(yaw, pitch, forward, horizontal, vertical);
     }
 
+    private static FacingData fixedFacingData(float yaw) {
+        return new FacingData(
+                yaw,
+                0.0F,
+                new Vec3(Mth.sin(yaw), 0.0D, Mth.cos(yaw)),
+                new Vec3(Mth.cos(yaw), 0.0D, -Mth.sin(yaw)),
+                new Vec3(0.0D, 1.0D, 0.0D)
+        );
+    }
+
     private static RenderMetrics computeMetrics(VoidBlackHoleInstance blackHole, float partialTick) {
         VoidBlackHoleInstance.Config config = blackHole.config;
         float progress = blackHole.getProgress(partialTick);
@@ -282,21 +271,15 @@ public final class VoidBlackHoleRenderer {
         float burstWidth = Mth.lerp(expand, config.startHalfWidth(), config.peakHalfWidth());
         float halfHeight = Mth.lerp(collapse, burstHeight, config.endHalfHeight()) * blackHole.scale;
         float halfWidth = Mth.lerp(collapse, burstWidth, config.endHalfWidth()) * blackHole.scale;
-        return new RenderMetrics(halfHeight, halfWidth, fade);
-    }
-
-    private static float diskViewVisibility(VoidBlackHoleInstance.Config config, FacingData coreFacingData) {
-        float normalizedPitch = Mth.clamp(Math.abs(coreFacingData.pitch()) / (Mth.PI * 0.5F), 0.0F, 1.0F);
-        return 1.0F - smoothstep(config.diskPitchFadeStart(), config.diskPitchFadeEnd(), normalizedPitch);
+        return new RenderMetrics(halfHeight, halfWidth, fade, blackHole.age + partialTick);
     }
 
     private static void renderBlackHole(
             VertexConsumer buffer,
             Matrix4f coreMatrix4f,
-            Matrix4f diskMatrix4f,
+            Matrix4f viewMatrix4f,
             VoidBlackHoleInstance.Config config,
             RenderMetrics metrics,
-            float diskAlphaScale,
             int light,
             boolean textured,
             boolean glowOnly,
@@ -309,11 +292,24 @@ public final class VoidBlackHoleRenderer {
 
         float coreAlpha = config.coreAlpha() * fade;
         float rimAlpha = config.rimAlpha() * fade;
-        float diskAlpha = config.diskAlpha() * fade * diskAlphaScale;
+        if (config.flatGate()) {
+            renderFlatBlackHole(buffer, coreMatrix4f, config, metrics, light, textured, glowOnly, renderRim, coreAlpha, rimAlpha);
+            return;
+        }
+
         if (!glowOnly) {
-            renderAccretionDisk(buffer, diskMatrix4f, metrics.halfHeight(), metrics.halfWidth(), diskAlpha, config, light, textured, false);
-            renderHorizon(buffer, coreMatrix4f, metrics.halfHeight(), metrics.halfWidth(), coreAlpha * config.horizonAlphaScale(), config, light, textured);
-            renderSphereLayer(buffer, coreMatrix4f, metrics.halfHeight(), metrics.halfWidth(), coreAlpha * config.coreAlphaScale(), config.coreColor(), light, textured, false);
+            renderHorizon(buffer, viewMatrix4f, metrics, coreAlpha * config.horizonAlphaScale(), config, light, textured);
+            renderSphereLayer(
+                    buffer,
+                    coreMatrix4f,
+                    metrics.halfHeight(),
+                    metrics.halfWidth(),
+                    coreAlpha * config.coreAlphaScale(),
+                    config.coreColor(),
+                    light,
+                    textured,
+                    false
+            );
         }
 
         if (renderRim) {
@@ -329,22 +325,47 @@ public final class VoidBlackHoleRenderer {
                     true
             );
         }
+    }
+
+    private static void renderFlatBlackHole(
+            VertexConsumer buffer,
+            Matrix4f coreMatrix4f,
+            VoidBlackHoleInstance.Config config,
+            RenderMetrics metrics,
+            int light,
+            boolean textured,
+            boolean glowOnly,
+            boolean renderRim,
+            float coreAlpha,
+            float rimAlpha
+    ) {
         if (!glowOnly) {
-            renderAccretionDisk(buffer, diskMatrix4f, metrics.halfHeight(), metrics.halfWidth(), diskAlpha, config, light, textured, true);
+            renderGateCenter(buffer, coreMatrix4f, metrics, coreAlpha * config.horizonAlphaScale(), config, light, textured);
+        }
+
+        if (renderRim) {
+            renderGateEdge(
+                    buffer,
+                    coreMatrix4f,
+                    metrics,
+                    rimAlpha * (glowOnly ? config.shaderRimAlphaScale() : config.rimAlphaScale()),
+                    config,
+                    light,
+                    textured
+            );
         }
     }
 
     private static void renderHorizon(
             VertexConsumer buffer,
             Matrix4f matrix4f,
-            float halfHeight,
-            float halfWidth,
+            RenderMetrics metrics,
             float alpha,
             VoidBlackHoleInstance.Config config,
             int light,
             boolean textured
     ) {
-        if (alpha <= 0.01F || halfHeight <= 0.001F || halfWidth <= 0.001F) {
+        if (alpha <= 0.01F || metrics.halfHeight() <= 0.001F || metrics.halfWidth() <= 0.001F) {
             return;
         }
 
@@ -369,60 +390,14 @@ public final class VoidBlackHoleRenderer {
                 float localX10 = Mth.cos(theta0) * radius1;
                 float localY10 = Mth.sin(theta0) * radius1;
 
-                putBlackHoleVertex(buffer, matrix4f, localX00 * halfWidth, localY00 * halfHeight, 0.018F,
+                putBlackHoleVertex(buffer, matrix4f, localX00 * metrics.halfWidth(), localY00 * metrics.halfHeight(), 0.018F,
                         r, g, b, alpha0, localXToUv(localX00), localYToUv(localY00), light, textured);
-                putBlackHoleVertex(buffer, matrix4f, localX01 * halfWidth, localY01 * halfHeight, 0.018F,
+                putBlackHoleVertex(buffer, matrix4f, localX01 * metrics.halfWidth(), localY01 * metrics.halfHeight(), 0.018F,
                         r, g, b, alpha0, localXToUv(localX01), localYToUv(localY01), light, textured);
-                putBlackHoleVertex(buffer, matrix4f, localX11 * halfWidth, localY11 * halfHeight, 0.018F,
+                putBlackHoleVertex(buffer, matrix4f, localX11 * metrics.halfWidth(), localY11 * metrics.halfHeight(), 0.018F,
                         r, g, b, alpha1, localXToUv(localX11), localYToUv(localY11), light, textured);
-                putBlackHoleVertex(buffer, matrix4f, localX10 * halfWidth, localY10 * halfHeight, 0.018F,
+                putBlackHoleVertex(buffer, matrix4f, localX10 * metrics.halfWidth(), localY10 * metrics.halfHeight(), 0.018F,
                         r, g, b, alpha1, localXToUv(localX10), localYToUv(localY10), light, textured);
-            }
-        }
-    }
-
-    private static void renderAccretionDisk(
-            VertexConsumer buffer,
-            Matrix4f matrix4f,
-            float halfHeight,
-            float halfWidth,
-            float alpha,
-            VoidBlackHoleInstance.Config config,
-            int light,
-            boolean textured,
-            boolean frontHalf
-    ) {
-        if (alpha <= 0.01F || halfHeight <= 0.001F || halfWidth <= 0.001F) {
-            return;
-        }
-
-        int r = colorRed(config.color());
-        int g = colorGreen(config.color());
-        int b = colorBlue(config.color());
-        for (int radial = 0; radial < DISK_RADIAL_SEGMENTS; radial++) {
-            float radial0 = (float) radial / DISK_RADIAL_SEGMENTS;
-            float radial1 = (float) (radial + 1) / DISK_RADIAL_SEGMENTS;
-            float radius0 = Mth.lerp(radial0, config.diskInnerRadius(), config.diskOuterRadius());
-            float radius1 = Mth.lerp(radial1, config.diskInnerRadius(), config.diskOuterRadius());
-
-            for (int angle = 0; angle < DISK_SEGMENTS; angle++) {
-                float midTheta = Mth.TWO_PI * (angle + 0.5F) / DISK_SEGMENTS;
-                boolean segmentFront = Mth.sin(midTheta) < 0.0F;
-                if (segmentFront != frontHalf) {
-                    continue;
-                }
-
-                float theta0 = Mth.TWO_PI * angle / DISK_SEGMENTS;
-                float theta1 = Mth.TWO_PI * (angle + 1) / DISK_SEGMENTS;
-                float sin0 = Mth.sin(theta0);
-                float sin1 = Mth.sin(theta1);
-                float cos0 = Mth.cos(theta0);
-                float cos1 = Mth.cos(theta1);
-
-                putDiskVertex(buffer, matrix4f, halfHeight, halfWidth, radius0, radial0, cos0, sin0, alpha, r, g, b, light, textured, frontHalf, config);
-                putDiskVertex(buffer, matrix4f, halfHeight, halfWidth, radius0, radial0, cos1, sin1, alpha, r, g, b, light, textured, frontHalf, config);
-                putDiskVertex(buffer, matrix4f, halfHeight, halfWidth, radius1, radial1, cos1, sin1, alpha, r, g, b, light, textured, frontHalf, config);
-                putDiskVertex(buffer, matrix4f, halfHeight, halfWidth, radius1, radial1, cos0, sin0, alpha, r, g, b, light, textured, frontHalf, config);
             }
         }
     }
@@ -481,6 +456,110 @@ public final class VoidBlackHoleRenderer {
         }
     }
 
+    private static void renderGateCenter(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            RenderMetrics metrics,
+            float alpha,
+            VoidBlackHoleInstance.Config config,
+            int light,
+            boolean textured
+    ) {
+        if (alpha <= 0.01F || metrics.halfHeight() <= 0.001F || metrics.halfWidth() <= 0.001F) {
+            return;
+        }
+
+        int r = colorRed(config.coreColor());
+        int g = colorGreen(config.coreColor());
+        int b = colorBlue(config.coreColor());
+        float z = config.flatGate() ? 0.006F : 0.018F;
+        for (int radial = 0; radial < GATE_RADIAL_SEGMENTS; radial++) {
+            float radius0 = (float) radial / GATE_RADIAL_SEGMENTS;
+            float radius1 = (float) (radial + 1) / GATE_RADIAL_SEGMENTS;
+            int alpha0 = gateCenterAlpha(alpha, radius0, config.flatGate());
+            int alpha1 = gateCenterAlpha(alpha, radius1, config.flatGate());
+
+            for (int angle = 0; angle < ANGLE_SEGMENTS; angle++) {
+                float theta0 = Mth.TWO_PI * angle / ANGLE_SEGMENTS;
+                float theta1 = Mth.TWO_PI * (angle + 1) / ANGLE_SEGMENTS;
+                float radius00 = radius0 * gateEdge(theta0, metrics.time(), config.flatGate());
+                float radius01 = radius0 * gateEdge(theta1, metrics.time(), config.flatGate());
+                float radius11 = radius1 * gateEdge(theta1, metrics.time(), config.flatGate());
+                float radius10 = radius1 * gateEdge(theta0, metrics.time(), config.flatGate());
+                float localX00 = Mth.cos(theta0) * radius00;
+                float localY00 = Mth.sin(theta0) * radius00;
+                float localX01 = Mth.cos(theta1) * radius01;
+                float localY01 = Mth.sin(theta1) * radius01;
+                float localX11 = Mth.cos(theta1) * radius11;
+                float localY11 = Mth.sin(theta1) * radius11;
+                float localX10 = Mth.cos(theta0) * radius10;
+                float localY10 = Mth.sin(theta0) * radius10;
+
+                putBlackHoleVertex(buffer, matrix4f, localX00 * metrics.halfWidth(), localY00 * metrics.halfHeight(), z,
+                        r, g, b, alpha0, localXToUv(localX00), localYToUv(localY00), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX01 * metrics.halfWidth(), localY01 * metrics.halfHeight(), z,
+                        r, g, b, alpha0, localXToUv(localX01), localYToUv(localY01), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX11 * metrics.halfWidth(), localY11 * metrics.halfHeight(), z,
+                        r, g, b, alpha1, localXToUv(localX11), localYToUv(localY11), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX10 * metrics.halfWidth(), localY10 * metrics.halfHeight(), z,
+                        r, g, b, alpha1, localXToUv(localX10), localYToUv(localY10), light, textured);
+            }
+        }
+    }
+
+    private static void renderGateEdge(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            RenderMetrics metrics,
+            float alpha,
+            VoidBlackHoleInstance.Config config,
+            int light,
+            boolean textured
+    ) {
+        if (alpha <= 0.01F || metrics.halfHeight() <= 0.001F || metrics.halfWidth() <= 0.001F) {
+            return;
+        }
+
+        int r = colorRed(config.color());
+        int g = colorGreen(config.color());
+        int b = colorBlue(config.color());
+        float innerRadius = config.flatGate() ? 0.955F : 0.86F;
+        float outerRadius = config.flatGate() ? 1.030F : 1.10F;
+        float z = config.flatGate() ? 0.006F : 0.012F;
+        for (int radial = 0; radial < GATE_EDGE_SEGMENTS; radial++) {
+            float edge0 = (float) radial / GATE_EDGE_SEGMENTS;
+            float edge1 = (float) (radial + 1) / GATE_EDGE_SEGMENTS;
+            float radius0 = Mth.lerp(edge0, innerRadius, outerRadius);
+            float radius1 = Mth.lerp(edge1, innerRadius, outerRadius);
+
+            for (int angle = 0; angle < ANGLE_SEGMENTS; angle++) {
+                float theta0 = Mth.TWO_PI * angle / ANGLE_SEGMENTS;
+                float theta1 = Mth.TWO_PI * (angle + 1) / ANGLE_SEGMENTS;
+                float edgeNoise0 = gateEdge(theta0, metrics.time(), config.flatGate());
+                float edgeNoise1 = gateEdge(theta1, metrics.time(), config.flatGate());
+                float localX00 = Mth.cos(theta0) * radius0 * edgeNoise0;
+                float localY00 = Mth.sin(theta0) * radius0 * edgeNoise0;
+                float localX01 = Mth.cos(theta1) * radius0 * edgeNoise1;
+                float localY01 = Mth.sin(theta1) * radius0 * edgeNoise1;
+                float localX11 = Mth.cos(theta1) * radius1 * edgeNoise1;
+                float localY11 = Mth.sin(theta1) * radius1 * edgeNoise1;
+                float localX10 = Mth.cos(theta0) * radius1 * edgeNoise0;
+                float localY10 = Mth.sin(theta0) * radius1 * edgeNoise0;
+                int alpha0 = gateEdgeAlpha(alpha, edge0, theta0, metrics.time(), config.flatGate());
+                int alpha1 = gateEdgeAlpha(alpha, edge1, theta1, metrics.time(), config.flatGate());
+
+                putBlackHoleVertex(buffer, matrix4f, localX00 * metrics.halfWidth(), localY00 * metrics.halfHeight(), z,
+                        r, g, b, alpha0, localXToUv(localX00), localYToUv(localY00), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX01 * metrics.halfWidth(), localY01 * metrics.halfHeight(), z,
+                        r, g, b, alpha0, localXToUv(localX01), localYToUv(localY01), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX11 * metrics.halfWidth(), localY11 * metrics.halfHeight(), z,
+                        r, g, b, alpha1, localXToUv(localX11), localYToUv(localY11), light, textured);
+                putBlackHoleVertex(buffer, matrix4f, localX10 * metrics.halfWidth(), localY10 * metrics.halfHeight(), z,
+                        r, g, b, alpha1, localXToUv(localX10), localYToUv(localY10), light, textured);
+            }
+        }
+    }
+
     private static void renderMaskLayer(VertexConsumer buffer, Matrix4f matrix4f, float halfHeight, float halfWidth, float z, int effectIndex) {
         int effectIdByte = Mth.clamp(effectIndex + 1, 1, 255);
         for (int radial = 0; radial < MASK_RADIAL_SEGMENTS; radial++) {
@@ -529,49 +608,40 @@ public final class VoidBlackHoleRenderer {
         return alphaToByte(alpha * eventHorizon);
     }
 
-    private static int diskAlpha(float alpha, float radial, float sinTheta, boolean frontHalf) {
-        float radialBand = smoothstep(0.0F, 0.24F, radial) * (1.0F - smoothstep(0.72F, 1.0F, radial));
-        float orbitFade = 0.68F + 0.32F * (1.0F - Math.abs(sinTheta));
-        float depthFade = frontHalf ? 1.0F : 0.56F;
-        return alphaToByte(alpha * radialBand * orbitFade * depthFade);
+    private static float gateEdge(float angle, float time, boolean flatGate) {
+        if (flatGate) {
+            return 1.0F
+                    + Mth.sin(angle * 5.0F + time * 0.06F) * 0.006F
+                    + Mth.sin(angle * 13.0F - time * 0.04F) * 0.004F;
+        }
+
+        return 1.0F
+                + Mth.sin(angle * 3.0F + time * 0.08F) * 0.020F
+                + Mth.sin(angle * 7.0F - time * 0.05F) * 0.014F
+                + Mth.sin(angle * 13.0F + time * 0.11F) * 0.008F;
     }
 
-    private static void putDiskVertex(
-            VertexConsumer buffer,
-            Matrix4f matrix4f,
-            float halfHeight,
-            float halfWidth,
-            float radius,
-            float radial,
-            float cosTheta,
-            float sinTheta,
-            float alpha,
-            int r,
-            int g,
-            int b,
-            int light,
-            boolean textured,
-            boolean frontHalf,
-            VoidBlackHoleInstance.Config config
-    ) {
-        float localX = cosTheta * radius;
-        float localY = sinTheta * radius * config.diskVerticalScale();
-        float z = -sinTheta * halfWidth * config.diskDepthScale() * radius;
-        putBlackHoleVertex(
-                buffer,
-                matrix4f,
-                localX * halfWidth,
-                localY * halfHeight,
-                z,
-                r,
-                g,
-                b,
-                diskAlpha(alpha, radial, sinTheta, frontHalf),
-                localXToUv(localX / config.diskOuterRadius()),
-                localYToUv(localY / Math.max(0.001F, config.diskOuterRadius() * config.diskVerticalScale())),
-                light,
-                textured
-        );
+    private static int gateCenterAlpha(float alpha, float radius, boolean flatGate) {
+        float edgeStart = flatGate ? 0.94F : 0.82F;
+        float edgeFade = 1.0F - smoothstep(edgeStart, 1.0F, radius);
+        return alphaToByte(alpha * edgeFade);
+    }
+
+    private static int gateEdgeAlpha(float alpha, float edge, float angle, float time, boolean flatGate) {
+        float centerBand = 1.0F - Math.abs(edge * 2.0F - 1.0F);
+        if (flatGate) {
+            float line = smoothstep(0.08F, 0.78F, centerBand);
+            float breakUp = 0.88F
+                    + Mth.sin(angle * 7.0F - time * 0.08F) * 0.07F
+                    + Mth.sin(angle * 17.0F + time * 0.05F) * 0.05F;
+            return alphaToByte(alpha * line * Mth.clamp(breakUp, 0.62F, 1.0F) * 1.08F);
+        }
+
+        float line = smoothstep(0.0F, 0.48F, centerBand) * (1.0F - smoothstep(0.72F, 1.0F, edge));
+        float breakUp = 0.72F
+                + Mth.sin(angle * 5.0F - time * 0.12F) * 0.16F
+                + Mth.sin(angle * 11.0F + time * 0.09F) * 0.12F;
+        return alphaToByte(alpha * line * Mth.clamp(breakUp, 0.35F, 1.0F) * 0.92F);
     }
 
     private static void putBlackHoleVertex(
@@ -672,7 +742,7 @@ public final class VoidBlackHoleRenderer {
         return color & 255;
     }
 
-    private record RenderMetrics(float halfHeight, float halfWidth, float fade) {
+    private record RenderMetrics(float halfHeight, float halfWidth, float fade, float time) {
     }
 
     public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV, float centerDepth) {

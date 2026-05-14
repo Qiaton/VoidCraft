@@ -78,6 +78,7 @@ public class CreativeModeTabs {
                         output.accept(getSafeBlinkVoidModuleItem());
                         output.accept(getPhaseTurretModuleItem());
                         output.accept(getAssistPhaseTurretModuleItem());
+                        output.accept(getBlackHoleModuleItem());
                         output.accept(getWorldModuleItem());
                     }))
                     .build()
@@ -96,47 +97,52 @@ public class CreativeModeTabs {
     }
     public static ItemStack getModuleItem(){
         ItemStack stack = new ItemStack(ModItem.MODULE_ITEM.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getHealthModuleItem(){
         ItemStack stack = new ItemStack(ModItem.HEALTH_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getBlinkVoidModuleItem(){
         ItemStack stack = new ItemStack(ModItem.BLINK_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5)))); // Blink 只支持 BURST，创造栏样品也要给 BURST
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5)))); // Blink 只支持 BURST，创造栏样品也要给 BURST
         return stack;
     }
     public static ItemStack getSafeBlinkVoidModuleItem(){
         ItemStack stack = new ItemStack(ModItem.SAFE_BLINK_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getPhaseTurretModuleItem(){
         ItemStack stack = new ItemStack(ModItem.PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,15, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,10),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getAssistPhaseTurretModuleItem(){
         ItemStack stack = new ItemStack(ModItem.ASSIST_PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,12, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,10),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        return stack;
+    }
+    public static ItemStack getBlackHoleModuleItem(){
+        ItemStack stack = new ItemStack(ModItem.BLACK_HOLE_MODULE.get());
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getWorldModuleItem(){
         ItemStack stack = new ItemStack(ModItem.WORLD_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,3, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static ItemStack getModuleModifierItem(ModuleModifierType type){
         ItemStack stack = new ItemStack(ModItem.MODULE_MODIFIER_ITEM.get());
-        ModuleModifierItem.setData(stack, new ModuleModifierData(type,3));
+        ModuleModifierItem.setData(stack, new ModuleModifierData(type,5));
         return stack;
     }
     public static ItemStack getDashVoidModuleItem(){
         ItemStack stack = new ItemStack(ModItem.DASH_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,7, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,20),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,20))));
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,5, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static void register(IEventBus bus) {

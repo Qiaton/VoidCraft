@@ -88,34 +88,43 @@ public class VoidBlackHoleInstance {
 
     public static final class Config {
         public static final Config DEFAULT = builder()
-                .durationTicks(24)
-                .centerYOffset(0.90F)
-                .startHalfHeight(0.16F)
-                .peakHalfHeight(0.92F)
-                .endHalfHeight(0.12F)
-                .startHalfWidth(0.16F)
-                .peakHalfWidth(0.92F)
-                .endHalfWidth(0.12F)
-                .peakHoldTicks(12)
-                .rimAlpha(0.82F)
-                .coreAlpha(0.94F)
-                .distortionAlpha(2.00F)
-                .color(0x6D7DFF)
-                .swirlStrength(0.78F)
-                .suctionStrength(0.88F)
-                .distortionThickness(5.80F)
-                .distortionAmplitude(11.50F)
-                .distortionWidthScale(2.24F)
-                .distortionHeightScale(2.24F)
-                .noiseFrequency(5.20F)
-                .noiseScrollSpeed(7.40F)
+                .durationTicks(34)
+                .centerYOffset(0.82F)
+                .coreFollowCameraPitch(false)
+                .coreYaw(0.0F)
+                .distortionFollowCameraPitch(true)
+                .flatGate(false)
+                .startHalfHeight(0.18F)
+                .peakHalfHeight(1.18F)
+                .endHalfHeight(0.24F)
+                .startHalfWidth(0.18F)
+                .peakHalfWidth(1.18F)
+                .endHalfWidth(0.24F)
+                .peakHoldTicks(18)
+                .rimAlpha(0.72F)
+                .coreAlpha(1.00F)
+                .rimAlphaScale(0.76F)
+                .shaderRimAlphaScale(0.58F)
+                .horizonAlphaScale(0.96F)
+                .centerShadowScale(1.0F)
+                .distortionAlpha(1.70F)
+                .color(0x8EA3FF)
+                .swirlStrength(0.32F)
+                .suctionStrength(0.96F)
+                .distortionThickness(4.80F)
+                .distortionAmplitude(10.40F)
+                .distortionWidthScale(3.20F)
+                .distortionHeightScale(3.20F)
+                .noiseFrequency(4.20F)
+                .noiseScrollSpeed(2.60F)
                 .build();
 
         private final int durationTicks;
         private final float centerYOffset;
         private final boolean coreFollowCameraPitch;
-        private final boolean diskFollowCameraPitch;
+        private final float coreYaw;
         private final boolean distortionFollowCameraPitch;
+        private final boolean flatGate;
         private final float startHalfHeight;
         private final float peakHalfHeight;
         private final float endHalfHeight;
@@ -125,7 +134,6 @@ public class VoidBlackHoleInstance {
         private final int peakHoldTicks;
         private final float coreAlpha;
         private final float rimAlpha;
-        private final float diskAlpha;
         private final int coreColor;
         private final int color;
         private final float coreAlphaScale;
@@ -134,12 +142,6 @@ public class VoidBlackHoleInstance {
         private final float horizonAlphaScale;
         private final float centerShadowScale;
         private final boolean hideFromOwnerInFirstPerson;
-        private final float diskInnerRadius;
-        private final float diskOuterRadius;
-        private final float diskVerticalScale;
-        private final float diskDepthScale;
-        private final float diskPitchFadeStart;
-        private final float diskPitchFadeEnd;
         private final float distortionAlpha;
         private final float swirlStrength;
         private final float suctionStrength;
@@ -155,8 +157,9 @@ public class VoidBlackHoleInstance {
             this.durationTicks = builder.durationTicks;
             this.centerYOffset = builder.centerYOffset;
             this.coreFollowCameraPitch = builder.coreFollowCameraPitch;
-            this.diskFollowCameraPitch = builder.diskFollowCameraPitch;
+            this.coreYaw = builder.coreYaw;
             this.distortionFollowCameraPitch = builder.distortionFollowCameraPitch;
+            this.flatGate = builder.flatGate;
             this.startHalfHeight = builder.startHalfHeight;
             this.peakHalfHeight = builder.peakHalfHeight;
             this.endHalfHeight = builder.endHalfHeight;
@@ -166,7 +169,6 @@ public class VoidBlackHoleInstance {
             this.peakHoldTicks = Mth.clamp(builder.peakHoldTicks, 0, Math.max(0, builder.durationTicks - 1));
             this.coreAlpha = builder.coreAlpha;
             this.rimAlpha = builder.rimAlpha;
-            this.diskAlpha = builder.diskAlpha;
             this.coreColor = builder.coreColor;
             this.color = builder.color;
             this.coreAlphaScale = builder.coreAlphaScale;
@@ -175,12 +177,6 @@ public class VoidBlackHoleInstance {
             this.horizonAlphaScale = builder.horizonAlphaScale;
             this.centerShadowScale = builder.centerShadowScale;
             this.hideFromOwnerInFirstPerson = builder.hideFromOwnerInFirstPerson;
-            this.diskInnerRadius = builder.diskInnerRadius;
-            this.diskOuterRadius = builder.diskOuterRadius;
-            this.diskVerticalScale = builder.diskVerticalScale;
-            this.diskDepthScale = builder.diskDepthScale;
-            this.diskPitchFadeStart = builder.diskPitchFadeStart;
-            this.diskPitchFadeEnd = builder.diskPitchFadeEnd;
             this.distortionAlpha = builder.distortionAlpha;
             this.swirlStrength = builder.swirlStrength;
             this.suctionStrength = builder.suctionStrength;
@@ -196,8 +192,9 @@ public class VoidBlackHoleInstance {
         public int durationTicks() { return this.durationTicks; }
         public float centerYOffset() { return this.centerYOffset; }
         public boolean coreFollowCameraPitch() { return this.coreFollowCameraPitch; }
-        public boolean diskFollowCameraPitch() { return this.diskFollowCameraPitch; }
+        public float coreYaw() { return this.coreYaw; }
         public boolean distortionFollowCameraPitch() { return this.distortionFollowCameraPitch; }
+        public boolean flatGate() { return this.flatGate; }
         public float startHalfHeight() { return this.startHalfHeight; }
         public float peakHalfHeight() { return this.peakHalfHeight; }
         public float endHalfHeight() { return this.endHalfHeight; }
@@ -207,7 +204,6 @@ public class VoidBlackHoleInstance {
         public int peakHoldTicks() { return this.peakHoldTicks; }
         public float coreAlpha() { return this.coreAlpha; }
         public float rimAlpha() { return this.rimAlpha; }
-        public float diskAlpha() { return this.diskAlpha; }
         public int coreColor() { return this.coreColor; }
         public int color() { return this.color; }
         public float coreAlphaScale() { return this.coreAlphaScale; }
@@ -216,12 +212,6 @@ public class VoidBlackHoleInstance {
         public float horizonAlphaScale() { return this.horizonAlphaScale; }
         public float centerShadowScale() { return this.centerShadowScale; }
         public boolean hideFromOwnerInFirstPerson() { return this.hideFromOwnerInFirstPerson; }
-        public float diskInnerRadius() { return this.diskInnerRadius; }
-        public float diskOuterRadius() { return this.diskOuterRadius; }
-        public float diskVerticalScale() { return this.diskVerticalScale; }
-        public float diskDepthScale() { return this.diskDepthScale; }
-        public float diskPitchFadeStart() { return this.diskPitchFadeStart; }
-        public float diskPitchFadeEnd() { return this.diskPitchFadeEnd; }
         public float distortionAlpha() { return this.distortionAlpha; }
         public float swirlStrength() { return this.swirlStrength; }
         public float suctionStrength() { return this.suctionStrength; }
@@ -248,9 +238,10 @@ public class VoidBlackHoleInstance {
         public static final class Builder {
             private int durationTicks = 100; // 黑洞总持续时间，单位 tick。
             private float centerYOffset = 0.90F; // 黑洞中心相对命中点向上偏移的高度。
-            private boolean coreFollowCameraPitch = true; // 核心球体是否完整朝向镜头俯仰。
-            private boolean diskFollowCameraPitch = false; // 吸积盘是否跟随镜头俯仰，关闭时更像固定在世界竖直方向。
-            private boolean distortionFollowCameraPitch = true; // 后处理扭曲遮罩是否完整朝向镜头俯仰。
+            private boolean coreFollowCameraPitch = false; // 门本体是否完整朝向镜头俯仰，默认保持世界竖直感。
+            private float coreYaw = 0.0F; // 门本体不跟随镜头时使用的固定水平朝向，单位弧度。
+            private boolean distortionFollowCameraPitch = true; // 后处理扭曲遮罩是否完整跟随镜头俯仰。
+            private boolean flatGate = false; // 是否用面状切口渲染门本体，打开后像空间里只有一片切面。
             private float startHalfHeight = 0.16F; // 起始阶段黑洞半高。
             private float peakHalfHeight = 0.92F; // 爆发阶段黑洞最大半高。
             private float endHalfHeight = 0.12F; // 消散阶段黑洞收束后的半高。
@@ -260,21 +251,14 @@ public class VoidBlackHoleInstance {
             private int peakHoldTicks = 12; // 到达最大尺寸后保持的时间，单位 tick。
             private float coreAlpha = 0.94F; // 事件视界核心透明度。
             private float rimAlpha = 0.82F; // 外圈蓝紫边缘光透明度。
-            private float diskAlpha = 0.82F; // 吸积盘透明度。
             private int coreColor = 0x02030A; // 核心颜色，格式 0xRRGGBB。
-            private int color = 0x6D7DFF; // 外圈、吸积盘和扭曲高光颜色，格式 0xRRGGBB。
+            private int color = 0x6D7DFF; // 外圈和扭曲高光颜色，格式 0xRRGGBB。
             private float coreAlphaScale = 0.94F; // 核心球体渲染时的透明度倍率。
             private float rimAlphaScale = 0.88F; // 普通渲染路径下外圈透明度倍率。
             private float shaderRimAlphaScale = 0.72F; // 光影兼容发光层的外圈透明度倍率。
             private float horizonAlphaScale = 1.08F; // 事件视界中心暗面透明度倍率。
             private float centerShadowScale = 1.0F; // 后处理中心黑影强度，0 表示关掉黑心。
             private boolean hideFromOwnerInFirstPerson = true; // 第一人称下是否隐藏自己拥有的黑洞。
-            private float diskInnerRadius = 0.72F; // 吸积盘内半径，越大中心空洞越明显。
-            private float diskOuterRadius = 1.58F; // 吸积盘外半径，越大盘面越宽。
-            private float diskVerticalScale = 0.18F; // 吸积盘竖向压缩比例，越小越扁。
-            private float diskDepthScale = 0.46F; // 吸积盘前后景深厚度，影响绕过核心的立体感。
-            private float diskPitchFadeStart = 0.58F; // 视角俯仰达到这个比例后开始隐藏吸积盘。
-            private float diskPitchFadeEnd = 0.88F; // 视角俯仰达到这个比例后吸积盘基本隐藏。
             private float distortionAlpha = 2.00F; // 后处理空间扭曲可见度/影响权重。
             private float swirlStrength = 0.78F; // 旋涡卷曲强度。
             private float suctionStrength = 0.88F; // 向中心吸入的扭曲强度。
@@ -293,8 +277,9 @@ public class VoidBlackHoleInstance {
                 this.durationTicks = config.durationTicks;
                 this.centerYOffset = config.centerYOffset;
                 this.coreFollowCameraPitch = config.coreFollowCameraPitch;
-                this.diskFollowCameraPitch = config.diskFollowCameraPitch;
+                this.coreYaw = config.coreYaw;
                 this.distortionFollowCameraPitch = config.distortionFollowCameraPitch;
+                this.flatGate = config.flatGate;
                 this.startHalfHeight = config.startHalfHeight;
                 this.peakHalfHeight = config.peakHalfHeight;
                 this.endHalfHeight = config.endHalfHeight;
@@ -304,7 +289,6 @@ public class VoidBlackHoleInstance {
                 this.peakHoldTicks = config.peakHoldTicks;
                 this.coreAlpha = config.coreAlpha;
                 this.rimAlpha = config.rimAlpha;
-                this.diskAlpha = config.diskAlpha;
                 this.coreColor = config.coreColor;
                 this.color = config.color;
                 this.coreAlphaScale = config.coreAlphaScale;
@@ -313,12 +297,6 @@ public class VoidBlackHoleInstance {
                 this.horizonAlphaScale = config.horizonAlphaScale;
                 this.centerShadowScale = config.centerShadowScale;
                 this.hideFromOwnerInFirstPerson = config.hideFromOwnerInFirstPerson;
-                this.diskInnerRadius = config.diskInnerRadius;
-                this.diskOuterRadius = config.diskOuterRadius;
-                this.diskVerticalScale = config.diskVerticalScale;
-                this.diskDepthScale = config.diskDepthScale;
-                this.diskPitchFadeStart = config.diskPitchFadeStart;
-                this.diskPitchFadeEnd = config.diskPitchFadeEnd;
                 this.distortionAlpha = config.distortionAlpha;
                 this.swirlStrength = config.swirlStrength;
                 this.suctionStrength = config.suctionStrength;
@@ -334,8 +312,9 @@ public class VoidBlackHoleInstance {
             public Builder durationTicks(int durationTicks) { this.durationTicks = Math.max(1, durationTicks); return this; }
             public Builder centerYOffset(float centerYOffset) { this.centerYOffset = Math.max(0.0F, centerYOffset); return this; }
             public Builder coreFollowCameraPitch(boolean coreFollowCameraPitch) { this.coreFollowCameraPitch = coreFollowCameraPitch; return this; }
-            public Builder diskFollowCameraPitch(boolean diskFollowCameraPitch) { this.diskFollowCameraPitch = diskFollowCameraPitch; return this; }
+            public Builder coreYaw(float coreYaw) { this.coreYaw = coreYaw; return this; }
             public Builder distortionFollowCameraPitch(boolean distortionFollowCameraPitch) { this.distortionFollowCameraPitch = distortionFollowCameraPitch; return this; }
+            public Builder flatGate(boolean flatGate) { this.flatGate = flatGate; return this; }
             public Builder startHalfHeight(float startHalfHeight) { this.startHalfHeight = Math.max(0.01F, startHalfHeight); return this; }
             public Builder peakHalfHeight(float peakHalfHeight) { this.peakHalfHeight = Math.max(0.01F, peakHalfHeight); return this; }
             public Builder endHalfHeight(float endHalfHeight) { this.endHalfHeight = Math.max(0.01F, endHalfHeight); return this; }
@@ -345,7 +324,6 @@ public class VoidBlackHoleInstance {
             public Builder peakHoldTicks(int peakHoldTicks) { this.peakHoldTicks = Math.max(0, peakHoldTicks); return this; }
             public Builder coreAlpha(float coreAlpha) { this.coreAlpha = Math.max(0.0F, coreAlpha); return this; }
             public Builder rimAlpha(float rimAlpha) { this.rimAlpha = Math.max(0.0F, rimAlpha); return this; }
-            public Builder diskAlpha(float diskAlpha) { this.diskAlpha = Math.max(0.0F, diskAlpha); return this; }
             public Builder coreColor(int coreColor) { this.coreColor = coreColor & 0xFFFFFF; return this; }
             public Builder color(int color) { this.color = color & 0xFFFFFF; return this; }
             public Builder coreAlphaScale(float coreAlphaScale) { this.coreAlphaScale = Math.max(0.0F, coreAlphaScale); return this; }
@@ -354,12 +332,6 @@ public class VoidBlackHoleInstance {
             public Builder horizonAlphaScale(float horizonAlphaScale) { this.horizonAlphaScale = Math.max(0.0F, horizonAlphaScale); return this; }
             public Builder centerShadowScale(float centerShadowScale) { this.centerShadowScale = Mth.clamp(centerShadowScale, 0.0F, 1.0F); return this; }
             public Builder hideFromOwnerInFirstPerson(boolean hideFromOwnerInFirstPerson) { this.hideFromOwnerInFirstPerson = hideFromOwnerInFirstPerson; return this; }
-            public Builder diskInnerRadius(float diskInnerRadius) { this.diskInnerRadius = Math.max(0.0F, diskInnerRadius); return this; }
-            public Builder diskOuterRadius(float diskOuterRadius) { this.diskOuterRadius = Math.max(0.001F, diskOuterRadius); return this; }
-            public Builder diskVerticalScale(float diskVerticalScale) { this.diskVerticalScale = Math.max(0.0F, diskVerticalScale); return this; }
-            public Builder diskDepthScale(float diskDepthScale) { this.diskDepthScale = Math.max(0.0F, diskDepthScale); return this; }
-            public Builder diskPitchFadeStart(float diskPitchFadeStart) { this.diskPitchFadeStart = Mth.clamp(diskPitchFadeStart, 0.0F, 1.0F); return this; }
-            public Builder diskPitchFadeEnd(float diskPitchFadeEnd) { this.diskPitchFadeEnd = Mth.clamp(diskPitchFadeEnd, 0.0F, 1.0F); return this; }
             public Builder distortionAlpha(float distortionAlpha) { this.distortionAlpha = Math.max(0.0F, distortionAlpha); return this; }
             public Builder swirlStrength(float swirlStrength) { this.swirlStrength = Mth.clamp(swirlStrength, 0.0F, 1.0F); return this; }
             public Builder suctionStrength(float suctionStrength) { this.suctionStrength = Mth.clamp(suctionStrength, 0.0F, 1.0F); return this; }

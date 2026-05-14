@@ -8,16 +8,22 @@ import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyProfile;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.Gui.VoidEnergyConverterMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -28,7 +34,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidEnergyTransferBlockEntity {
+public class VoidEnergyConverterBlockEntity extends BlockEntity implements MenuProvider, VoidEnergyTransferBlockEntity {
     public static final long CACHE_CAPACITY = 10_000L;
     public static final long MAX_INSERT = VoidEnergyProfile.DEFAULT_MAX_INPUT_PER_TRANSFER;
     public static final int MAX_INPUT_BINDINGS = 8;
@@ -37,6 +43,16 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     public static final int MAX_FE_OUTPUT_PER_TICK = 1_000;
     public static final double FE_TO_VOID_RATE = 0.3D;
     public static final double VOID_TO_FE_RATE = 2.D;
+    public static final int DATA_COUNT = 7;
+
+    private static final int DATA_ENERGY_STORED = 0;
+    private static final int DATA_ENERGY_CAPACITY = 1;
+    private static final int DATA_RUNNING = 2;
+    private static final int DATA_INPUT_COUNT = 3;
+    private static final int DATA_OUTPUT_COUNT = 4;
+    private static final int DATA_MAX_INPUTS = 5;
+    private static final int DATA_MAX_OUTPUTS = 6;
+    private static final int RUN_TICKS = 8;
 
     private static final VoidEnergyProfile ENERGY_PROFILE = VoidEnergyProfile.bidirectional(
             CACHE_CAPACITY,
@@ -49,9 +65,49 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     private long lastFeTick = -1L;
     private int feInputThisTick;
     private int feOutputThisTick;
+    private int runningTicks;
+    private int syncedInputCount;
+    private int syncedOutputCount;
     private final List<VoidEnergyBinding> inputSources = new ArrayList<>();
     private final List<VoidEnergyBinding> outputTargets = new ArrayList<>();
     private final VoidEnergyFeHandler[] feHandlers = new VoidEnergyFeHandler[Direction.values().length];
+    private final FeJournal feJournal = new FeJournal();
+    private final ContainerData menuData = new ContainerData() {
+        @Override
+        public int get(int index) {
+            return switch (index) {
+                case DATA_ENERGY_STORED -> (int) VoidEnergyConverterBlockEntity.this.voidEnergy;
+                case DATA_ENERGY_CAPACITY -> (int) CACHE_CAPACITY;
+                case DATA_RUNNING -> VoidEnergyConverterBlockEntity.this.runningTicks > 0 ? 1 : 0;
+                case DATA_INPUT_COUNT -> VoidEnergyConverterBlockEntity.this.level != null && VoidEnergyConverterBlockEntity.this.level.isClientSide()
+                        ? VoidEnergyConverterBlockEntity.this.syncedInputCount
+                        : VoidEnergyConverterBlockEntity.this.inputSources.size();
+                case DATA_OUTPUT_COUNT -> VoidEnergyConverterBlockEntity.this.level != null && VoidEnergyConverterBlockEntity.this.level.isClientSide()
+                        ? VoidEnergyConverterBlockEntity.this.syncedOutputCount
+                        : VoidEnergyConverterBlockEntity.this.outputTargets.size();
+                case DATA_MAX_INPUTS -> MAX_INPUT_BINDINGS;
+                case DATA_MAX_OUTPUTS -> MAX_OUTPUT_BINDINGS;
+                default -> 0;
+            };
+        }
+
+        @Override
+        public void set(int index, int value) {
+            switch (index) {
+                case DATA_ENERGY_STORED -> VoidEnergyConverterBlockEntity.this.voidEnergy = clampEnergy(value);
+                case DATA_RUNNING -> VoidEnergyConverterBlockEntity.this.runningTicks = value != 0 ? RUN_TICKS : 0;
+                case DATA_INPUT_COUNT -> VoidEnergyConverterBlockEntity.this.syncedInputCount = Math.max(0, value);
+                case DATA_OUTPUT_COUNT -> VoidEnergyConverterBlockEntity.this.syncedOutputCount = Math.max(0, value);
+                default -> {
+                }
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return DATA_COUNT;
+        }
+    };
 
     public VoidEnergyConverterBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.VOID_ENERGY_CONVERTER_BLOCK_ENTITY.get(), pos, blockState);
@@ -67,6 +123,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         if (VoidEnergyTransfer.shouldRunTransfer(level, converter)) {
             VoidEnergyTransfer.pushToOutputTargets(converter);
         }
+        converter.tickRun();
     }
 
     @Override
@@ -76,6 +133,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         this.lastFeTick = -1L;
         this.feInputThisTick = 0;
         this.feOutputThisTick = 0;
+        this.runningTicks = 0;
 
         this.inputSources.clear();
         ListTag inputList = tag.getList("InputSources", Tag.TAG_COMPOUND);
@@ -94,6 +152,8 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
             }
             VoidEnergyBinding.load(outputList.getCompound(i)).ifPresent(this.outputTargets::add);
         }
+        this.syncedInputCount = this.inputSources.size();
+        this.syncedOutputCount = this.outputTargets.size();
     }
 
     @Override
@@ -126,6 +186,26 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         return saveWithoutMetadata(registries);
+    }
+
+    @Override
+    public Component getDisplayName() {
+        return this.getBlockState().getBlock().getName();
+    }
+
+    @Override
+    public @Nullable AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
+        return new VoidEnergyConverterMenu(
+                containerId,
+                playerInventory,
+                ContainerLevelAccess.create(player.level(), this.worldPosition),
+                this.worldPosition,
+                this.menuData
+        );
+    }
+
+    public ContainerData getMenuData() {
+        return this.menuData;
     }
 
     public long getEnergyStored() {
@@ -274,6 +354,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         long accepted = Math.min(Math.max(0L, amount), CACHE_CAPACITY - this.voidEnergy);
         if (!simulate && accepted > 0L) {
             this.voidEnergy = clampEnergy(this.voidEnergy + accepted);
+            markRun();
             onVoidEnergyNetworkChanged();
         }
         return accepted;
@@ -284,6 +365,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         long extracted = Math.min(Math.max(0L, amount), this.voidEnergy);
         if (!simulate && extracted > 0L) {
             this.voidEnergy = clampEnergy(this.voidEnergy - extracted);
+            markRun();
             onVoidEnergyNetworkChanged();
         }
         return extracted;
@@ -291,8 +373,20 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
 
     @Override
     public void onVoidEnergyNetworkChanged() {
+        this.syncedInputCount = this.inputSources.size();
+        this.syncedOutputCount = this.outputTargets.size();
         setChanged();
         syncClient();
+    }
+
+    private void markRun() {
+        this.runningTicks = RUN_TICKS;
+    }
+
+    private void tickRun() {
+        if (this.runningTicks > 0) {
+            this.runningTicks--;
+        }
     }
 
     private void syncClient() {
@@ -331,7 +425,34 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, value));
     }
 
-    private static final class VoidEnergyFeHandler implements IEnergyStorage {
+    private record EnergySnapshot(long voidEnergy, long lastFeTick, int feInputThisTick, int feOutputThisTick, int runningTicks) {
+    }
+
+    private final class FeJournal extends SnapshotJournal<EnergySnapshot> {
+        @Override
+        protected EnergySnapshot createSnapshot() {
+            return new EnergySnapshot(voidEnergy, lastFeTick, feInputThisTick, feOutputThisTick, runningTicks);
+        }
+
+        @Override
+        protected void revertToSnapshot(EnergySnapshot snapshot) {
+            voidEnergy = snapshot.voidEnergy();
+            lastFeTick = snapshot.lastFeTick();
+            feInputThisTick = snapshot.feInputThisTick();
+            feOutputThisTick = snapshot.feOutputThisTick();
+            runningTicks = snapshot.runningTicks();
+        }
+
+        @Override
+        protected void onRootCommit(EnergySnapshot originalState) {
+            if (originalState.voidEnergy() != voidEnergy) {
+                markRun();
+                onVoidEnergyNetworkChanged();
+            }
+        }
+    }
+
+    private static final class VoidEnergyFeHandler implements EnergyHandler {
         private final VoidEnergyConverterBlockEntity converter;
         private final Direction side;
 

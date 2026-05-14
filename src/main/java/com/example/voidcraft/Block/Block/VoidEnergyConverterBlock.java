@@ -7,6 +7,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -91,15 +92,10 @@ public class VoidEnergyConverterBlock extends BaseEntityBlock {
         if (player.isShiftKeyDown()) {
             return cycleSide(state, level, pos, player, hit.getDirection());
         }
-        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof VoidEnergyConverterBlockEntity converter) {
-            player.displayClientMessage(
-                    Component.translatable(
-                            "message.void_craft.void_energy_converter.energy",
-                            converter.getEnergyStored(),
-                            converter.getEnergyCapacity()
-                    ),
-                    true
-            );
+        if (!level.isClientSide()
+                && player instanceof ServerPlayer serverPlayer
+                && level.getBlockEntity(pos) instanceof VoidEnergyConverterBlockEntity converter) {
+            serverPlayer.openMenu(converter, pos);
         }
         return InteractionResult.SUCCESS;
     }

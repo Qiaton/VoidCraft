@@ -22,6 +22,7 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
@@ -50,7 +51,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "33";
+    private static final String NETWORK_VERSION = "34";
 
     private ModNetworking() {
     }
@@ -399,7 +400,9 @@ public final class ModNetworking {
         registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::onUseTurretShotServer);
         registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::onWorldReadyServer);
         registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::onRemoveBindingServer);
+        registrar.playToServer(RequestCoordinateBindingsPayload.TYPE, RequestCoordinateBindingsPayload.STREAM_CODEC, ModNetworking::onRequestBindingsServer);
         registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::onSetMapperTierServer);
+        registrar.playToServer(ReleaseBlackHoleModulePayload.TYPE, ReleaseBlackHoleModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlackHoleServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
         PacketDistributor.sendToServer(payload);
@@ -469,6 +472,50 @@ public final class ModNetworking {
         PhaseWatch.useModule(serverPlayer, watchStack, slot);
     }
 
+    private static void onReleaseBlackHoleServer(
+            ReleaseBlackHoleModulePayload payload,
+            IPayloadContext context
+    ) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        int slot = payload.slot();
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
+            return;
+        }
+
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return;
+        }
+
+        ItemContainerContents contents = watchStack.getOrDefault(
+                DataComponents.CONTAINER,
+                ItemContainerContents.EMPTY
+        );
+        NonNullList<ItemStack> items = NonNullList.withSize(
+                PhaseWatch.WATCH_MODULE_SLOT_COUNT,
+                ItemStack.EMPTY
+        );
+        contents.copyInto(items);
+
+        ItemStack moduleStack = items.get(slot);
+        if (!(moduleStack.getItem() instanceof BlackHoleModule blackHoleModule)) {
+            return;
+        }
+
+        blackHoleModule.releaseBlackHole(
+                player,
+                watchStack,
+                moduleStack,
+                slot,
+                payload.x(),
+                payload.y(),
+                payload.z()
+        );
+    }
+
     private static void onTrailClient(VoidTrailPayload payload, IPayloadContext context) {
         if (!payload.trackEntity()) {
             VoidTrailManager.addTrailSegment(payload.seedStart(), payload.seedEnd(), payload.scale(), payload.toPreset());
@@ -536,6 +583,19 @@ public final class ModNetworking {
             VoidEnergyTransfer.removeInputBinding(player.level().getServer(), owner, payload.target());
         }
         player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.void_craft.coordinate_designator.binding_removed"), true);
+        sendCoordinateBindings(player, payload.owner(), owner);
+    }
+
+    private static void onRequestBindingsServer(RequestCoordinateBindingsPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        BlockEntity blockEntity = getUseBlock(player, payload.owner());
+        if (!(blockEntity instanceof VoidEnergyTransferBlockEntity owner)) {
+            return;
+        }
+
         sendCoordinateBindings(player, payload.owner(), owner);
     }
 

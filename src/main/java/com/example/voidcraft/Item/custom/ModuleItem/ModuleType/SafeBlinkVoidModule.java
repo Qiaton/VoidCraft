@@ -20,6 +20,7 @@ import java.util.List;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
+import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
 
 public class SafeBlinkVoidModule extends BlinkVoidModule {
     private static final long COOLDOWN_TICKS = 50L;
@@ -100,13 +101,13 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
             ModuleModifierType modifierType = modifier.type();
             if(modifierType == null) continue;
             if(modifierType == COOLDOWN_REDUCTION){
-                cooldownDuration += 0.15F*(float)(modifier.level());
+                cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                Speed += (0.15F*(modifier.level()));
+                Speed = addLess(Speed, modifier.level(), 0.15F);
             }
             if(modifierType == ACTIVE_DURATION){
-                maxDistance += (0.3F*(modifier.level()));
+                maxDistance = addLess(maxDistance, modifier.level(), 0.3F);
             }
         }
 

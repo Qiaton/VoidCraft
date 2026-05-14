@@ -20,7 +20,7 @@ import java.io.IOException;
 
 public final class VoidPhasePostProcessor {
     public static final int MAX_EFFECTS = 16;
-    public static final int DATA_TEXTURE_WIDTH = 8;
+    public static final int DATA_TEXTURE_WIDTH = 10;
     public static final int DATA_TEXTURE_HEIGHT = MAX_EFFECTS + 1;
     public static final ResourceLocation DATA_TEXTURE_ID =
             ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
@@ -162,6 +162,18 @@ public final class VoidPhasePostProcessor {
                 0.0F,
                 0.0F
         );
+        writePackedU16(
+                8,
+                row,
+                0.0F,
+                0.0F
+        );
+        writePackedU16(
+                9,
+                row,
+                0.0F,
+                0.0F
+        );
     }
 
     public static void writeBlackHoleEffectRow(int effectIndex, VoidBlackHoleInstance blackHole, float partialTick) {
@@ -238,6 +250,18 @@ public final class VoidPhasePostProcessor {
                 1.0F,
                 Mth.clamp(config.centerShadowScale(), 0.0F, 1.0F)
         );
+        writePackedU16(
+                8,
+                row,
+                Mth.clamp(1.0F / Math.max(0.001F, config.distortionWidthScale()), 0.0F, 1.0F),
+                Mth.clamp(1.0F / Math.max(0.001F, config.distortionHeightScale()), 0.0F, 1.0F)
+        );
+        writePackedU16(
+                9,
+                row,
+                config.flatGate() ? 1.0F : 0.0F,
+                0.0F
+        );
     }
 
     private static void ensureResources(Minecraft mc) {
@@ -282,11 +306,13 @@ public final class VoidPhasePostProcessor {
                 PhaseWorldTransitionClient.holdWhite(),
                 PhaseWorldTransitionClient.stageCode()
         );
-        dataPixels.setPixelRGBA(3, 0, 0);
-        dataPixels.setPixelRGBA(4, 0, 0);
-        dataPixels.setPixelRGBA(5, 0, 0);
-        dataPixels.setPixelRGBA(6, 0, 0);
-        dataPixels.setPixelRGBA(7, 0, 0);
+        dataPixels.setPixel(3, 0, 0);
+        dataPixels.setPixel(4, 0, 0);
+        dataPixels.setPixel(5, 0, 0);
+        dataPixels.setPixel(6, 0, 0);
+        dataPixels.setPixel(7, 0, 0);
+        dataPixels.setPixel(8, 0, 0);
+        dataPixels.setPixel(9, 0, 0);
     }
 
     private static float getFullScreenPhaseStrength(Minecraft mc) {

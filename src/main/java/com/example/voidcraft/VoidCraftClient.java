@@ -2,6 +2,7 @@ package com.example.voidcraft;
 
 import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingPreviewClient;
+import com.example.voidcraft.ClientCustom.Event.HoldReleaseClientDispatcher;
 import com.example.voidcraft.ClientCustom.Generator.VoidPhenomenonCollectorBlackHoleClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Gui.EnergyHud;
@@ -11,9 +12,12 @@ import com.example.voidcraft.Gui.PhaseWorldTransitionOverlay;
 import com.example.voidcraft.Gui.PhaseWorldTransitionScreen;
 import com.example.voidcraft.Gui.PhaseWorldTransitionScreenRegistration;
 import com.example.voidcraft.Gui.VoidChargerScreen;
+import com.example.voidcraft.Gui.VoidEnergyConverterScreen;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorScreen;
 import com.example.voidcraft.World.projection.PhaseProjectionClient;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -63,6 +67,12 @@ public class VoidCraftClient {
             event.setCanceled(true);
         }
     }
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (HoldReleaseClientDispatcher.handleScroll(Minecraft.getInstance(), event.getScrollDeltaY())) {
+            event.setCanceled(true);
+        }
+    }
     @SubscribeEvent
     public static void onRenderHand(RenderHandEvent event) {
         if (PhaseEmitterClientManager.shouldHideLocalHands()) {
@@ -76,6 +86,7 @@ public class VoidCraftClient {
         event.register(ModMenuType.MODULE_BOOST_MENU.get(), ModuleBoostScreen::new);
         event.register(ModMenuType.VOID_PHENOMENON_COLLECTOR_MENU.get(), VoidPhenomenonCollectorScreen::new);
         event.register(ModMenuType.VOID_CHARGER_MENU.get(), VoidChargerScreen::new);
+        event.register(ModMenuType.VOID_ENERGY_CONVERTER_MENU.get(), VoidEnergyConverterScreen::new);
     }
 
     @SubscribeEvent
