@@ -17,7 +17,6 @@ import java.util.List;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 public class VoidModule extends ModuleItem {
     private static final long ENERGY_COST = 25L;
@@ -56,7 +55,8 @@ public class VoidModule extends ModuleItem {
             }
         }
         if(mode == BURST){
-            if(!ModuleSkillClock.canUseNow(player,slot)){
+            boolean cooldownReady = ModuleSkillClock.canUseNow(player,slot);
+            if(!cooldownReady){
                 if(VoidClock.getInVoid(player)){
                     VoidClock.stopVoid(player);
                     return;
@@ -67,7 +67,9 @@ public class VoidModule extends ModuleItem {
             }
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
             ModSound.playEnterVoid(level, player);
-            ModuleSkillClock.setCooldown(player, slot, COOLDOWN_TICKS);
+            if(cooldownReady){
+                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
+            }
             VoidClock.setVoidTicks(player, stats.activeTicks());
         }
     }
@@ -77,30 +79,38 @@ public class VoidModule extends ModuleItem {
         if(data == null) return null;
 
         float cooldownDuration = 1F;
+        float energyEfficiency = 1F;
         float activeDuration = 1F;
-        float moveSpeedOffset = DEFAULT_MOVE_SPEED_OFFSET;
+        float moveSpeedOffset = 1;
         List<ModuleModifierData> modifiers = data.modifiers();
 
         for(ModuleModifierData modifier : modifiers){
             ModuleModifierType modifierType = modifier.type();
             if(modifierType == null) continue;
             if(modifierType == COOLDOWN_REDUCTION){
+                cooldownDuration += data.level()*0.1F;
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                moveSpeedOffset = shrink(moveSpeedOffset, modifier.level(), 0.07F);
+                moveSpeedOffset += modifier.level()*0.1F+data.level()*0.1F;
             }
             if(modifierType == ACTIVE_DURATION){
-                activeDuration = addLess(activeDuration, modifier.level(), 0.3F);
+                activeDuration += modifier.level()*0.15F+data.level()*0.1F;
+                energyEfficiency = addLess(addLess(energyEfficiency, data.level(), 0.15F), modifier.level(), 0.3F);
+                activeDuration += activeDuration * modifier.level() * 0.3F;
             }
         }
 
-        return new Stats(data.moduleMode(), cooldownDuration, activeDuration, moveSpeedOffset);
+        return new Stats(data.moduleMode(), cooldownDuration, energyEfficiency, activeDuration, moveSpeedOffset);
     }
 
-    public record Stats(ModuleMode mode, float cooldownDuration, float activeDuration, float moveSpeedOffset) {
+    public record Stats(ModuleMode mode, float cooldownDuration, float energyEfficiency, float activeDuration, float moveSpeedOffset) {
         public long channelEnergyCost() {
-            return (long)(ENERGY_COST / cooldownDuration / activeDuration);
+            return (long)(ENERGY_COST / cooldownDuration / energyEfficiency);
+        }
+
+        public long cooldownTicks() {
+            return (long)(COOLDOWN_TICKS / cooldownDuration);
         }
 
         public int activeTicks() {

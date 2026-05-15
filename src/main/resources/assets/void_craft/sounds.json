@@ -30,5 +30,53 @@
         "stream": false
       }
     ]
+  },
+  "health_phase_turret_shot": {
+    "sounds": [
+      {
+        "name": "void_craft:health_phase_turret_shot",
+        "stream": false
+      }
+    ]
+  },
+  "heal": {
+    "sounds": [
+      {
+        "name": "void_craft:heal",
+        "stream": false
+      }
+    ]
+  },
+  "black_hole_release": {
+    "sounds": [
+      {
+        "name": "void_craft:black_hole_release",
+        "stream": false
+      }
+    ]
+  },
+  "black_hole_pull": {
+    "sounds": [
+      {
+        "name": "void_craft:black_hole_pull",
+        "stream": true
+      }
+    ]
+  },
+  "void_archer_hit": {
+    "sounds": [
+      {
+        "name": "void_craft:void_archer_hit",
+        "stream": false
+      }
+    ]
+  },
+  "void_archer_shoot": {
+    "sounds": [
+      {
+        "name": "void_craft:void_archer_shoot",
+        "stream": false
+      }
+    ]
   }
 }

@@ -37,6 +37,7 @@ public class PhaseEmitterClientManager {
 
     // BLOCKING 表示“本地输入需要交给手动炮台”，辅助炮台不会进入这个集合。
     private static final Set<Integer> BLOCKING_PLAYER_IDS = new HashSet<>();
+    private static final Set<Integer> HEALTH_PLAYER_IDS = new HashSet<>();
     private static final List<FollowedMuzzleFlash> ACTIVE_MUZZLE_FLASHES = new ArrayList<>();
 
     public static void syncState(int playerId, boolean active) {
@@ -48,22 +49,32 @@ public class PhaseEmitterClientManager {
     }
 
     public static void syncState(int playerId, boolean active, boolean blocksInput, int emitterCount) {
+        syncState(playerId, active, blocksInput, emitterCount, false);
+    }
+
+    public static void syncState(int playerId, boolean active, boolean blocksInput, int emitterCount, boolean healthVisual) {
         // 同一个 S2C 状态包同时驱动视觉和输入策略：手动 blocksInput=true，辅助 blocksInput=false。
         int actualEmitterCount = PhaseEmitterSlot.normalizeCount(emitterCount);
         if (active) {
             ACTIVE_PLAYER_IDS.add(playerId);
             ACTIVE_EMITTER_COUNTS.put(playerId, actualEmitterCount);
+            if (healthVisual) {
+                HEALTH_PLAYER_IDS.add(playerId);
+            } else {
+                HEALTH_PLAYER_IDS.remove(playerId);
+            }
             if (blocksInput) {
                 BLOCKING_PLAYER_IDS.add(playerId);
             } else {
                 BLOCKING_PLAYER_IDS.remove(playerId);
             }
-            ensureStarted(playerId, blocksInput, actualEmitterCount);
+            ensureStarted(playerId, blocksInput, actualEmitterCount, healthVisual);
             return;
         }
 
         ACTIVE_PLAYER_IDS.remove(playerId);
         ACTIVE_EMITTER_COUNTS.remove(playerId);
+        HEALTH_PLAYER_IDS.remove(playerId);
         stop(playerId);
     }
 
@@ -72,16 +83,25 @@ public class PhaseEmitterClientManager {
     }
 
     private static void start(Player player, boolean blocksInput) {
-        start(player, blocksInput, PhaseEmitterSlot.configuredCount());
+        start(player, blocksInput, PhaseEmitterSlot.configuredCount(), false);
     }
 
     private static void start(Player player, boolean blocksInput, int emitterCount) {
+        start(player, blocksInput, emitterCount, false);
+    }
+
+    private static void start(Player player, boolean blocksInput, int emitterCount, boolean healthVisual) {
         // start 也接收 blocksInput，避免辅助炮台通过 ensureStarted 误加入输入拦截集合。
         int playerId = player.getId();
         int actualEmitterCount = PhaseEmitterSlot.normalizeCount(emitterCount);
         int orbColorLevel = actualEmitterCount;
         ACTIVE_PLAYER_IDS.add(playerId);
         ACTIVE_EMITTER_COUNTS.put(playerId, actualEmitterCount);
+        if (healthVisual) {
+            HEALTH_PLAYER_IDS.add(playerId);
+        } else {
+            HEALTH_PLAYER_IDS.remove(playerId);
+        }
         if (blocksInput) {
             BLOCKING_PLAYER_IDS.add(playerId);
         } else {
@@ -91,7 +111,8 @@ public class PhaseEmitterClientManager {
         PhaseEmitterSet existingSet = ACTIVE_EMITTERS.get(playerId);
         if (existingSet != null) {
             if (existingSet.getEmitterCount() == actualEmitterCount
-                    && existingSet.getOrbColorLevel() == orbColorLevel) {
+                    && existingSet.getOrbColorLevel() == orbColorLevel
+                    && existingSet.isHealthVisual() == healthVisual) {
                 return;
             }
 
@@ -99,7 +120,7 @@ public class PhaseEmitterClientManager {
             ACTIVE_EMITTERS.remove(playerId);
         }
 
-        PhaseEmitterSet set = new PhaseEmitterSet(actualEmitterCount, orbColorLevel);
+        PhaseEmitterSet set = new PhaseEmitterSet(actualEmitterCount, orbColorLevel, healthVisual);
         set.create(player);
         set.playToggleFlash(player);
 
@@ -109,6 +130,7 @@ public class PhaseEmitterClientManager {
     public static void stop(int playerId) {
         boolean wasBlocking = BLOCKING_PLAYER_IDS.remove(playerId);
         ACTIVE_EMITTER_COUNTS.remove(playerId);
+        HEALTH_PLAYER_IDS.remove(playerId);
         PhaseEmitterSet set = ACTIVE_EMITTERS.remove(playerId);
         Minecraft mc = Minecraft.getInstance();
 
@@ -135,12 +157,17 @@ public class PhaseEmitterClientManager {
         return BLOCKING_PLAYER_IDS.contains(playerId);
     }
 
+    private static boolean hasHealthVisual(int playerId) {
+        return HEALTH_PLAYER_IDS.contains(playerId);
+    }
+
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.level == null) {
             ACTIVE_PLAYER_IDS.clear();
             BLOCKING_PLAYER_IDS.clear();
+            HEALTH_PLAYER_IDS.clear();
             ACTIVE_EMITTER_COUNTS.clear();
             ACTIVE_EMITTERS.clear();
             ACTIVE_MUZZLE_FLASHES.clear();
@@ -150,7 +177,7 @@ public class PhaseEmitterClientManager {
         }
 
         for (Integer playerId : ACTIVE_PLAYER_IDS) {
-            ensureStarted(playerId, blocksInput(playerId), getEmitterCount(playerId));
+            ensureStarted(playerId, blocksInput(playerId), getEmitterCount(playerId), hasHealthVisual(playerId));
         }
 
         ACTIVE_EMITTERS.entrySet().removeIf(entry -> {
@@ -390,7 +417,7 @@ public class PhaseEmitterClientManager {
         return ACTIVE_EMITTER_COUNTS.getOrDefault(playerId, PhaseEmitterSlot.configuredCount());
     }
 
-    private static void ensureStarted(int playerId, boolean blocksInput, int emitterCount) {
+    private static void ensureStarted(int playerId, boolean blocksInput, int emitterCount, boolean healthVisual) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
             return;
@@ -401,13 +428,14 @@ public class PhaseEmitterClientManager {
         int orbColorLevel = actualEmitterCount;
         if (existingSet != null
                 && existingSet.getEmitterCount() == actualEmitterCount
-                && existingSet.getOrbColorLevel() == orbColorLevel) {
+                && existingSet.getOrbColorLevel() == orbColorLevel
+                && existingSet.isHealthVisual() == healthVisual) {
             return;
         }
 
         Entity entity = mc.level.getEntity(playerId);
         if (entity instanceof Player player) {
-            start(player, blocksInput, emitterCount);
+            start(player, blocksInput, emitterCount, healthVisual);
         }
     }
 

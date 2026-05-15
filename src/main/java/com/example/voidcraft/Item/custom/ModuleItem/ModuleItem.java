@@ -45,10 +45,14 @@ public class ModuleItem extends Item {
         for(ModuleModifierData modifierData : data.modifiers()){
             tooltipAdder.add(Component.translatable(
                     "tooltip.void_craft.module.modifier_entry",
-                    getModifierDisplayName(modifierData),
+                    getModifierDisplayName(data, modifierData),
                     modifierData.level()
             ));
         }
+    }
+
+    protected Component getModifierDisplayName(ModuleData data, ModuleModifierData modifierData) {
+        return getModifierDisplayName(modifierData);
     }
 
     protected Component getModifierDisplayName(ModuleModifierData modifierData) {

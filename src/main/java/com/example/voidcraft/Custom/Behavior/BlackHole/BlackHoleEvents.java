@@ -1,6 +1,7 @@
 package com.example.voidcraft.Custom.Behavior.BlackHole;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -30,11 +31,17 @@ public static void pullEntities(ServerTickEvent.Post event){
         List<Entity> entities = level.getEntities(
                 (Entity) null,
                 box,
-                entity -> !(entity instanceof Player)
+                entity -> canPull(instance, entity) || canHurt(instance, entity)
 
         );
         for (Entity entity : entities) {
             Vec3 direction = center.subtract(entity.getX(), entity.getY(), entity.getZ());
+            if (direction.length() < instance.getCoreRadius()) {
+                hurtEntity(instance, entity);
+            }
+            if (!canPull(instance, entity)) {
+                continue;
+            }
             float coefficient = 0;
             if (direction.length() < pullRadius * pullStrength * 3) {
                 entity.setDeltaMovement(direction.scale(0.2));
@@ -57,5 +64,37 @@ public static void pullEntities(ServerTickEvent.Post event){
             entity.hurtMarked = true;
         }
     }
+}
+private static boolean canPull(BlackHoleEventInstance instance, Entity entity) {
+    if (entity.getUUID().equals(instance.owner)) {
+        return false;
+    }
+    if (entity instanceof Player && !instance.pullPlayers) {
+        return false;
+    }
+    return true;
+}
+
+private static boolean canHurt(BlackHoleEventInstance instance, Entity entity) {
+    if (instance.coreDamage <= 0.0F) {
+        return false;
+    }
+    if (!(entity instanceof LivingEntity livingEntity) || !livingEntity.isAlive()) {
+        return false;
+    }
+    if (entity.getUUID().equals(instance.owner)) {
+        return false;
+    }
+    if (entity instanceof Player && !instance.hurtPlayers) {
+        return false;
+    }
+    return true;
+}
+
+private static void hurtEntity(BlackHoleEventInstance instance, Entity entity) {
+    if (!(entity instanceof LivingEntity livingEntity) || !canHurt(instance, livingEntity)) {
+        return;
+    }
+    livingEntity.hurt(livingEntity.damageSources().source(instance.damageType), instance.coreDamage);
 }
 }

@@ -1,6 +1,9 @@
 package com.example.voidcraft.Custom.Behavior.BlackHole;
 
 import com.example.voidcraft.Effect.VoidBlackHoleInstance;
+import com.example.voidcraft.ModDamageTypes;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 import java.util.UUID;
@@ -15,12 +18,19 @@ public class BlackHoleEventInstance {
     public int duration;
     public final int coreColor;
     public final int color;
+    public final float coreDamage;
+    public final boolean hurtPlayers;
+    public final boolean pullPlayers;
+    public final ResourceKey<DamageType> damageType;
     public final float coreYaw;
     public VoidBlackHoleInstance.Config config = VoidBlackHoleInstance.Config.DEFAULT;
     public BlackHoleEventInstance(UUID owner, UUID uuid, ServerLevel level, Vec3 center, float pullRadius, float pullStrength, int duration, int coreColor, int color) {
         this(owner, uuid, level, center, pullRadius, pullStrength, duration, coreColor, color, 0.0F);
     }
     public BlackHoleEventInstance(UUID owner, UUID uuid, ServerLevel level, Vec3 center, float pullRadius, float pullStrength, int duration, int coreColor, int color, float coreYaw) {
+        this(owner, uuid, level, center, pullRadius, pullStrength, duration, coreColor, color, 0.0F, false, false, ModDamageTypes.RIFT_TEAR, coreYaw);
+    }
+    public BlackHoleEventInstance(UUID owner, UUID uuid, ServerLevel level, Vec3 center, float pullRadius, float pullStrength, int duration, int coreColor, int color, float coreDamage, boolean hurtPlayers, boolean pullPlayers, ResourceKey<DamageType> damageType, float coreYaw) {
         this.owner = owner;
         this.uuid = uuid;
         this.level = level;
@@ -30,6 +40,10 @@ public class BlackHoleEventInstance {
         this.duration = duration;
         this.coreColor = coreColor;
         this.color = color;
+        this.coreDamage = coreDamage;
+        this.hurtPlayers = hurtPlayers;
+        this.pullPlayers = pullPlayers;
+        this.damageType = damageType == null ? ModDamageTypes.RIFT_TEAR : damageType;
         this.coreYaw = coreYaw;
         setBlackHole();
     }
@@ -79,5 +93,8 @@ public class BlackHoleEventInstance {
     }
     public VoidBlackHoleInstance.Config getConfig() {
         return config;
+    }
+    public float getCoreRadius() {
+        return (float) Math.max(0.80D, Math.min(2.20D, this.pullRadius * 0.36D + 0.20D));
     }
 }

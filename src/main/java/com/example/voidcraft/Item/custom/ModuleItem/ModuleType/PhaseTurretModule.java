@@ -14,6 +14,7 @@ import com.example.voidcraft.Sound.ModSound;
 import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,7 +42,6 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 public class PhaseTurretModule extends ModuleItem {
 
@@ -53,12 +53,11 @@ public class PhaseTurretModule extends ModuleItem {
     private static final float SHOT_DAMAGE = 1.0F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 1F;
     private static final int FIRE_INTERVAL_TICKS = 5;
-    private static final float SPEED_BOOST_PER_LEVEL = 1F;
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
     private static final int BURST_ACTIVE_TICKS = 5*20 ;
     private static final long BURST_ENERGY_COST = 800L;
-    private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.50F;
+    private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.30F;
     private static final float BURST_COOLDOWN_REDUCTION_PER_LEVEL = 0.10F;
     private static final float VOLLEY_DAMAGE_MULTIPLIER = 0.25F;
     private static final double VOLLEY_SCATTER_SCREEN_RATIO = 0.20D;
@@ -83,6 +82,18 @@ public class PhaseTurretModule extends ModuleItem {
         public static final int ORB_LEVEL_5_RIM = 0x68B8FF;
         public static final int ORB_VOID_CORE = 0xC4DAF2;
         public static final int ORB_VOID_RIM = 0x6688C8;
+        public static final int HEALTH_ORB_CORE = 0xFFD8EA;
+        public static final int HEALTH_ORB_RIM = 0xFF79B6;
+        public static final int HEALTH_ORB_LEVEL_2_CORE = 0xFFE0EF;
+        public static final int HEALTH_ORB_LEVEL_2_RIM = 0xFF86C4;
+        public static final int HEALTH_ORB_LEVEL_3_CORE = 0xFFE8F4;
+        public static final int HEALTH_ORB_LEVEL_3_RIM = 0xFF94D0;
+        public static final int HEALTH_ORB_LEVEL_4_CORE = 0xFFF0F8;
+        public static final int HEALTH_ORB_LEVEL_4_RIM = 0xFFA2DA;
+        public static final int HEALTH_ORB_LEVEL_5_CORE = 0xFFF6FC;
+        public static final int HEALTH_ORB_LEVEL_5_RIM = 0xFFB0E4;
+        public static final int HEALTH_ORB_VOID_CORE = 0xFFE6F8;
+        public static final int HEALTH_ORB_VOID_RIM = 0xEFA8FF;
 
         // 射击光束颜色。
         public static final int SHOT_BEAM_GLOW = 0x38FF72;
@@ -127,6 +138,26 @@ public class PhaseTurretModule extends ModuleItem {
                 case 4 -> ORB_LEVEL_4_RIM;
                 case 5 -> ORB_LEVEL_5_RIM;
                 default -> level >= 6 ? ORB_VOID_RIM : ORB_RIM;
+            };
+        }
+
+        public static int healthOrbCoreForLevel(int level) {
+            return switch (level) {
+                case 2 -> HEALTH_ORB_LEVEL_2_CORE;
+                case 3 -> HEALTH_ORB_LEVEL_3_CORE;
+                case 4 -> HEALTH_ORB_LEVEL_4_CORE;
+                case 5 -> HEALTH_ORB_LEVEL_5_CORE;
+                default -> level >= 6 ? HEALTH_ORB_VOID_CORE : HEALTH_ORB_CORE;
+            };
+        }
+
+        public static int healthOrbRimForLevel(int level) {
+            return switch (level) {
+                case 2 -> HEALTH_ORB_LEVEL_2_RIM;
+                case 3 -> HEALTH_ORB_LEVEL_3_RIM;
+                case 4 -> HEALTH_ORB_LEVEL_4_RIM;
+                case 5 -> HEALTH_ORB_LEVEL_5_RIM;
+                default -> level >= 6 ? HEALTH_ORB_VOID_RIM : HEALTH_ORB_RIM;
             };
         }
 
@@ -273,7 +304,7 @@ public class PhaseTurretModule extends ModuleItem {
             VisualColors.SHOT_BEAM_GLOW
     );
 
-    private static VoidBeamInstance.Config makeShotBeam(int coreColor, int glowColor) {
+    protected static VoidBeamInstance.Config makeShotBeam(int coreColor, int glowColor) {
         return VoidBeamInstance.Config.builder()
             .lifetimeTicks(6)
             .coreRadius(0.045F)
@@ -396,80 +427,84 @@ public class PhaseTurretModule extends ModuleItem {
     }
 
     public static void tryFireTurret(ServerPlayer player) {
-        ActiveTurret activeTurret = findTurret(player);
+        ActiveTurret activeTurret = getActiveTurret(player);
         if (activeTurret == null) {
-            if (!AssistPhaseTurretModule.hasAny(player)) {
-                ModNetworking.sendTurretState(player, false);
-            }
             return;
         }
 
+        activeTurret.module().shootLeft(player, activeTurret.moduleStack(), getFireState(player, activeTurret.slot()));
+    }
+
+    private static void tryVolley(ServerPlayer player) {
+        ActiveTurret activeTurret = getActiveTurret(player);
+        if (activeTurret == null) {
+            return;
+        }
+
+        activeTurret.module().shootRight(player, activeTurret.moduleStack(), getFireState(player, activeTurret.slot()));
+    }
+
+    private static ActiveTurret getActiveTurret(ServerPlayer player) {
+        ActiveTurret activeTurret = findTurret(player);
+        if (activeTurret == null && !AssistPhaseTurretModule.hasAny(player)) {
+            ModNetworking.sendTurretState(player, false);
+        }
+        return activeTurret;
+    }
+
+    private static FireState getFireState(ServerPlayer player, int slot) {
         Map<Integer, FireState> playerStates =
                 FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
-        FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
+        return playerStates.computeIfAbsent(slot, ignored -> new FireState());
+    }
 
-        int shotCount = getDueShotCount(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
+    protected void shootLeft(ServerPlayer player, ItemStack moduleStack, FireState state) {
+        int shotCount = getDueShotCount(player, state, getFireTicks(moduleStack));
         if (shotCount <= 0) {
             return;
         }
 
-        // 射击顺序只在服务端推进，客户端只负责按住左键发“请求开火”。
-        int emitterCount = getEmitterCount(activeTurret.moduleStack());
+        int emitterCount = getEmitterCount(moduleStack);
         for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
-            int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
-            state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
-
-            ShotResult result = activeTurret.module().fire(
+            int emitterIndex = nextEmitter(state, emitterCount);
+            ShotResult result = shoot(
                     player,
-                    activeTurret.moduleStack(),
-                    emitterIndex
+                    moduleStack,
+                    emitterIndex,
+                    player.getLookAngle(),
+                    1.0F,
+                    false
             );
 
-            if (result != null) {
+            sendShotResult(player, emitterIndex, result);
+        }
+    }
+
+    protected void shootRight(ServerPlayer player, ItemStack moduleStack, FireState state) {
+        int shotCount = getDueShotCount(player, state, getFireTicks(moduleStack));
+        if (shotCount <= 0) {
+            return;
+        }
+
+        int emitterCount = getEmitterCount(moduleStack);
+        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
+            // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
+            for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
+                ShotResult result = shoot(
+                        player,
+                        moduleStack,
+                        emitterIndex,
+                        getVolleyLook(player),
+                        VOLLEY_DAMAGE_MULTIPLIER,
+                        true
+                );
+
                 sendShotResult(player, emitterIndex, result);
             }
         }
     }
 
-    private static void tryVolley(ServerPlayer player) {
-        ActiveTurret activeTurret = findTurret(player);
-        if (activeTurret == null) {
-            if (!AssistPhaseTurretModule.hasAny(player)) {
-                ModNetworking.sendTurretState(player, false);
-            }
-            return;
-        }
-
-        Map<Integer, FireState> playerStates =
-                FIRE_STATES.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>());
-        FireState state = playerStates.computeIfAbsent(activeTurret.slot(), slot -> new FireState());
-
-        int shotCount = getDueShotCount(player, state, activeTurret.module().getFireTicks(activeTurret.moduleStack()));
-        if (shotCount <= 0) {
-            return;
-        }
-
-        int emitterCount = getEmitterCount(activeTurret.moduleStack());
-
-        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
-            // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
-            for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
-                ShotResult result = activeTurret.module().fire(
-                        player,
-                        activeTurret.moduleStack(),
-                        emitterIndex,
-                        getVolleyLook(player),
-                        VOLLEY_DAMAGE_MULTIPLIER
-                );
-
-                if (result != null) {
-                    sendShotResult(player, emitterIndex, result);
-                }
-            }
-        }
-    }
-
-    private static int getDueShotCount(ServerPlayer player, FireState state, float fireIntervalTicks) {
+    protected static int getDueShotCount(ServerPlayer player, FireState state, float fireIntervalTicks) {
         double interval = Math.max(0.05D, fireIntervalTicks);
         if (state.nextFireTick <= 0.0D || state.nextFireTick < player.tickCount - 1.0D) {
             state.nextFireTick = player.tickCount;
@@ -488,6 +523,12 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         return shotCount;
+    }
+
+    protected static int nextEmitter(FireState state, int emitterCount) {
+        int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
+        state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
+        return emitterIndex;
     }
 
     public static void setInputState(ServerPlayer player, boolean shooting, boolean volleyShooting) {
@@ -683,17 +724,17 @@ public class PhaseTurretModule extends ModuleItem {
                 cooldownReductionLevel += modifier.level();
             }
             if (modifierType == ACTIVE_DURATION) {
-                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.20F);
+                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.2F);
                 activeDurationLevel += modifier.level();
             }
             if (modifierType == SPEED_BOOST) {
-                fireRate = addLess(fireRate, modifier.level(), SPEED_BOOST_PER_LEVEL);
+                fireRate += fireRate * modifier.level() * 0.3F;
             }
         }
 
         float fireIntervalTicks = FIRE_INTERVAL_TICKS / Math.max(0.01F, fireRate);
-        float burstCooldownMultiplier = shrink(1.0F, Math.max(0, cooldownReductionLevel), BURST_COOLDOWN_REDUCTION_PER_LEVEL);
-        float burstActiveDuration = addLess(1.0F, Math.max(0, activeDurationLevel), BURST_ACTIVE_DURATION_PER_LEVEL);
+        float burstCooldownMultiplier = 1.0F / addLess(1.0F, Math.max(0, cooldownReductionLevel), BURST_COOLDOWN_REDUCTION_PER_LEVEL);
+        float burstActiveDuration = 1.0F + Math.max(0, activeDurationLevel) * BURST_ACTIVE_DURATION_PER_LEVEL;
         return new Stats(
                 data.moduleMode(),
                 energyEfficiency,
@@ -710,15 +751,16 @@ public class PhaseTurretModule extends ModuleItem {
             ItemStack moduleStack,
             int emitterIndex
     ) {
-        return fire(player, moduleStack, emitterIndex, player.getLookAngle(), 1.0F);
+        return shoot(player, moduleStack, emitterIndex, player.getLookAngle(), 1.0F, false);
     }
 
-    private ShotResult fire(
+    protected ShotResult shoot(
             ServerPlayer player,
             ItemStack moduleStack,
             int emitterIndex,
             Vec3 shotLook,
-            float damageMultiplier
+            float damageMultiplier,
+            boolean right
     ) {
         PhaseEmitterSlot emitterSlot = PhaseEmitterSlot.byFireIndex(emitterIndex, getEmitterCount(moduleStack));
 
@@ -752,10 +794,13 @@ public class PhaseTurretModule extends ModuleItem {
             Entity hitEntity = entityHit.getEntity();
             Entity damageTarget = getDamageTarget(hitEntity);
             if (damageTarget != null) {
-                hurtTarget(
+                hitTarget(
                         player,
+                        moduleStack,
                         hitEntity,
-                        getDamage(moduleStack, damageTarget) * Math.max(0.0F, damageMultiplier)
+                        damageTarget,
+                        getDamage(moduleStack, damageTarget) * Math.max(0.0F, damageMultiplier),
+                        right
                 );
             }
 
@@ -763,7 +808,7 @@ public class PhaseTurretModule extends ModuleItem {
                     emitterSlot,
                     entityHit.getLocation(),
                     hitEntity.getId(),
-                    getBeam(moduleStack, emitterSlot, entityHit.getLocation(), hitEntity.getId())
+                    getBeam(moduleStack, emitterSlot, entityHit.getLocation(), hitEntity.getId(), right)
             );
         } else {
 
@@ -771,12 +816,16 @@ public class PhaseTurretModule extends ModuleItem {
                     emitterSlot,
                     blockHitPos,
                     -1,
-                    getBeam(moduleStack, emitterSlot, blockHitPos, -1)
+                    getBeam(moduleStack, emitterSlot, blockHitPos, -1, right)
             );
         }
     }
 
-    private static void sendShotResult(ServerPlayer player, int emitterIndex, ShotResult result) {
+    protected static void sendShotResult(ServerPlayer player, int emitterIndex, ShotResult result) {
+        if (result == null) {
+            return;
+        }
+
         ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
         ModNetworking.sendTurretShotFx(player, emitterIndex, result.targetPos(), result.beamConfig());
     }
@@ -827,6 +876,16 @@ public class PhaseTurretModule extends ModuleItem {
             Vec3 targetPos,
             int targetEntityId
     ) {
+        return getBeam(moduleStack, emitterSlot, targetPos, targetEntityId, false);
+    }
+
+    protected VoidBeamInstance.Config getBeam(
+            ItemStack moduleStack,
+            PhaseEmitterSlot emitterSlot,
+            Vec3 targetPos,
+            int targetEntityId,
+            boolean right
+    ) {
         // 手动炮台的光束跟随主等级调色，和同等级炮台球保持一组视觉语言。
         Stats stats = getStats(moduleStack);
         int level = stats == null ? BASE_MODULE_LEVEL : stats.emitterCount();
@@ -856,6 +915,17 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         return SHOT_DAMAGE;
+    }
+
+    protected boolean hitTarget(
+            ServerPlayer player,
+            ItemStack moduleStack,
+            Entity hitEntity,
+            Entity target,
+            float amount,
+            boolean right
+    ) {
+        return hurtTarget(player, hitEntity, amount);
     }
 
     private static boolean hurtTarget(ServerPlayer player, Entity hitEntity, float damage) {
@@ -1035,6 +1105,26 @@ public class PhaseTurretModule extends ModuleItem {
         return mode == CHANNEL || mode == BURST;
     }
 
+    @Override
+    protected Component getModifierDisplayName(ModuleData data, ModuleModifierData modifierData) {
+        ModuleModifierType modifierType = modifierData.type();
+        if (modifierType == SPEED_BOOST) {
+            return Component.translatable("module_modifier_type.void_craft.fire_rate_bonus");
+        }
+        if (data.moduleMode() == CHANNEL && (modifierType == COOLDOWN_REDUCTION || modifierType == ACTIVE_DURATION)) {
+            return Component.translatable("module_modifier_type.void_craft.energy_reduction");
+        }
+        return super.getModifierDisplayName(data, modifierData);
+    }
+
+    public boolean isHealthVisual() {
+        return false;
+    }
+
+    public static boolean hasHealthVisual(ItemStack moduleStack) {
+        return moduleStack.getItem() instanceof PhaseTurretModule module && module.isHealthVisual();
+    }
+
     public record Stats(
             ModuleMode mode,
             float energyEfficiency,
@@ -1062,7 +1152,7 @@ public class PhaseTurretModule extends ModuleItem {
         }
     }
 
-    private static final class FireState {
+    protected static final class FireState {
         // nextFireTick 保留小数，3.33 tick/发会自然累积成 3/3/4 tick 的节奏。
         private int nextEmitterIndex;
         private double nextFireTick;

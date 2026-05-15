@@ -8,12 +8,16 @@ import com.example.voidcraft.Item.custom.TieredPhaseWatch;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AnnihilationBlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.DashVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthAssistPhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TearBlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
 import com.example.voidcraft.Item.custom.SpatialSword;
@@ -212,9 +216,33 @@ public class ModItem {
             new Item.Properties()
 
     );
+    public static final DeferredItem<Item> HEALTH_ASSIST_PHASE_TURRET_MODULE = ITEMS.registerItem(
+            "health_assist_phase_turret_module_item",
+            HealthAssistPhaseTurretModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> HEALTH_PHASE_TURRET_MODULE = ITEMS.registerItem(
+            "health_phase_turret_module_item",
+            HealthPhaseTurretModule::new,
+            props-> props
+
+    );
     public static final DeferredItem<Item> BLACK_HOLE_MODULE = ITEMS.registerItem(
             "black_hole_module_item",
             BlackHoleModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> TEAR_BLACK_HOLE_MODULE = ITEMS.registerItem(
+            "tear_black_hole_module_item",
+            TearBlackHoleModule::new,
+            props-> props
+
+    );
+    public static final DeferredItem<Item> ANNIHILATION_BLACK_HOLE_MODULE = ITEMS.registerItem(
+            "annihilation_black_hole_module_item",
+            AnnihilationBlackHoleModule::new,
             props-> props
 
     );

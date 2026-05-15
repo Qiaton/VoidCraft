@@ -6,6 +6,7 @@ import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.ClientCustom.Sound.ContinuousLoopSoundClient;
 import com.example.voidcraft.Gui.ChunkMapperStatusScreen;
 import com.example.voidcraft.Gui.CoordinateBindingScreen;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
@@ -22,6 +23,7 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
@@ -32,6 +34,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -50,20 +53,25 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
+import java.util.UUID;
+
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "34";
+    private static final String NETWORK_VERSION = "35";
 
     private ModNetworking() {
     }
 
+    // 网络注册（调用场景：模组初始化；参数 bus 是 NeoForge 事件总线，用来挂载所有自定义包注册）。
     public static void register(IEventBus bus) {
         bus.addListener(ModNetworking::registerPayloads);
     }
 
+    // 能量 HUD 同步（调用场景：手表能量变化；player 是接收玩家，percent 是能量百分比，visible 控制 HUD 显隐）。
     public static void sendEnergyHud(ServerPlayer player, int percent, boolean visible) {
         PacketDistributor.sendToPlayer(player, new EnergyHudPayload(percent, visible));
     }
 
+    // 坐标绑定面板同步（调用场景：玩家打开/刷新绑定列表；ownerPosition 是当前方块坐标，owner 提供输入输出绑定）。
     public static void sendCoordinateBindings(
             ServerPlayer player,
             BoundVoidPosition ownerPosition,
@@ -93,6 +101,7 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayer(player, new CoordinateBindingsPayload(ownerPosition, entries));
     }
 
+    // 区块映射器状态同步（调用场景：玩家打开/调整区块映射器面板；mapper 提供档位、能量和输入口状态）。
     public static void sendChunkMapperStatus(ServerPlayer player, ChunkMapperBlockEntity mapper) {
         // 状态面板打开时即时组装一次快照，避免客户端自己推算服务端状态。
         MinecraftServer server = player.level().getServer();
@@ -131,6 +140,7 @@ public final class ModNetworking {
         return level.getBlockState(position.pos()).getBlock().getName();
     }
 
+    // 相位世界切换触发（调用场景：GoWorld 开始传送；sourceDimension 是来源维度，targetDimension 是目标维度）。
     public static void sendPhaseWorldTransition(
             ServerPlayer player,
             ResourceKey<Level> sourceDimension,
@@ -142,40 +152,46 @@ public final class ModNetworking {
         );
     }
 
+    // 相位投影同步（调用场景：进入相位维度时发送原世界投影；snapshot 是客户端用于编译投影方块的快照）。
     public static void sendPhaseProjection(ServerPlayer player, PhaseProjectionSnapshot snapshot) {
         // 投影数据只发给进入相位维度的玩家本人，客户端负责把它画成线框。
         PacketDistributor.sendToPlayer(player, new PhaseProjectionPayload(snapshot));
     }
 
-    // 手动炮台：显示炮台球，同时让客户端把左键交给炮台射击。
+    // 手动炮台状态同步（调用场景：手动炮台开关；active 控制显示炮台球并让客户端接管左右键）。
     public static void sendTurretState(ServerPlayer player, boolean active) {
         sendTurretState(player, active, true);
     }
 
+    // 手动炮台状态同步（调用场景：带模块数据开关手动炮台；moduleStack 用来取炮台球数量和恢复型颜色）。
     public static void sendTurretState(ServerPlayer player, boolean active, ItemStack moduleStack) {
-        sendTurretState(player, active, true, PhaseTurretModule.getEmitterCount(moduleStack));
+        sendTurretState(player, active, true, PhaseTurretModule.getEmitterCount(moduleStack), PhaseTurretModule.hasHealthVisual(moduleStack));
     }
 
-    // 辅助炮台：只显示炮台球和光束，不隐藏手、不吞掉左右键。
+    // 辅助炮台状态同步（调用场景：辅助炮台关闭或无模块状态时；active 只控制炮台球，不接管输入）。
     public static void sendAssistTurretState(ServerPlayer player, boolean active) {
         sendTurretState(player, active, false);
     }
 
+    // 辅助炮台状态同步（调用场景：辅助炮台启动；moduleStack 用来取炮台球数量和恢复型颜色）。
     public static void sendAssistTurretState(ServerPlayer player, boolean active, ItemStack moduleStack) {
-        sendTurretState(player, active, false, PhaseTurretModule.getEmitterCount(moduleStack));
+        sendTurretState(player, active, false, PhaseTurretModule.getEmitterCount(moduleStack), AssistPhaseTurretModule.hasHealthVisual(moduleStack));
     }
 
+    // 炮台状态基础同步（调用场景：无模块数据的默认状态；blocksInput 表示是否吞本地左右键）。
     private static void sendTurretState(ServerPlayer player, boolean active, boolean blocksInput) {
-        sendTurretState(player, active, blocksInput, PhaseTurretModule.getEmitterCount());
+        sendTurretState(player, active, blocksInput, PhaseTurretModule.getEmitterCount(), false);
     }
 
-    private static void sendTurretState(ServerPlayer player, boolean active, boolean blocksInput, int emitterCount) {
+    // 炮台状态完整同步（调用场景：所有炮台开关；emitterCount 是球数量，healthVisual 决定是否用恢复炮台球颜色）。
+    private static void sendTurretState(ServerPlayer player, boolean active, boolean blocksInput, int emitterCount, boolean healthVisual) {
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(
                 player,
-                new TurretStatePayload(player.getId(), active, blocksInput, emitterCount)
+                new TurretStatePayload(player.getId(), active, blocksInput, emitterCount, active && healthVisual)
         );
     }
 
+    // 炮台射击特效同步（调用场景：炮台服务端结算后；emitterIndex 是发射球序号，targetPos 是命中点，beamConfig 是光束颜色/宽度配置）。
     public static void sendTurretShotFx(
             ServerPlayer player,
             int emitterIndex,
@@ -199,10 +215,12 @@ public final class ModNetworking {
         );
     }
 
+    // 黑洞触发（调用场景：无归属实体的世界黑洞效果；center 是中心点，scale 是整体缩放，config 是黑洞视觉参数）。
     public static void sendBlackHoleAt(ServerLevel level, Vec3 center, float scale, VoidBlackHoleInstance.Config config) {
         sendBlackHoleAt(level, center, scale, VoidBlackHolePayload.NO_ENTITY, config);
     }
 
+    // 黑洞触发（调用场景：有归属实体的黑洞效果；ownerEntityId 标记来源，center/scale/config 控制客户端实例）。
     public static void sendBlackHoleAt(
             ServerLevel level,
             Vec3 center,
@@ -237,17 +255,59 @@ public final class ModNetworking {
         );
     }
 
-    // 在实体当前位置生成一个不跟随实体的相位环，常用于进入/退出虚空瞬间。
+    // 持续循环声音开始（调用场景：服务端事件创建；客户端按 id 循环播放直到 stop 包或兜底时长结束）。
+    public static void sendLoopSoundStart(
+            ServerLevel level,
+            UUID id,
+            Identifier sound,
+            Vec3 center,
+            float volume,
+            float pitch,
+            int durationTicks
+    ) {
+        if (level == null || id == null || sound == null || center == null) {
+            return;
+        }
+
+        PacketDistributor.sendToPlayersNear(
+                level,
+                null,
+                center.x,
+                center.y,
+                center.z,
+                128.0D,
+                ContinuousLoopSoundPayload.start(id, sound, center, volume, pitch, durationTicks)
+        );
+    }
+
+    // 持续循环声音停止（调用场景：服务端事件结束；客户端按 id 停止对应循环声音）。
+    public static void sendLoopSoundStop(ServerLevel level, UUID id, Identifier sound, Vec3 center) {
+        if (level == null || id == null || sound == null || center == null) {
+            return;
+        }
+
+        PacketDistributor.sendToPlayersNear(
+                level,
+                null,
+                center.x,
+                center.y,
+                center.z,
+                128.0D,
+                ContinuousLoopSoundPayload.stop(id, sound, center)
+        );
+    }
+
+    // 相位裂隙触发（调用场景：玩家当前位置生成不跟随相位环；preset 是环的颜色、尺寸和扭曲配置）。
     public static void sendPhaseTear(Player player, VoidRingInstance.Preset preset) {
         sendPhaseTearDetached(player, preset);
     }
 
-    // Entity 版本的 detached ring 入口，适合箭、玩家、怪物等任意实体。
+    // 相位裂隙触发（调用场景：任意实体当前位置生成不跟随相位环；entity 提供坐标和高度缩放）。
     public static void sendPhaseTear(Entity entity, VoidRingInstance.Preset preset) {
         sendPhaseTearDetached(entity, preset);
     }
 
-    // 发送固定在当前坐标的 ring；发出后不会继续跟随实体。
+    // 相位裂隙触发（调用场景：实体当前位置固定相位环；发出后不会继续跟随实体）。
     public static void sendPhaseTearDetached(Entity entity, VoidRingInstance.Preset preset) {
         if (!(entity.level() instanceof ServerLevel serverLevel)) {
             return;
@@ -258,12 +318,12 @@ public final class ModNetworking {
         sendPhaseTearAt(serverLevel, entity.position(), scale, entity.getId(), PhaseTearPayload.NO_ENTITY, actualPreset);
     }
 
-    // 发送跟随实体移动的 ring；客户端渲染时会持续读取 trackedEntityId 的位置。
+    // 相位裂隙触发（调用场景：跟随实体移动的相位环；客户端持续读取 trackedEntityId 的位置）。
     public static void sendPhaseTearAttached(Entity entity, VoidRingInstance.Preset preset) {
         sendAttachedPhaseTear(entity, preset);
     }
 
-    // 从实体所在世界发一个指定坐标的 ring，center 是未加 centerYOffset 的世界坐标。
+    // 相位裂隙触发（调用场景：从实体所在世界发指定坐标相位环；center 是未加 centerYOffset 的世界坐标）。
     public static void sendPhaseTearAt(Entity source, Vec3 center, float scale, VoidRingInstance.Preset preset) {
         if (!(source.level() instanceof ServerLevel serverLevel)) {
             return;
@@ -272,12 +332,12 @@ public final class ModNetworking {
         sendPhaseTearAt(serverLevel, center, scale, preset);
     }
 
-    // 直接从 ServerLevel 发一个指定坐标的 ring，适合没有来源实体的世界效果。
+    // 相位裂隙触发（调用场景：无来源实体的世界相位环；level/center/scale/preset 直接决定广播范围和样式）。
     public static void sendPhaseTearAt(ServerLevel level, Vec3 center, float scale, VoidRingInstance.Preset preset) {
         sendPhaseTearAt(level, center, scale, PhaseTearPayload.NO_ENTITY, PhaseTearPayload.NO_ENTITY, preset);
     }
 
-    // ring 发包的完整入口：owner 用于标记来源，tracked 用于决定是否跟随实体。
+    // 相位裂隙触发（调用场景：相位环完整入口；ownerEntityId 标记来源，trackedEntityId 决定是否跟随实体）。
     public static void sendPhaseTearAt(
             ServerLevel level,
             Vec3 center,
@@ -310,17 +370,17 @@ public final class ModNetworking {
         );
     }
 
-    // 让客户端开始持续追踪一个实体并生成拖尾，常用于飞行中的箭。
+    // 实体拖尾触发（调用场景：默认尺寸的实体拖尾；entity 是被追踪实体，preset 是拖尾视觉配置）。
     public static void sendEntityTrail(Entity entity, VoidTrailInstance.Preset preset) {
         sendEntityTrail(entity, preset, 1.0F);
     }
 
-    // 实体拖尾完整入口：scale 控制宽高缩放，preset 控制采样、寿命和颜色。
+    // 实体拖尾触发（调用场景：指定尺寸的实体拖尾；scale 控制宽高缩放，preset 控制采样、寿命和颜色）。
     public static void sendEntityTrail(Entity entity, VoidTrailInstance.Preset preset, float scale) {
         sendEntityTrail(entity, preset, scale, -1.0D);
     }
 
-    // 高速实体可传 seedLength，避免用一整 tick 的速度反推到太远的身后位置。
+    // 实体拖尾触发（调用场景：高速实体拖尾；seedLength 限制初始拖尾段长度，避免速度过快拉太远）。
     public static void sendEntityTrail(Entity entity, VoidTrailInstance.Preset preset, float scale, double seedLength) {
         if (entity.level().isClientSide()) {
             return;
@@ -340,7 +400,7 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayersNear(serverLevel, null, center.x, center.y, center.z, 128.0D, payload);
     }
 
-    // 在 from/to 两个世界坐标之间生成一次性拖尾段；Blink 这类瞬移效果优先用这个。
+    // 一次性拖尾触发（调用场景：Blink 等瞬移效果；from/to 是拖尾段两端，ownerEntityId 标记来源）。
     public static void sendTrailSegment(
             ServerLevel level,
             int ownerEntityId,
@@ -360,6 +420,7 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayersNear(level, null, to.x, to.y, to.z, 128.0D, payload);
     }
 
+    // 相位裂隙触发（调用场景：内部跟随实体入口；entity 同时作为来源和跟随目标）。
     private static void sendAttachedPhaseTear(Entity entity, VoidRingInstance.Preset preset) {
         if (entity.level().isClientSide()) {
             return;
@@ -383,30 +444,54 @@ public final class ModNetworking {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
+        // 网络包注册（调用场景：NeoForge payload 注册事件；NETWORK_VERSION 改变时客户端/服务端协议会重新匹配）。
         PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
+        // 客户端相位裂隙事件：服务端发位置、缩放、跟随实体和环配置，客户端生成 VoidRing。
         registrar.playToClient(PhaseTearPayload.TYPE, PhaseTearPayload.STREAM_CODEC, ModNetworking::onPhaseTearClient);
+        // 客户端拖尾事件：服务端发实体或线段信息，客户端生成持续拖尾或一次性拖尾。
         registrar.playToClient(VoidTrailPayload.TYPE, VoidTrailPayload.STREAM_CODEC, ModNetworking::onTrailClient);
+        // 客户端黑洞事件：服务端发中心、缩放和黑洞配置，客户端生成黑洞视觉。
         registrar.playToClient(VoidBlackHolePayload.TYPE, VoidBlackHolePayload.STREAM_CODEC, ModNetworking::onBlackHoleClient);
+        // 客户端持续循环声音事件：服务端发 start/stop，客户端按 id 开关循环音。
+        registrar.playToClient(ContinuousLoopSoundPayload.TYPE, ContinuousLoopSoundPayload.STREAM_CODEC, ModNetworking::onLoopSoundClient);
+        // 客户端能量 HUD 事件：服务端发百分比和显示状态，客户端刷新手表能量条。
         registrar.playToClient(EnergyHudPayload.TYPE, EnergyHudPayload.STREAM_CODEC, ModNetworking::onEnergyHudClient);
+        // 客户端相位世界转场事件：服务端发源/目标维度，客户端播放遮罩转场。
         registrar.playToClient(PhaseWorldTransitionPayload.TYPE, PhaseWorldTransitionPayload.STREAM_CODEC, ModNetworking::onWorldMoveClient);
+        // 客户端相位投影事件：服务端发投影快照，客户端缓存并触发区块重编译。
         registrar.playToClient(PhaseProjectionPayload.TYPE, PhaseProjectionPayload.STREAM_CODEC, ModNetworking::onPhaseProjectionClient);
+        // 客户端炮台状态事件：服务端发玩家、开关、输入拦截、球数量和恢复色，客户端显示炮台球。
         registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::onTurretStateClient);
+        // 客户端炮台射击事件：服务端发命中点和光束配置，客户端播放光束/炮口特效。
         registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::onTurretShotClient);
-        // 坐标绑定和区块映射器面板都走轻量状态包，不直接同步完整方块实体。
+        // 客户端坐标绑定事件：服务端发绑定列表，客户端打开/刷新坐标制定器面板。
         registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::onBindingsClient);
+        // 客户端区块映射器事件：服务端发状态快照，客户端打开/刷新区块映射器面板。
         registrar.playToClient(ChunkMapperStatusPayload.TYPE, ChunkMapperStatusPayload.STREAM_CODEC, ModNetworking::onMapperStatusClient);
+        // 服务端模块使用事件：客户端发槽位，服务端按副手手表重新取模块并执行。
         registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::onUseWatchServer);
+        // 服务端 Blink 释放事件：客户端发槽位、蓄力 tick 和目标点，服务端重新校验后闪现。
         registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlinkServer);
+        // 服务端手动炮台输入事件：客户端发左右键状态，服务端只更新手动炮台开火状态。
         registrar.playToServer(UseTurretShotPayload.TYPE, UseTurretShotPayload.STREAM_CODEC, ModNetworking::onUseTurretShotServer);
+        // 服务端相位转场就绪事件：客户端白屏就绪后通知，服务端完成世界切换。
         registrar.playToServer(PhaseWorldTransitionReadyPayload.TYPE, PhaseWorldTransitionReadyPayload.STREAM_CODEC, ModNetworking::onWorldReadyServer);
+        // 服务端删除绑定事件：客户端发面板中的绑定目标，服务端校验方块后删除。
         registrar.playToServer(RemoveCoordinateBindingPayload.TYPE, RemoveCoordinateBindingPayload.STREAM_CODEC, ModNetworking::onRemoveBindingServer);
+        // 服务端请求绑定事件：客户端请求刷新面板，服务端校验方块后重发列表。
         registrar.playToServer(RequestCoordinateBindingsPayload.TYPE, RequestCoordinateBindingsPayload.STREAM_CODEC, ModNetworking::onRequestBindingsServer);
+        // 服务端区块映射器档位事件：客户端发目标档位，服务端校验范围和方块后设置。
         registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::onSetMapperTierServer);
+        // 服务端黑洞释放事件：客户端发槽位和目标点，服务端重新读取模块后释放黑洞。
         registrar.playToServer(ReleaseBlackHoleModulePayload.TYPE, ReleaseBlackHoleModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlackHoleServer);
     }
+
+    // 客户端发包入口（调用场景：按键、GUI、转场 ready；payload 是具体 C2S 自定义包）。
     public static void sendToServer(CustomPacketPayload payload) {
         PacketDistributor.sendToServer(payload);
     }
+
+    // Blink 释放接收（调用场景：客户端松开 Blink 蓄力键；slot 是模块槽，ticks 是蓄力时长，x/y/z 是客户端预览目标）。
     private static void onReleaseBlinkServer(
             ReleaseBlinkModulePayload payload,
             IPayloadContext context
@@ -450,6 +535,8 @@ public final class ModNetworking {
 
 
     }
+
+    // 模块使用接收（调用场景：客户端点击 F/G 或模块按钮；slot 是手表模块槽，服务端重新读取副手手表）。
     private static void onUseWatchServer(
             UseWatchModulePayload payload,
             IPayloadContext context
@@ -472,6 +559,7 @@ public final class ModNetworking {
         PhaseWatch.useModule(serverPlayer, watchStack, slot);
     }
 
+    // 黑洞释放接收（调用场景：客户端松开黑洞模块蓄力；slot 是模块槽，x/y/z 是释放目标点）。
     private static void onReleaseBlackHoleServer(
             ReleaseBlackHoleModulePayload payload,
             IPayloadContext context
@@ -516,6 +604,7 @@ public final class ModNetworking {
         );
     }
 
+    // 拖尾接收（调用场景：服务端同步箭/瞬移拖尾；trackEntity 决定追踪实体还是生成一次性线段）。
     private static void onTrailClient(VoidTrailPayload payload, IPayloadContext context) {
         if (!payload.trackEntity()) {
             VoidTrailManager.addTrailSegment(payload.seedStart(), payload.seedEnd(), payload.scale(), payload.toPreset());
@@ -525,10 +614,12 @@ public final class ModNetworking {
         VoidTrailManager.trackEntity(payload.entityId(), payload.scale(), payload.toPreset(), payload.seedStart(), payload.seedEnd());
     }
 
+    // 能量 HUD 接收（调用场景：服务端同步手表能量；percent 是百分比，visible 控制客户端显示）。
     private static void onEnergyHudClient(EnergyHudPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> EnergyHud.update(payload.percent(), payload.visible()));
     }
 
+    // 相位世界转场接收（调用场景：服务端准备换维度；source/target 维度用于客户端显示转场状态）。
     private static void onWorldMoveClient(PhaseWorldTransitionPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseWorldTransitionClient.beginLoadingTransition(
                 payload.sourceDimension(),
@@ -536,20 +627,24 @@ public final class ModNetworking {
         ));
     }
 
+    // 相位投影接收（调用场景：进入相位维度；snapshot 是源世界附近方块快照）。
     private static void onPhaseProjectionClient(PhaseProjectionPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseProjectionClient.accept(payload.snapshot()));
     }
 
+    // 炮台状态接收（调用场景：服务端开关手动/辅助炮台；playerId 定位玩家，active/blocksInput/emitterCount/healthVisual 控制客户端状态）。
     private static void onTurretStateClient(TurretStatePayload payload, IPayloadContext context) {
         // blocksInput 是手动/辅助炮台的客户端边界，不能只用 active 推断。
         context.enqueueWork(() -> PhaseEmitterClientManager.syncState(
                 payload.playerId(),
                 payload.active(),
                 payload.blocksInput(),
-                payload.emitterCount()
+                payload.emitterCount(),
+                payload.healthVisual()
         ));
     }
 
+    // 炮台射击接收（调用场景：服务端结算炮台命中后；targetX/Y/Z 是命中点，beamConfig 是客户端光束配置）。
     private static void onTurretShotClient(TurretShotFxPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseEmitterClientManager.playShotFx(
                 payload.playerId(),
@@ -559,14 +654,17 @@ public final class ModNetworking {
         ));
     }
 
+    // 坐标绑定面板接收（调用场景：服务端发绑定列表；payload 带 owner 和输入/输出条目）。
     private static void onBindingsClient(CoordinateBindingsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> CoordinateBindingScreen.open(payload));
     }
 
+    // 区块映射器面板接收（调用场景：服务端发映射器状态；payload 带档位、覆盖范围、能量和输入口状态）。
     private static void onMapperStatusClient(ChunkMapperStatusPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ChunkMapperStatusScreen.open(payload));
     }
 
+    // 删除绑定接收（调用场景：客户端在绑定面板点删除；owner 是被操作方块，target 是要删除的另一端，outputList 指定列表方向）。
     private static void onRemoveBindingServer(RemoveCoordinateBindingPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
@@ -586,6 +684,7 @@ public final class ModNetworking {
         sendCoordinateBindings(player, payload.owner(), owner);
     }
 
+    // 请求绑定接收（调用场景：客户端面板刷新；owner 是被查看的虚空能端点方块）。
     private static void onRequestBindingsServer(RequestCoordinateBindingsPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
@@ -599,6 +698,7 @@ public final class ModNetworking {
         sendCoordinateBindings(player, payload.owner(), owner);
     }
 
+    // 区块映射器档位接收（调用场景：客户端点击档位按钮；owner 是映射器方块，tier 是目标档位）。
     private static void onSetMapperTierServer(SetChunkMapperTierPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
@@ -630,6 +730,7 @@ public final class ModNetworking {
         return player.level().getBlockEntity(position.pos());
     }
 
+    // 黑洞接收（调用场景：服务端广播黑洞视觉；ownerEntityId 是来源，center/scale/config 控制客户端黑洞实例）。
     private static void onBlackHoleClient(VoidBlackHolePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
@@ -646,6 +747,11 @@ public final class ModNetworking {
         });
     }
 
+    // 持续循环声音接收（调用场景：服务端事件生命周期 start/stop；客户端负责真正循环和停止）。
+    private static void onLoopSoundClient(ContinuousLoopSoundPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> ContinuousLoopSoundClient.handle(payload));
+    }
+
     private static Vec3 getTrailSeedStart(Entity entity, Vec3 seedEnd, double seedLength) {
         Vec3 motion = entity.getDeltaMovement();
         if (motion.lengthSqr() < 1.0E-8D) {
@@ -659,6 +765,7 @@ public final class ModNetworking {
         return seedEnd.subtract(motion);
     }
 
+    // 相位裂隙接收（调用场景：服务端广播相位环；ownerEntityId 标记来源，trackedEntityId 存在时跟随实体）。
     private static void onPhaseTearClient(PhaseTearPayload payload, IPayloadContext context) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
@@ -689,6 +796,8 @@ public final class ModNetworking {
             VoidClock.flashVoidEntity(livingEntity);
         }
     }
+
+    // 手动炮台输入接收（调用场景：客户端左右键状态变化；shooting 是左键，volleyShooting 是右键齐射）。
     private static void onUseTurretShotServer(
             UseTurretShotPayload payload,
             IPayloadContext context
@@ -703,6 +812,7 @@ public final class ModNetworking {
         PhaseTurretModule.setInputState(serverPlayer, payload.shooting(), payload.volleyShooting());
     }
 
+    // 相位世界 ready 接收（调用场景：客户端转场白屏已可见；服务端收到后完成 GoWorld 传送）。
     private static void onWorldReadyServer(
             PhaseWorldTransitionReadyPayload payload,
             IPayloadContext context

@@ -26,8 +26,8 @@ public final class HoldReleaseClientDispatcher {
 
         ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot); // 从副手手表里取出这个技能槽的模块
 
-        if (moduleStack.getItem() instanceof BlackHoleModule) {
-            handleBlackHole(mc, slot, phase);
+        if (moduleStack.getItem() instanceof BlackHoleModule blackHoleModule) {
+            handleBlackHole(mc, slot, phase, blackHoleModule);
             return;
         }
         if (moduleStack.getItem() instanceof SafeBlinkVoidModule) {
@@ -68,8 +68,8 @@ public final class HoldReleaseClientDispatcher {
 
         for (int slot = 0; slot < 2; slot++) {
             ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
-            if (moduleStack.getItem() instanceof BlackHoleModule && BlackHoleAimClientController.isActive(slot)) {
-                return BlackHoleAimClientController.onScroll(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, BlackHoleModule.getStats(moduleStack));
+            if (moduleStack.getItem() instanceof BlackHoleModule blackHoleModule && BlackHoleAimClientController.isActive(slot)) {
+                return BlackHoleAimClientController.onScroll(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, blackHoleModule.getBlackHoleStats(moduleStack), blackHoleModule.getPreviewBlackHole());
             }
             if (moduleStack.getItem() instanceof SafeBlinkVoidModule && BlinkAimClientController.isActive(slot)) {
                 return BlinkAimClientController.onScrollSafe(mc, slot, HoldReleaseInputState.getChargeTicks(slot), scrollY, SafeBlinkVoidModule.getSafeStats(moduleStack));
@@ -85,13 +85,14 @@ public final class HoldReleaseClientDispatcher {
     private static void handleBlackHole(
             Minecraft mc,
             int slot,
-            HoldReleaseInputState.Phase phase
+            HoldReleaseInputState.Phase phase,
+            BlackHoleModule blackHoleModule
     ) {
         ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
-        BlackHoleModule.Stats stats = BlackHoleModule.getStats(moduleStack);
+        BlackHoleModule.Stats stats = blackHoleModule.getBlackHoleStats(moduleStack);
         switch (phase) {
-            case PRESS -> BlackHoleAimClientController.onPress(mc, slot, stats);
-            case HOLD -> BlackHoleAimClientController.onHold(mc, slot, HoldReleaseInputState.getChargeTicks(slot), stats);
+            case PRESS -> BlackHoleAimClientController.onPress(mc, slot, stats, blackHoleModule.getPreviewBlackHole());
+            case HOLD -> BlackHoleAimClientController.onHold(mc, slot, HoldReleaseInputState.getChargeTicks(slot), stats, blackHoleModule.getPreviewBlackHole());
             case RELEASE -> BlackHoleAimClientController.onRelease(mc, slot, HoldReleaseInputState.getLastReleasedTicks(slot), stats);
             case NONE -> {
             }

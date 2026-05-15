@@ -1,7 +1,11 @@
 package com.example.voidcraft.Custom.Behavior.BlackHole;
 
 import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.ModDamageTypes;
+import com.example.voidcraft.Sound.ModSound;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -23,16 +27,22 @@ public class BlackHoleEventManager {
         UUID owner = player.getUUID();
         BlackHoleEventInstance blackHole = new BlackHoleEventInstance(owner,uuid,level,center,radius,strength,coreColor,color,getViewYaw(player));
         EVENTS.put(blackHole.uuid,blackHole);
+        startSound(blackHole);
     }
     public static void addBurst(Entity entity, ServerLevel level, Vec3 center, float radius, float strength, int duration, int coreColor, int color){
+        addBurst(entity, level, center, radius, strength, duration, coreColor, color, 0.0F, false, false, ModDamageTypes.RIFT_TEAR);
+    }
+    public static void addBurst(Entity entity, ServerLevel level, Vec3 center, float radius, float strength, int duration, int coreColor, int color, float coreDamage, boolean hurtPlayers, boolean pullPlayers, ResourceKey<DamageType> damageType){
         UUID uuid = UUID.randomUUID();
         UUID owner = entity.getUUID();
-        BlackHoleEventInstance blackHole = new BlackHoleEventInstance(owner,uuid,level,center,radius,strength,duration,coreColor,color,getViewYaw(entity));
+        BlackHoleEventInstance blackHole = new BlackHoleEventInstance(owner,uuid,level,center,radius,strength,duration,coreColor,color,coreDamage,hurtPlayers,pullPlayers,damageType,getViewYaw(entity));
         ModNetworking.sendBlackHoleAt(level,center,1,blackHole.getConfig());
         EVENTS.put(blackHole.uuid,blackHole);
+        startSound(blackHole);
     }
     public void  remove(UUID uuid){
-        EVENTS.remove(uuid);
+        BlackHoleEventInstance instance = EVENTS.remove(uuid);
+        stopSound(instance);
     }
 
     private static float getViewYaw(Entity entity) {
@@ -48,11 +58,42 @@ public class BlackHoleEventManager {
                 if (instance.duration > 0) {
                     instance.duration--;
                 } else {
+                    stopSound(instance);
                     iterator.remove();
                 }
             } catch (Exception e) {
                 Logger.getLogger("Minecraft").severe("结算黑洞事件寿命错误");
             }
         }
+    }
+
+    private static void startSound(BlackHoleEventInstance blackHole) {
+        if (blackHole == null) {
+            return;
+        }
+
+        ModSound.playBlackHoleRelease(blackHole.level, blackHole.center);
+        ModNetworking.sendLoopSoundStart(
+                blackHole.level,
+                blackHole.uuid,
+                ModSound.BLACK_HOLE_PULL.getId(),
+                blackHole.center,
+                ModSound.BLACK_HOLE_PULL_VOLUME,
+                ModSound.BLACK_HOLE_PULL_PITCH,
+                blackHole.duration
+        );
+    }
+
+    private static void stopSound(BlackHoleEventInstance blackHole) {
+        if (blackHole == null) {
+            return;
+        }
+
+        ModNetworking.sendLoopSoundStop(
+                blackHole.level,
+                blackHole.uuid,
+                ModSound.BLACK_HOLE_PULL.getId(),
+                blackHole.center
+        );
     }
 }

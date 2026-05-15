@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 // active 控制炮台球视觉，blocksInput 控制本地左/右键是否被手动炮台接管。
-public record TurretStatePayload(int playerId, boolean active, boolean blocksInput, int emitterCount) implements CustomPacketPayload {
+public record TurretStatePayload(int playerId, boolean active, boolean blocksInput, int emitterCount, boolean healthVisual) implements CustomPacketPayload {
     public static final Type<TurretStatePayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "turret_state"));
 
@@ -21,6 +21,10 @@ public record TurretStatePayload(int playerId, boolean active, boolean blocksInp
         this(playerId, active, blocksInput, PhaseEmitterSlot.configuredCount());
     }
 
+    public TurretStatePayload(int playerId, boolean active, boolean blocksInput, int emitterCount) {
+        this(playerId, active, blocksInput, emitterCount, false);
+    }
+
     public static final StreamCodec<ByteBuf, TurretStatePayload> STREAM_CODEC =
             StreamCodec.of(
                     (buf, payload) -> {
@@ -28,12 +32,14 @@ public record TurretStatePayload(int playerId, boolean active, boolean blocksInp
                         buf.writeBoolean(payload.active());
                         buf.writeBoolean(payload.blocksInput());
                         buf.writeInt(payload.emitterCount());
+                        buf.writeBoolean(payload.healthVisual());
                     },
                     buf -> new TurretStatePayload(
                             buf.readInt(),
                             buf.readBoolean(),
                             buf.readBoolean(),
-                            buf.readInt()
+                            buf.readInt(),
+                            buf.readBoolean()
                     )
             );
 
