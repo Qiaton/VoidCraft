@@ -13,6 +13,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BlockItemStateProperties;
@@ -68,18 +69,22 @@ public class CreativeModeTabs {
                         output.accept(ModItem.PURE_ENERGY);
                         output.accept(ModItem.VOID_ENERGY);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
-                        output.accept(getModuleItem());
+                        addModuleItems(output, ModItem.MODULE_ITEM.get());
                         output.accept(getModuleModifierItem(ModuleModifierType.COOLDOWN_REDUCTION));
                         output.accept(getModuleModifierItem(ModuleModifierType.SPEED_BOOST));
                         output.accept(getModuleModifierItem(ModuleModifierType.ACTIVE_DURATION));
-                        output.accept(getHealthModuleItem());
-                        output.accept(getDashVoidModuleItem());
-                        output.accept(getBlinkVoidModuleItem());
-                        output.accept(getSafeBlinkVoidModuleItem());
-                        output.accept(getPhaseTurretModuleItem());
-                        output.accept(getAssistPhaseTurretModuleItem());
-                        output.accept(getBlackHoleModuleItem());
-                        output.accept(getWorldModuleItem());
+                        addModuleItems(output, ModItem.HEALTH_VOID_MODULE.get());
+                        addModuleItems(output, ModItem.DASH_VOID_MODULE.get());
+                        addModuleItems(output, ModItem.BLINK_VOID_MODULE.get());
+                        addModuleItems(output, ModItem.SAFE_BLINK_VOID_MODULE.get());
+                        addModuleItems(output, ModItem.PHASE_TURRET_MODULE.get());
+                        addModuleItems(output, ModItem.HEALTH_PHASE_TURRET_MODULE.get());
+                        addModuleItems(output, ModItem.ASSIST_PHASE_TURRET_MODULE.get());
+                        addModuleItems(output, ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get());
+                        addModuleItems(output, ModItem.BLACK_HOLE_MODULE.get());
+                        addModuleItems(output, ModItem.TEAR_BLACK_HOLE_MODULE.get());
+                        addModuleItems(output, ModItem.ANNIHILATION_BLACK_HOLE_MODULE.get());
+                        addModuleItems(output, ModItem.WORLD_MODULE.get());
                     }))
                     .build()
 
@@ -96,44 +101,40 @@ public class CreativeModeTabs {
         return stack;
     }
     public static ItemStack getModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.MODULE_ITEM.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.MODULE_ITEM.get(), ModuleMode.BURST);
     }
     public static ItemStack getHealthModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.HEALTH_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.HEALTH_VOID_MODULE.get(), ModuleMode.CHANNEL);
     }
     public static ItemStack getBlinkVoidModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.BLINK_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5)))); // Blink 只支持 BURST，创造栏样品也要给 BURST
-        return stack;
+        return getModuleItem(ModItem.BLINK_VOID_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getSafeBlinkVoidModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.SAFE_BLINK_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.SAFE_BLINK_VOID_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getPhaseTurretModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.PHASE_TURRET_MODULE.get(), ModuleMode.BURST);
+    }
+    public static ItemStack getHealthPhaseTurretModuleItem(){
+        return getModuleItem(ModItem.HEALTH_PHASE_TURRET_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getAssistPhaseTurretModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.ASSIST_PHASE_TURRET_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.ASSIST_PHASE_TURRET_MODULE.get(), ModuleMode.BURST);
+    }
+    public static ItemStack getHealthAssistPhaseTurretModuleItem(){
+        return getModuleItem(ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getBlackHoleModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.BLACK_HOLE_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.BLACK_HOLE_MODULE.get(), ModuleMode.BURST);
+    }
+    public static ItemStack getTearBlackHoleModuleItem(){
+        return getModuleItem(ModItem.TEAR_BLACK_HOLE_MODULE.get(), ModuleMode.BURST);
+    }
+    public static ItemStack getAnnihilationBlackHoleModuleItem(){
+        return getModuleItem(ModItem.ANNIHILATION_BLACK_HOLE_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getWorldModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.WORLD_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.BURST,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
-        return stack;
+        return getModuleItem(ModItem.WORLD_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getModuleModifierItem(ModuleModifierType type){
         ItemStack stack = new ItemStack(ModItem.MODULE_MODIFIER_ITEM.get());
@@ -141,8 +142,21 @@ public class CreativeModeTabs {
         return stack;
     }
     public static ItemStack getDashVoidModuleItem(){
-        ItemStack stack = new ItemStack(ModItem.DASH_VOID_MODULE.get());
-        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(ModuleMode.CHANNEL,5, List.of(new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
+        return getModuleItem(ModItem.DASH_VOID_MODULE.get(), ModuleMode.CHANNEL);
+    }
+    private static void addModuleItems(CreativeModeTab.Output output, Item item) {
+        if (!(item instanceof ModuleItem moduleItem)) {
+            return;
+        }
+        for (ModuleMode mode : ModuleMode.values()) {
+            if (moduleItem.canUseMode(mode)) {
+                output.accept(getModuleItem(item, mode));
+            }
+        }
+    }
+    private static ItemStack getModuleItem(Item item, ModuleMode mode){
+        ItemStack stack = new ItemStack(item);
+        stack.set(ModDataComponents.MODULE_DATA.value(),new ModuleData(mode,5, List.of(new ModuleModifierData(ModuleModifierType.COOLDOWN_REDUCTION,5),new ModuleModifierData(ModuleModifierType.SPEED_BOOST,5),new ModuleModifierData(ModuleModifierType.ACTIVE_DURATION,5))));
         return stack;
     }
     public static void register(IEventBus bus) {

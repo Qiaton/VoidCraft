@@ -83,32 +83,20 @@ public class DashClock {
         DASH_DIRECTION.computeIfAbsent(playerId, unused -> getDashDirection(player));
     }
 
-    public static void setDash(Player player, int tick) {
-        if(tick <= 0){
-            clearDash(player);
-            return;
-        }
 
-        DASH_TICKS.put(player.getUUID(), tick);
-    }
     public static float getDashPower(Player player){
-        return DASH_STRENGTH.get(player.getUUID());
+        Float strength = DASH_STRENGTH.get(player.getUUID());
+        return strength == null ? 0.0F : strength;
     }
 
     public static void clearDash(Player player){
         UUID playerId = player.getUUID();
+        player.setDeltaMovement(0, 0, 0);
         DASH_TICKS.remove(playerId);
         DASH_DIRECTION.remove(playerId);
         DASH_STRENGTH.remove(playerId);
     }
 
-    public static void setDashDir(Player player){
-        DASH_DIRECTION.put(player.getUUID(), getDashDirection(player));
-    }
-
-    public static void setDashPower(Player player, float strength){
-        DASH_STRENGTH.put(player.getUUID(), strength);
-    }
 
     private static Vec3 getDashDirection(Player player){
         Vec3 look = player.getLookAngle();

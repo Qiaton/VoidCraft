@@ -8,13 +8,6 @@ public final class ModuleStatHelper {
         return value + getLessBonus(level, rate);
     }
 
-    public static float shrink(float value, int level, float rate) {
-        for (int i = 0; i < level; i++) {
-            value *= 1.0F - rate;
-        }
-        return value;
-    }
-
     private static float getLessBonus(int level, float rate) {
         float bonus = 0.0F;
         float actualRate = Math.max(0.0F, Math.min(1.0F, rate));

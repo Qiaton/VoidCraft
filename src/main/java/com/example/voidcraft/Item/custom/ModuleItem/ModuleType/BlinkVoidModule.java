@@ -9,6 +9,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.*;
 import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.Sound.ModSound;
 import com.example.voidcraft.Network.ModNetworking;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -135,10 +136,10 @@ public class BlinkVoidModule extends ModuleItem {
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                Speed = addLess(Speed, modifier.level(), 0.15F);
+                Speed += Speed * modifier.level() * 0.15F;
             }
             if(modifierType == ACTIVE_DURATION){
-                maxDistance = addLess(maxDistance, modifier.level(), 0.3F);
+                maxDistance += maxDistance * modifier.level() * 0.3F;
             }
         }
 
@@ -158,5 +159,16 @@ public class BlinkVoidModule extends ModuleItem {
     @Override
      public boolean canUseMode(ModuleMode mode) {
         return BURST==mode;
+    }
+
+    @Override
+    protected Component getModifierDisplayName(ModuleModifierData modifierData) {
+        if (modifierData.type() == SPEED_BOOST) {
+            return Component.translatable("module_modifier_type.void_craft.charge_speed");
+        }
+        if (modifierData.type() == ACTIVE_DURATION) {
+            return Component.translatable("module_modifier_type.void_craft.distance_bonus");
+        }
+        return super.getModifierDisplayName(modifierData);
     }
 }

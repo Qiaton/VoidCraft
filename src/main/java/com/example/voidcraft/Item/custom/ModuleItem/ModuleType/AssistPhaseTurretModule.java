@@ -16,6 +16,7 @@ import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.Network.ModNetworking;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,7 +46,6 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 @EventBusSubscriber(modid = VoidCraft.MODID)
 public class AssistPhaseTurretModule extends ModuleItem {
@@ -55,11 +55,9 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static final double SAFE_DISTANCE = 4.0D;
     private static final double SAFE_DISTANCE_SQR = SAFE_DISTANCE * SAFE_DISTANCE;
     private static final int BASE_MODULE_LEVEL = 1;
-    private static final int BASE_EMITTER_COUNT = 1;
     private static final float SHOT_DAMAGE = 1.0F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
     private static final int FIRE_INTERVAL_TICKS = 5;
-    private static final float SPEED_BOOST_PER_LEVEL = 1F;
     private static final int TARGET_LOCK_TICKS = 20;
     private static final int RECENT_ATTACK_TARGET_TICKS = 100;
     private static final int BURST_ACTIVE_TICKS = 5*20;
@@ -67,7 +65,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_ENERGY_COST = 800L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
-    private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.50F;
+    private static final float BURST_ACTIVE_DURATION_PER_LEVEL = 0.30F;
     private static final float BURST_COOLDOWN_REDUCTION_PER_LEVEL = 0.10F;
     private static final double FIRE_TICK_EPSILON = 1.0E-6D;
     private static final int MAX_DUE_SHOTS_PER_TICK = 20;
@@ -276,7 +274,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         fire(player, moduleStack, slot, stats);
     }
 
-    private boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+    protected boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
         // 真正开火的统一入口：模式分支只负责算冷却/扣能量，然后进入这里。
         FireState state = getFire(player, slot);
         if (player.tickCount + FIRE_TICK_EPSILON < state.nextFireTick) {
@@ -306,10 +304,11 @@ public class AssistPhaseTurretModule extends ModuleItem {
             int emitterIndex = Math.floorMod(state.nextEmitterIndex, emitterCount);
             state.nextEmitterIndex = (emitterIndex + 1) % emitterCount;
 
-            hurtTarget(player, target, getDamage(moduleStack, stats, target));
+            float damage = getDamage(moduleStack, stats, target);
+            hitTarget(player, moduleStack, stats, target, damage);
             Vec3 targetPos = getTargetPos(target);
             ModSound.playPhaseTurretShot(player.level(), player, emitterIndex);
-            ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getBeam(moduleStack, stats, target));
+            ModNetworking.sendTurretShotFx(player, emitterIndex, targetPos, getBeam(player, moduleStack, stats, target));
             fired = true;
         }
 
@@ -351,6 +350,14 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return stats == null ? SHOT_DAMAGE : stats.shotDamage();
     }
 
+    protected boolean hitTarget(ServerPlayer player, ItemStack moduleStack, Stats stats, LivingEntity target, float damage) {
+        return hurtTarget(player, target, damage);
+    }
+
+    protected VoidBeamInstance.Config getBeam(ServerPlayer player, ItemStack moduleStack, Stats stats, LivingEntity target) {
+        return getBeam(moduleStack, stats, target);
+    }
+
     protected VoidBeamInstance.Config getBeam(ItemStack moduleStack, Stats stats, LivingEntity target) {
         int level = stats == null ? BASE_MODULE_LEVEL : stats.emitterCount();
         if (level <= BASE_MODULE_LEVEL) {
@@ -363,7 +370,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         );
     }
 
-    private static LivingEntity pickTarget(ServerPlayer player, FireState state) {
+    protected LivingEntity pickTarget(ServerPlayer player, FireState state) {
         // 优先级：安全距离内的怪物 > 正在攻击玩家的怪物 > 锁定目标 > 玩家最近攻击的目标 > 最近/低血量怪物。
         LivingEntity safetyThreat = findCloseThreat(player);
         if (safetyThreat != null) {
@@ -398,7 +405,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return null;
     }
 
-    private static LivingEntity findCloseThreat(ServerPlayer player) {
+    protected static LivingEntity findCloseThreat(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
 
@@ -426,7 +433,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity findAttacker(ServerPlayer player) {
+    protected static LivingEntity findAttacker(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
 
@@ -449,7 +456,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity findHostile(ServerPlayer player) {
+    protected static LivingEntity findHostile(ServerPlayer player) {
         LivingEntity best = null;
         double bestDistanceSqr = Double.MAX_VALUE;
         float bestHealth = Float.MAX_VALUE;
@@ -476,7 +483,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return best;
     }
 
-    private static LivingEntity getLockTarget(ServerPlayer player, FireState state) {
+    protected static LivingEntity getLockTarget(ServerPlayer player, FireState state) {
         if (state.lockedTargetId == null || player.tickCount >= state.lockUntilTick) {
             clearLock(state);
             return null;
@@ -491,7 +498,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return target;
     }
 
-    private static LivingEntity getRecentTarget(ServerPlayer player) {
+    protected static LivingEntity getRecentTarget(ServerPlayer player) {
         RecentAttackTarget recentTarget = RECENT_ATTACK_TARGETS.get(player.getUUID());
         if (recentTarget == null) {
             return null;
@@ -511,7 +518,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return target;
     }
 
-    private static boolean isGoodTarget(ServerPlayer player, LivingEntity target, boolean allowNonMonster) {
+    protected static boolean isGoodTarget(ServerPlayer player, LivingEntity target, boolean allowNonMonster) {
         if (target == null || target == player || target.isRemoved() || !target.isAlive() || !target.isPickable()) {
             return false;
         }
@@ -528,12 +535,12 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return canSee(player, target);
     }
 
-    private static boolean isHostile(LivingEntity target) {
+    protected static boolean isHostile(LivingEntity target) {
         // 不用 Monster 类判断，幻翼/恶魂这类 MobCategory.MONSTER 也能被自动索敌覆盖。
         return target.getType().getCategory() == MobCategory.MONSTER;
     }
 
-    private static boolean canSee(ServerPlayer player, LivingEntity target) {
+    protected static boolean canSee(ServerPlayer player, LivingEntity target) {
         Vec3 start = player.getEyePosition();
         Vec3 end = getTargetPos(target);
         BlockHitResult blockHit = player.level().clip(new ClipContext(
@@ -551,29 +558,30 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return start.distanceToSqr(blockHit.getLocation()) + 0.25D >= start.distanceToSqr(end);
     }
 
-    private static Vec3 getTargetPos(LivingEntity target) {
+    protected static Vec3 getTargetPos(LivingEntity target) {
         return target.getBoundingBox().getCenter();
     }
 
-    private static Entity getEntity(ServerPlayer player, UUID entityId) {
+    protected static Entity getEntity(ServerPlayer player, UUID entityId) {
         return ((ServerLevel) player.level()).getEntity(entityId);
     }
 
-    private static void lockTarget(ServerPlayer player, FireState state, LivingEntity target) {
+    protected static void lockTarget(ServerPlayer player, FireState state, LivingEntity target) {
         state.lockedTargetId = target.getUUID();
         state.lockUntilTick = player.tickCount + TARGET_LOCK_TICKS;
     }
 
-    private static void clearLock(FireState state) {
+    protected static void clearLock(FireState state) {
         state.lockedTargetId = null;
         state.lockUntilTick = 0;
     }
 
-    private static void hurtTarget(ServerPlayer player, LivingEntity target, float damage) {
+    protected static boolean hurtTarget(ServerPlayer player, LivingEntity target, float damage) {
         int previousInvulnerableTime = target.invulnerableTime;
         target.invulnerableTime = 0;
         target.hurt(makeDamageSource(player), damage);
         target.invulnerableTime = Math.min(target.invulnerableTime, previousInvulnerableTime);
+        return damage > 0.0F;
     }
 
     private static DamageSource makeDamageSource(ServerPlayer player) {
@@ -716,8 +724,14 @@ public class AssistPhaseTurretModule extends ModuleItem {
 
         int moduleLevel = Math.max(BASE_MODULE_LEVEL, data.level());
         float energyEfficiency = 1.0F;
-        float fireRate = 1.0F;
+        float fireRate = 1F;
+        AssistPhaseTurretModule module = moduleStack.getItem() instanceof AssistPhaseTurretModule assistModule
+                ? assistModule
+                : null;
         float shotDamage = SHOT_DAMAGE + (moduleLevel - BASE_MODULE_LEVEL) * SHOT_DAMAGE_PER_LEVEL;
+        if (module != null) {
+            shotDamage *= module.getDamageScale();
+        }
         int emitterCount = PhaseTurretModule.getEmitterCount(moduleStack);
         int cooldownReductionLevel = 0;
         int activeDurationLevel = 0;
@@ -733,17 +747,17 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 cooldownReductionLevel += modifier.level();
             }
             if (modifierType == ACTIVE_DURATION) {
-                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.20F);
+                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.2F);
                 activeDurationLevel += modifier.level();
             }
             if (modifierType == SPEED_BOOST) {
-                fireRate = addLess(fireRate, modifier.level(), SPEED_BOOST_PER_LEVEL * data.level());
+                fireRate += fireRate * modifier.level() * 0.2F;
             }
         }
 
         float fireIntervalTicks = FIRE_INTERVAL_TICKS / Math.max(0.01F, fireRate);
-        float burstCooldownMultiplier = shrink(1.0F, Math.max(0, cooldownReductionLevel), BURST_COOLDOWN_REDUCTION_PER_LEVEL);
-        float burstActiveDuration = addLess(1.0F, Math.max(0, activeDurationLevel), BURST_ACTIVE_DURATION_PER_LEVEL);
+        float burstCooldownMultiplier = 1.0F / addLess(1.0F, Math.max(0, cooldownReductionLevel), BURST_COOLDOWN_REDUCTION_PER_LEVEL);
+        float burstActiveDuration = 1.0F + Math.max(0, activeDurationLevel) * BURST_ACTIVE_DURATION_PER_LEVEL;
         return new Stats(
                 data.moduleMode(),
                 energyEfficiency,
@@ -751,7 +765,9 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 fireIntervalTicks,
                 emitterCount,
                 burstCooldownMultiplier,
-                burstActiveDuration
+                burstActiveDuration,
+                module == null ? CHANNEL_ENERGY_COST : CHANNEL_ENERGY_COST + module.getChannelEnergyAdd(),
+                module == null ? BURST_ENERGY_COST : BURST_ENERGY_COST + module.getBurstEnergyAdd()
         );
     }
 
@@ -765,6 +781,38 @@ public class AssistPhaseTurretModule extends ModuleItem {
         return mode == CHANNEL || mode == BURST;
     }
 
+    @Override
+    protected Component getModifierDisplayName(ModuleData data, ModuleModifierData modifierData) {
+        ModuleModifierType modifierType = modifierData.type();
+        if (modifierType == SPEED_BOOST) {
+            return Component.translatable("module_modifier_type.void_craft.fire_rate_bonus");
+        }
+        if (data.moduleMode() == CHANNEL && (modifierType == COOLDOWN_REDUCTION || modifierType == ACTIVE_DURATION)) {
+            return Component.translatable("module_modifier_type.void_craft.energy_reduction");
+        }
+        return super.getModifierDisplayName(data, modifierData);
+    }
+
+    protected float getDamageScale() {
+        return 1.0F;
+    }
+
+    protected long getChannelEnergyAdd() {
+        return 0L;
+    }
+
+    protected long getBurstEnergyAdd() {
+        return 0L;
+    }
+
+    public boolean isHealthVisual() {
+        return false;
+    }
+
+    public static boolean hasHealthVisual(ItemStack moduleStack) {
+        return moduleStack.getItem() instanceof AssistPhaseTurretModule module && module.isHealthVisual();
+    }
+
     public record Stats(
             ModuleMode mode,
             float energyEfficiency,
@@ -772,15 +820,17 @@ public class AssistPhaseTurretModule extends ModuleItem {
             float fireIntervalTicks,
             int emitterCount,
             float burstCooldownMultiplier,
-            float burstActiveDuration
+            float burstActiveDuration,
+            long channelEnergyCost,
+            long burstEnergyCost
     ) {
         // Stats 是模块数据到运行数值的边界；UI/配置改动尽量只落在这里或上面的基础 getter。
         public long channelEnergyCost() {
-            return Math.max(1L, (long) (CHANNEL_ENERGY_COST / energyEfficiency));
+            return Math.max(1L, (long) (channelEnergyCost / energyEfficiency));
         }
 
         public long burstEnergyCost() {
-            return Math.max(0L, Math.round(BURST_ENERGY_COST * burstCooldownMultiplier));
+            return Math.max(0L, Math.round(burstEnergyCost * burstCooldownMultiplier));
         }
 
         public long burstCooldownTicks() {
@@ -792,13 +842,13 @@ public class AssistPhaseTurretModule extends ModuleItem {
         }
     }
 
-    private static final class FireState {
+    protected static final class FireState {
         // 自动炮台每槽独立记录发射顺序、冷却、锁定目标和 burst 到期时间。
-        private int nextEmitterIndex;
-        private double nextFireTick;
-        private UUID lockedTargetId;
-        private int lockUntilTick;
-        private int burstUntilTick;
+        protected int nextEmitterIndex;
+        protected double nextFireTick;
+        protected UUID lockedTargetId;
+        protected int lockUntilTick;
+        protected int burstUntilTick;
     }
 
     private record RecentAttackTarget(UUID targetId, int expiresAtTick) {

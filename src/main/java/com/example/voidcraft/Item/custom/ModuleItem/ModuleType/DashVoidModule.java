@@ -26,6 +26,7 @@ public class DashVoidModule extends ModuleItem {
     private static final long COOLDOWN_TICKS = 300L;
     private static final Integer VOID_TICK = 25;
     public static final float DASH_SPEED = 3F;
+    private static final float BURST_ENERGY_COST = 700;
 
 
     public DashVoidModule(Properties properties) {
@@ -60,14 +61,22 @@ public class DashVoidModule extends ModuleItem {
             }
         }
         if(mode == BURST){
-            if(!ModuleSkillClock.canUseNow(player,slot)){
+            boolean cooldownReady = ModuleSkillClock.canUseNow(player,slot);
+            if(DashClock.getDashPower(player)>0){
+                DashClock.clearDash(player);
+                VoidClock.stopVoid(player);
+                return;
+            }
+            if(!cooldownReady && !ModuleSkillClock.tryUseEnergy(player,stats.burstEnergyCost())){
                 return;
             }
             ModSound.playEnterVoid(level, player);
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
             int activeTicks = stats.activeTicks();
             DashClock.setDash(player,activeTicks, stats.strength());
-            ModuleSkillClock.setCooldown(player, slot, COOLDOWN_TICKS);
+            if(cooldownReady){
+                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
+            }
             VoidClock.setVoidTicks(player,activeTicks);
         }
     }
@@ -77,10 +86,11 @@ public class DashVoidModule extends ModuleItem {
         if(data == null) return null;
 
         float cooldownDuration = 1F;
+        float energyEfficiency = 1F;
         float activeDuration = 1F;
         float dashSpeed = 1F;
         List<ModuleModifierData> modifiers = data.modifiers();
-
+        dashSpeed += 0.2F * data.level();
         for(ModuleModifierData modifier : modifiers){
             ModuleModifierType modifierType = modifier.type();
             if(modifierType == null) continue;
@@ -88,28 +98,33 @@ public class DashVoidModule extends ModuleItem {
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                dashSpeed += (float) (0.4F * data.level());
-                dashSpeed = addLess(dashSpeed, modifier.level(), 0.15F);
+                dashSpeed += dashSpeed * modifier.level() * 0.15F;
             }
             if(modifierType == ACTIVE_DURATION){
-                activeDuration = addLess(activeDuration, modifier.level(), 0.3F);
+                energyEfficiency = addLess(energyEfficiency, modifier.level(), 0.3F);
+                activeDuration += activeDuration * modifier.level() * 0.3F;
             }
         }
 
-        return new Stats(data.moduleMode(), cooldownDuration, activeDuration, dashSpeed);
+        return new Stats(data.moduleMode(), cooldownDuration, energyEfficiency, activeDuration, dashSpeed);
     }
 
-    public record Stats(ModuleMode mode, float cooldownDuration, float activeDuration, float dashSpeed) {
+    public record Stats(ModuleMode mode, float cooldownDuration, float energyEfficiency, float activeDuration, float dashSpeed) {
         public long channelEnergyCost() {
-            return (long)(ENERGY_COST / cooldownDuration / activeDuration);
+            return (long)(ENERGY_COST / cooldownDuration / energyEfficiency);
         }
 
         public int activeTicks() {
             return (int)(VOID_TICK * activeDuration);
         }
-
+        public long cooldownTicks() {
+            return (long)(COOLDOWN_TICKS / cooldownDuration);
+        }
         public float strength() {
             return dashSpeed * DASH_SPEED;
+        }
+        public long burstEnergyCost() {
+            return (long)(BURST_ENERGY_COST / cooldownDuration);
         }
     }
     @Override

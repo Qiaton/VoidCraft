@@ -25,4 +25,9 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE,
             ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_turret_disperse")
     );
+
+    public static final ResourceKey<DamageType> RIFT_TEAR = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "rift_tear")
+    );
 }

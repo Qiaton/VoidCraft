@@ -104,10 +104,10 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                Speed = addLess(Speed, modifier.level(), 0.15F);
+                Speed += Speed * modifier.level() * 0.15F;
             }
             if(modifierType == ACTIVE_DURATION){
-                maxDistance = addLess(maxDistance, modifier.level(), 0.3F);
+                maxDistance += maxDistance * modifier.level() * 0.3F;
             }
         }
 

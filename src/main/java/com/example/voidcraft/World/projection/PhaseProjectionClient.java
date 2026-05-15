@@ -12,6 +12,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,7 @@ public final class PhaseProjectionClient {
         PhaseProjectionSnapshot oldSnapshot = data.snapshot();
         boolean newProjection = oldSnapshot == null || !isSameProjection(oldSnapshot, newSnapshot);
         PhaseProjectionSnapshot merged = mergeSnapshot(oldSnapshot, newSnapshot);
-        Data newData = new Data(merged, makeStateIds(merged));
+        Data newData = new Data(merged, makeStateIds(merged), makeSectionIds(merged));
         if (newProjection) {
             markFullDirty(oldSnapshot);
         }
@@ -59,6 +60,27 @@ public final class PhaseProjectionClient {
         }
         if (state.getBlock() instanceof PhaseBlock) {
             return Blocks.AIR.defaultBlockState();
+        }
+        return state;
+    }
+
+    public static boolean hasDrawSection(long sectionPos) {
+        Data currentData = data;
+        return hidePhaseBlocks
+                && currentData.snapshot() != null
+                && currentData.sectionIds().contains(sectionPos);
+    }
+
+    public static FluidState getDrawFluidState(BlockPos pos, FluidState state) {
+        Data currentData = data;
+        PhaseProjectionSnapshot current = currentData.snapshot();
+        if (!hidePhaseBlocks || current == null || !isInProjectionRange(current, pos)) {
+            return state;
+        }
+
+        int stateId = currentData.stateIds().get(pos.asLong());
+        if (stateId >= 0) {
+            return Block.stateById(stateId).getFluidState();
         }
         return state;
     }
@@ -150,6 +172,18 @@ public final class PhaseProjectionClient {
         return stateIds;
     }
 
+    private static LongSet makeSectionIds(PhaseProjectionSnapshot current) {
+        if (current == null || current.entries().isEmpty()) {
+            return new LongOpenHashSet();
+        }
+
+        LongSet sectionIds = new LongOpenHashSet();
+        for (PhaseProjectionSnapshot.Entry entry : current.entries()) {
+            sectionIds.add(SectionPos.asLong(entry.pos()));
+        }
+        return sectionIds;
+    }
+
     private static Long2IntMap makeEmptyStateIds() {
         Long2IntOpenHashMap stateIds = new Long2IntOpenHashMap();
         stateIds.defaultReturnValue(-1);
@@ -228,6 +262,7 @@ public final class PhaseProjectionClient {
         int maxY = PhaseProjectionSnapshot.getMaxY(mc.level.getMaxBuildHeight(), current.center());
         // 投影范围改变时只重建投影高度内的相位区块，让区块网格重新套用隐藏规则。
         mc.levelRenderer.setBlocksDirty(minX, minY, minZ, maxX, maxY, maxZ);
+        mc.levelRenderer.needsUpdate();
     }
 
     private static int clampChunkX(PhaseProjectionSnapshot current, int chunkX) {
@@ -244,9 +279,9 @@ public final class PhaseProjectionClient {
         return Math.max(minChunkZ, Math.min(maxChunkZ, chunkZ));
     }
 
-    private record Data(PhaseProjectionSnapshot snapshot, Long2IntMap stateIds) {
+    private record Data(PhaseProjectionSnapshot snapshot, Long2IntMap stateIds, LongSet sectionIds) {
         private static Data empty() {
-            return new Data(null, makeEmptyStateIds());
+            return new Data(null, makeEmptyStateIds(), new LongOpenHashSet());
         }
     }
 }

@@ -81,7 +81,8 @@ public record PhaseProjectionSnapshot(ResourceLocation sourceDimension, BlockPos
     }
 
     private static boolean canShow(BlockState state) {
-        return !state.isAir() && state.getRenderShape() != RenderShape.INVISIBLE;
+        return !state.getFluidState().isEmpty()
+                || (!state.isAir() && state.getRenderShape() != RenderShape.INVISIBLE);
     }
 
     public record Entry(BlockPos pos, int stateId) {

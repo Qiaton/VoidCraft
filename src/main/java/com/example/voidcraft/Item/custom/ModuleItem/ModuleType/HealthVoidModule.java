@@ -1,5 +1,6 @@
 package com.example.voidcraft.Item.custom.ModuleItem.ModuleType;
 
+import com.example.voidcraft.Custom.Clock.Clock;
 import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
 import com.example.voidcraft.Custom.Clock.VoidClock;
 import com.example.voidcraft.Effect.VoidRingInstance;
@@ -13,11 +14,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
+import java.util.UUID;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
-import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.shrink;
 
 public class HealthVoidModule extends ModuleItem {
     private static final long ENERGY_COST = 25L;
@@ -25,8 +26,9 @@ public class HealthVoidModule extends ModuleItem {
     private static final Integer VOID_TICK = 50;
     private static final float DEFAULT_MOVE_SPEED_OFFSET = 1F;
     public static final float MOVE_SPEED = 0.15F;
-    private static final float HEALTH_DEFAULT = 4F;
-    private static final float HEALTH_BOOST = 1F;
+    private static final float HEALTH_DEFAULT = 0.08F;
+    private static final long BURST_ENERGY_COST = 900L;
+    private UUID UUID=null;
 
     public HealthVoidModule(Properties properties) {
         super(properties);
@@ -57,13 +59,31 @@ public class HealthVoidModule extends ModuleItem {
             }
         }
         if(mode == BURST){
-            if(!ModuleSkillClock.canUseNow(player,slot)){
-                return;
+            boolean cooldownReady = ModuleSkillClock.canUseNow(player,slot);
+            if(!cooldownReady){
+                if(VoidClock.getInVoid(player)){
+                        VoidClock.stopVoid(player);
+                        ModuleSkillClock.stopChannel(player,slot);
+                        Clock.removeClock(UUID);
+                        return;
+                }
+                else{
+                    if(!ModuleSkillClock.tryUseEnergy(player,stats.burstEnergyCost())){
+                        return;
+                    }
+                }
             }
             ModSound.playEnterVoid(level, player);
             player.heal(stats.burstHealAmount());
+            ModuleSkillClock.startChannel(player,slot,0);
+            UUID = Clock.addClock((int) (VOID_TICK* stats.activeDuration()),()->{
+                ModuleSkillClock.stopChannel(player,slot);
+                UUID = null;
+            });
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
-            ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
+            if(cooldownReady){
+                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
+            }
             VoidClock.setVoidTicks(player, stats.activeTicks());
         }
     }
@@ -73,7 +93,9 @@ public class HealthVoidModule extends ModuleItem {
         if(data == null) return null;
 
         float cooldownDuration = 1F;
+        float energyEfficiency = 1F;
         float activeDuration = 1F;
+        float healingEfficiency = data.level();
         float moveSpeedOffset = DEFAULT_MOVE_SPEED_OFFSET;
         List<ModuleModifierData> modifiers = data.modifiers();
 
@@ -84,19 +106,20 @@ public class HealthVoidModule extends ModuleItem {
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.2F);
             }
             if(modifierType == SPEED_BOOST){
-                moveSpeedOffset = shrink(moveSpeedOffset, modifier.level(), 0.1F);
+                moveSpeedOffset -= moveSpeedOffset * modifier.level() * 0.1F;
             }
             if(modifierType == ACTIVE_DURATION){
-                activeDuration = addLess(activeDuration, modifier.level(), 0.15F);
+                energyEfficiency = addLess(addLess(energyEfficiency,data.level(),0.1F), modifier.level(), 0.15F);
+                activeDuration += activeDuration * modifier.level() * 0.15F;
             }
         }
 
-        return new Stats(data.moduleMode(), cooldownDuration, activeDuration, moveSpeedOffset);
+        return new Stats(data.moduleMode(), cooldownDuration, energyEfficiency, activeDuration, moveSpeedOffset, healingEfficiency);
     }
 
-    public record Stats(ModuleMode mode, float cooldownDuration, float activeDuration, float moveSpeedOffset) {
+    public record Stats(ModuleMode mode, float cooldownDuration, float energyEfficiency, float activeDuration, float moveSpeedOffset,float healthEfficiency) {
         public long channelEnergyCost() {
-            return (long)(ENERGY_COST / cooldownDuration / activeDuration);
+            return (long)(ENERGY_COST / cooldownDuration / energyEfficiency);
         }
 
         public long cooldownTicks() {
@@ -112,11 +135,11 @@ public class HealthVoidModule extends ModuleItem {
         }
 
         public float burstHealAmount() {
-            return HEALTH_BOOST * HEALTH_DEFAULT;
+            return healthEfficiency * HEALTH_DEFAULT;
+        }
+        public long burstEnergyCost() {
+            return (long)(BURST_ENERGY_COST/cooldownDuration);
         }
 
-        public float channelHealAmount() {
-            return burstHealAmount() * 0.1F;
-        }
     }
 }

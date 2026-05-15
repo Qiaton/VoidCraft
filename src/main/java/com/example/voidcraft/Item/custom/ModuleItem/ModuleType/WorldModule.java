@@ -19,8 +19,8 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
 
 public class WorldModule extends ModuleItem {
-    private static final long ENERGY_COST = 600L;
-    private static final long COOLDOWN_TICKS = 0L;
+    private static final long ENERGY_COST = 900L;
+    private static final long COOLDOWN_TICKS = 600L;
 
     public WorldModule(Properties properties) {
         super(properties);
@@ -59,8 +59,8 @@ public class WorldModule extends ModuleItem {
             return null;
         }
 
-        float cooldownReduction = 1.0F;
-        float offEnergy = 1.0F;
+        float cooldownReduction = 1.0F + data.level() * 0.1F;
+        float offEnergy = 1.0F + data.level() * 0.1F;
         List<ModuleModifierData> modifiers = data.modifiers();
         for (ModuleModifierData modifier : modifiers) {
             ModuleModifierType modifierType = modifier.type();

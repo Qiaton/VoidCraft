@@ -28,12 +28,13 @@ public class PhaseEmitterSet {
     private static final double THIRD_PERSON_ORBIT_SPEED = 0.1D;
     private static final double ORBIT_SPEED_PER_LEVEL = 0.12D;
     private static final double MAX_ORBIT_SPEED_MULTIPLIER = 1.85D;
-    private static final float ORB_MIN_SCALE = 0.95F;
-    private static final float ORB_MAX_SCALE = 1.05F;
-    private static final double ORB_SCALE_TIME = 3.0D;
+    private static final float ORB_MIN_SCALE = 0.8F;
+    private static final float ORB_MAX_SCALE = 1.08F;
+    private static final double ORB_SCALE_TIME = 0.2D;
 
     private final int emitterCount;
     private final int orbColorLevel;
+    private final boolean healthVisual;
     private final double orbitSpeedMultiplier;
     private final List<EmitterState> emitters;
 
@@ -46,8 +47,13 @@ public class PhaseEmitterSet {
     }
 
     public PhaseEmitterSet(int emitterCount, int orbColorLevel) {
+        this(emitterCount, orbColorLevel, false);
+    }
+
+    public PhaseEmitterSet(int emitterCount, int orbColorLevel, boolean healthVisual) {
         this.emitterCount = PhaseEmitterSlot.normalizeCount(emitterCount);
         this.orbColorLevel = Math.max(1, orbColorLevel);
+        this.healthVisual = healthVisual;
         this.orbitSpeedMultiplier = getOrbitSpeedMultiplier(this.orbColorLevel);
         this.emitters = new ArrayList<>(this.emitterCount);
     }
@@ -58,6 +64,10 @@ public class PhaseEmitterSet {
 
     public int getOrbColorLevel() {
         return this.orbColorLevel;
+    }
+
+    public boolean isHealthVisual() {
+        return this.healthVisual;
     }
 
     Vec3 getEmitterPos(Player owner, PhaseEmitterSlot slot) {
@@ -256,10 +266,18 @@ public class PhaseEmitterSet {
     }
 
     private int getOrbCoreColor() {
+        if (this.healthVisual) {
+            return PhaseTurretModule.VisualColors.healthOrbCoreForLevel(this.orbColorLevel);
+        }
+
         return PhaseTurretModule.VisualColors.orbCoreForLevel(this.orbColorLevel);
     }
 
     private int getOrbRimColor() {
+        if (this.healthVisual) {
+            return PhaseTurretModule.VisualColors.healthOrbRimForLevel(this.orbColorLevel);
+        }
+
         return PhaseTurretModule.VisualColors.orbRimForLevel(this.orbColorLevel);
     }
 

@@ -17,33 +17,11 @@ public final class BlackHoleAimClientController {
     private static final Vec3[] previewTarget = new Vec3[PhaseWatch.WATCH_MODULE_SLOT_COUNT];
     private static final double[] targetDistance = new double[PhaseWatch.WATCH_MODULE_SLOT_COUNT];
     private static final double[] distanceLimit = new double[PhaseWatch.WATCH_MODULE_SLOT_COUNT];
-    private static final VoidBlackHoleInstance.Config PREVIEW_BLACK_HOLE = VoidBlackHoleInstance.Config.DEFAULT.toBuilder()
-            .durationTicks(1)
-            .centerYOffset(0.75F)
-            .coreFollowCameraPitch(false)
-            .distortionFollowCameraPitch(true)
-            .startHalfHeight(0.14F)
-            .peakHalfHeight(0.52F)
-            .endHalfHeight(0.20F)
-            .startHalfWidth(0.14F)
-            .peakHalfWidth(0.52F)
-            .endHalfWidth(0.20F)
-            .peakHoldTicks(1)
-            .rimAlpha(0.58F)
-            .coreAlpha(0.88F)
-            .centerShadowScale(0.0F)
-            .distortionAlpha(0.0F)
-            .distortionAmplitude(0.0F)
-            .swirlStrength(0.0F)
-            .suctionStrength(0.0F)
-            .color(0x6D7DFF)
-            .coreColor(0x02030A)
-            .build();
 
     private BlackHoleAimClientController() {
     }
 
-    public static void onPress(Minecraft mc, int slot, BlackHoleModule.Stats stats) {
+    public static void onPress(Minecraft mc, int slot, BlackHoleModule.Stats stats, VoidBlackHoleInstance.Config previewBlackHole) {
         if (mc.player == null || stats == null) {
             return;
         }
@@ -51,17 +29,17 @@ public final class BlackHoleAimClientController {
         active[slot] = true;
         targetDistance[slot] = BlackHoleModule.MIN_DISTANCE;
         distanceLimit[slot] = stats.maxDistance();
-        updatePreview(mc, slot, stats);
+        updatePreview(mc, slot, stats, previewBlackHole);
     }
 
-    public static void onHold(Minecraft mc, int slot, int ticks, BlackHoleModule.Stats stats) {
+    public static void onHold(Minecraft mc, int slot, int ticks, BlackHoleModule.Stats stats, VoidBlackHoleInstance.Config previewBlackHole) {
         if (mc.player == null || stats == null) {
             return;
         }
 
         active[slot] = true;
         updateDistance(slot, ticks, stats);
-        updatePreview(mc, slot, stats);
+        updatePreview(mc, slot, stats, previewBlackHole);
     }
 
     public static void onRelease(Minecraft mc, int slot, int ticks, BlackHoleModule.Stats stats) {
@@ -89,7 +67,7 @@ public final class BlackHoleAimClientController {
         clear(slot);
     }
 
-    public static boolean onScroll(Minecraft mc, int slot, int ticks, double scrollY, BlackHoleModule.Stats stats) {
+    public static boolean onScroll(Minecraft mc, int slot, int ticks, double scrollY, BlackHoleModule.Stats stats, VoidBlackHoleInstance.Config previewBlackHole) {
         if (mc.player == null || stats == null || !isActive(slot) || scrollY == 0.0D) {
             return false;
         }
@@ -97,7 +75,7 @@ public final class BlackHoleAimClientController {
         double distance = getDistanceLimit(slot, stats);
         distanceLimit[slot] = Mth.clamp(distance + Math.signum(scrollY) * DISTANCE_STEP, BlackHoleModule.MIN_DISTANCE, stats.maxDistance());
         updateDistance(slot, ticks, stats);
-        updatePreview(mc, slot, stats);
+        updatePreview(mc, slot, stats, previewBlackHole);
         return true;
     }
 
@@ -105,14 +83,14 @@ public final class BlackHoleAimClientController {
         return slot >= 0 && slot < PhaseWatch.WATCH_MODULE_SLOT_COUNT && active[slot];
     }
 
-    private static void updatePreview(Minecraft mc, int slot, BlackHoleModule.Stats stats) {
+    private static void updatePreview(Minecraft mc, int slot, BlackHoleModule.Stats stats, VoidBlackHoleInstance.Config previewBlackHole) {
         Vec3 target = getTarget(mc, slot, stats);
         if (target == null) {
             return;
         }
 
         previewTarget[slot] = target;
-        VoidBlackHoleManager.updatePersistentBlackHole(indicatorId(slot), target, 1.0F, PREVIEW_BLACK_HOLE);
+        VoidBlackHoleManager.updatePersistentBlackHole(indicatorId(slot), target, 1.0F, previewBlackHole);
     }
 
     private static Vec3 getTarget(Minecraft mc, int slot, BlackHoleModule.Stats stats) {

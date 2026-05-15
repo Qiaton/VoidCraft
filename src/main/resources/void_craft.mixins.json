@@ -6,12 +6,13 @@
   "mixins": [
     "AbstractArrowAccessor",
     "PhasePlayerTraversalMixin",
-    "VoidArcherArrowDamageMixin",
     "VoidEntity",
     "VoidLivingEntityClass",
     "VoidPlayer"
   ],
   "client": [
+    "PhaseProjectionRenderSectionRegionMixin",
+    "PhaseProjectionSectionOcclusionMixin",
     "PhaseProjectionSectionCompilerMixin",
     "VoidArrowRenderer"
   ],

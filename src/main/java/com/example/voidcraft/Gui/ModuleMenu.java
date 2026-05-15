@@ -1,5 +1,7 @@
 package com.example.voidcraft.Gui;
 
+import com.example.voidcraft.Item.custom.EnergyCoreItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.ModMenuType;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -19,6 +21,9 @@ public class ModuleMenu extends AbstractContainerMenu{
     public static final int WATCH_SLOT_START_X = 61;
     public static final int WATCH_SLOT_Y = 20;
     public static final int WATCH_SLOT_SPACING = 18;
+    private static final int PLAYER_SLOT_START = WATCH_CONTAINER_SLOT_COUNT;
+    private static final int PLAYER_INVENTORY_END = PLAYER_SLOT_START + 27;
+    private static final int PLAYER_HOTBAR_END = PLAYER_INVENTORY_END + 9;
 
     public ModuleMenu(int id, Inventory inventory) {
         this(id,inventory,new SimpleContainer(WATCH_CONTAINER_SLOT_COUNT));
@@ -58,8 +63,42 @@ public class ModuleMenu extends AbstractContainerMenu{
 }
 
     @Override
-    public @NonNull ItemStack quickMoveStack(@NonNull Player player, int i) {
-        return ItemStack.EMPTY;
+    public @NonNull ItemStack quickMoveStack(@NonNull Player player, int index) {
+        Slot slot = this.slots.get(index);
+        if (!slot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack sourceStack = slot.getItem();
+        ItemStack originalStack = sourceStack.copy();
+
+        if (index < WATCH_CONTAINER_SLOT_COUNT) {
+            if (!moveItemStackTo(sourceStack, PLAYER_SLOT_START, PLAYER_HOTBAR_END, true)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (sourceStack.getItem() instanceof ModuleItem) {
+            if (!moveItemStackTo(sourceStack, 0, WATCH_MODULE_SLOT_COUNT, false)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (sourceStack.getItem() instanceof EnergyCoreItem) {
+            if (!moveItemStackTo(sourceStack, WATCH_CORE_SLOT, WATCH_CORE_SLOT + 1, false)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (index < PLAYER_INVENTORY_END) {
+            if (!moveItemStackTo(sourceStack, PLAYER_INVENTORY_END, PLAYER_HOTBAR_END, false)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (!moveItemStackTo(sourceStack, PLAYER_SLOT_START, PLAYER_INVENTORY_END, false)) {
+            return ItemStack.EMPTY;
+        }
+
+        if (sourceStack.isEmpty()) {
+            slot.setByPlayer(ItemStack.EMPTY);
+        } else {
+            slot.setChanged();
+        }
+
+        return originalStack;
     }
 
     @Override

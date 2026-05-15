@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "void_craft:item/health_phase_turret_module_item"
+  }
+}

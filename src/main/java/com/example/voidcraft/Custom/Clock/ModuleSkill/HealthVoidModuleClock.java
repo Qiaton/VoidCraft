@@ -61,7 +61,7 @@ public class HealthVoidModuleClock {
 
                 player.setData(ModAttachments.VOID_SPEED.get(), stats.voidSpeed());
                 VoidClock.setVoidTicks(player, 2);
-                player.heal(stats.channelHealAmount());
+                player.heal(stats.burstHealAmount());
                 return;
             }
         }

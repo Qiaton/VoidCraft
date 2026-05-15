@@ -7,11 +7,12 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @EventBusSubscriber(modid = VoidCraft.MODID)
 public class Clock {
     private static final List<Clock> CLOCKS = new ArrayList<>();
-
+    private final UUID uuid = UUID.randomUUID();
     private int tickLeft;
     private final Runnable event;
 
@@ -19,11 +20,22 @@ public class Clock {
         this.tickLeft = tick;
         this.event = event;
     }
-
-    public static void addClock(int tick, Runnable event) {
-        CLOCKS.add(new Clock(tick, event));
+    public static UUID addClock(int tick, Runnable event) {
+       Clock clock = new Clock(tick,event);
+       CLOCKS.add(clock);
+       return clock.uuid;
     }
-
+    public static void  removeClock(UUID uuid){
+        try{
+        CLOCKS.forEach(clock -> {
+            if(clock.uuid.equals(uuid)){
+                CLOCKS.remove(clock);
+            }
+        });
+        }catch(Exception e) {
+            throw new RuntimeException("清除定时任务出错"+e.getMessage());
+        }
+    }
     private boolean tick() {
         tickLeft--;
 
