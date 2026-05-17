@@ -20,13 +20,14 @@ import java.io.IOException;
 
 public final class VoidPhasePostProcessor {
     public static final int MAX_EFFECTS = 16;
-    public static final int DATA_TEXTURE_WIDTH = 10;
+    public static final int DATA_TEXTURE_WIDTH = 12;
     public static final int DATA_TEXTURE_HEIGHT = MAX_EFFECTS + 1;
     public static final ResourceLocation DATA_TEXTURE_ID =
             ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
     public static final ResourceLocation MASK_TEXTURE_ID =
             ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_mask.png");
     public static final float PHASE_DIMENSION_FILTER_STRENGTH = 0.70F;
+    private static final float SCREEN_AXIS_PACK_RANGE = 2.0F;
 
     private static DynamicTexture dataTexture;
     private static NativeImage dataPixels;
@@ -107,6 +108,36 @@ public final class VoidPhasePostProcessor {
             float halfHeightV,
             float centerDepth
     ) {
+        writeEffectRow(
+                effectIndex,
+                ring,
+                partialTick,
+                centerU,
+                centerV,
+                halfWidthU,
+                halfHeightV,
+                0.0F,
+                0.0F,
+                0.0F,
+                0.0F,
+                centerDepth
+        );
+    }
+
+    public static void writeEffectRow(
+            int effectIndex,
+            VoidRingInstance ring,
+            float partialTick,
+            float centerU,
+            float centerV,
+            float halfWidthU,
+            float halfHeightV,
+            float rightAxisU,
+            float rightAxisV,
+            float upAxisU,
+            float upAxisV,
+            float centerDepth
+    ) {
         if (dataPixels == null || effectIndex < 0 || effectIndex >= MAX_EFFECTS) {
             return;
         }
@@ -174,6 +205,8 @@ public final class VoidPhasePostProcessor {
                 0.0F,
                 0.0F
         );
+        writePackedSignedU16(10, row, rightAxisU, rightAxisV);
+        writePackedSignedU16(11, row, upAxisU, upAxisV);
     }
 
     public static void writeBlackHoleEffectRow(int effectIndex, VoidBlackHoleInstance blackHole, float partialTick) {
@@ -192,6 +225,36 @@ public final class VoidPhasePostProcessor {
             float centerV,
             float halfWidthU,
             float halfHeightV,
+            float centerDepth
+    ) {
+        writeBlackHoleEffectRow(
+                effectIndex,
+                blackHole,
+                partialTick,
+                centerU,
+                centerV,
+                halfWidthU,
+                halfHeightV,
+                0.0F,
+                0.0F,
+                0.0F,
+                0.0F,
+                centerDepth
+        );
+    }
+
+    public static void writeBlackHoleEffectRow(
+            int effectIndex,
+            VoidBlackHoleInstance blackHole,
+            float partialTick,
+            float centerU,
+            float centerV,
+            float halfWidthU,
+            float halfHeightV,
+            float rightAxisU,
+            float rightAxisV,
+            float upAxisU,
+            float upAxisV,
             float centerDepth
     ) {
         if (dataPixels == null || effectIndex < 0 || effectIndex >= MAX_EFFECTS) {
@@ -262,6 +325,8 @@ public final class VoidPhasePostProcessor {
                 config.flatGate() ? 1.0F : 0.0F,
                 0.0F
         );
+        writePackedSignedU16(10, row, rightAxisU, rightAxisV);
+        writePackedSignedU16(11, row, upAxisU, upAxisV);
     }
 
     private static void ensureResources(Minecraft mc) {
@@ -306,13 +371,25 @@ public final class VoidPhasePostProcessor {
                 PhaseWorldTransitionClient.holdWhite(),
                 PhaseWorldTransitionClient.stageCode()
         );
-        dataPixels.setPixel(3, 0, 0);
-        dataPixels.setPixel(4, 0, 0);
+        writePackedU16(
+                3,
+                0,
+                VoidInOutEffectClient.warpProgress(),
+                VoidInOutEffectClient.maskProgress()
+        );
+        writePackedU16(
+                4,
+                0,
+                VoidInOutEffectClient.isActive() ? 1.0F : 0.0F,
+                0.0F
+        );
         dataPixels.setPixel(5, 0, 0);
         dataPixels.setPixel(6, 0, 0);
         dataPixels.setPixel(7, 0, 0);
         dataPixels.setPixel(8, 0, 0);
         dataPixels.setPixel(9, 0, 0);
+        dataPixels.setPixel(10, 0, 0);
+        dataPixels.setPixel(11, 0, 0);
     }
 
     private static float getFullScreenPhaseStrength(Minecraft mc) {
@@ -355,6 +432,14 @@ public final class VoidPhasePostProcessor {
                         secondPacked >> 8 & 0xFF
                 )
         );
+    }
+
+    private static void writePackedSignedU16(int x, int y, float first, float second) {
+        writePackedU16(x, y, packSigned(first), packSigned(second));
+    }
+
+    private static float packSigned(float value) {
+        return Mth.clamp(value / (SCREEN_AXIS_PACK_RANGE * 2.0F) + 0.5F, 0.0F, 1.0F);
     }
 
     private static final class RenderTargetTexture extends AbstractTexture {

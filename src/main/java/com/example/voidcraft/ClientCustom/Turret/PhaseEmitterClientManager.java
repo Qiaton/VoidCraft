@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class PhaseEmitterClientManager {
     private static boolean localShootingSynced = false;
@@ -326,6 +327,7 @@ public class PhaseEmitterClientManager {
     }
 
     public static void playShotFx(
+            UUID effectId,
             int playerId,
             int emitterIndex,
             Vec3 targetPos,
@@ -333,6 +335,9 @@ public class PhaseEmitterClientManager {
     ) {
         int emitterCount = getEmitterCount(playerId);
         if (!PhaseEmitterSlot.isValidFireIndex(emitterIndex, emitterCount) || targetPos == null) {
+            return;
+        }
+        if (VoidBeamManager.hasBeam(effectId)) {
             return;
         }
 
@@ -351,7 +356,7 @@ public class PhaseEmitterClientManager {
 
         VoidBeamInstance.Config actualConfig = beamConfig == null ? VoidBeamInstance.Config.DEFAULT : beamConfig;
         playShotFlash(playerId, slot, origin, targetPos, actualConfig);
-        VoidBeamManager.addBeam(origin, targetPos, 1.0F, actualConfig);
+        VoidBeamManager.addBeam(effectId, origin, targetPos, 1.0F, actualConfig);
     }
 
     private static void playShotFlash(

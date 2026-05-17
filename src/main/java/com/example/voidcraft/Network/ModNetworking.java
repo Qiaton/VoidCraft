@@ -6,6 +6,7 @@ import com.example.voidcraft.Custom.Behavior.Energy.BoundVoidPosition;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyBinding;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransfer;
 import com.example.voidcraft.Custom.Behavior.Energy.VoidEnergyTransferBlockEntity;
+import com.example.voidcraft.Custom.Clock.ModuleSkill.TeleportVoidModuleClock;
 import com.example.voidcraft.ClientCustom.Sound.ContinuousLoopSoundClient;
 import com.example.voidcraft.Gui.ChunkMapperStatusScreen;
 import com.example.voidcraft.Gui.CoordinateBindingScreen;
@@ -27,6 +28,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurret
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.NonNullList;
@@ -53,10 +55,13 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public final class ModNetworking {
-    private static final String NETWORK_VERSION = "35";
+    private static final String NETWORK_VERSION = "37";
+    private static final double PHASE_TEAR_SEND_RANGE = 128.0D;
 
     private ModNetworking() {
     }
@@ -205,6 +210,7 @@ public final class ModNetworking {
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(
                 player,
                 TurretShotFxPayload.fromConfig(
+                        UUID.randomUUID(),
                         player.getId(),
                         emitterIndex,
                         targetPos.x,
@@ -232,10 +238,28 @@ public final class ModNetworking {
             return;
         }
 
+        sendBlackHoleAt(level, center, scale, UUID.randomUUID(), 0, ownerEntityId, config);
+    }
+
+    public static void sendBlackHoleAt(
+            ServerLevel level,
+            Vec3 center,
+            float scale,
+            UUID effectId,
+            int ageTicks,
+            int ownerEntityId,
+            VoidBlackHoleInstance.Config config
+    ) {
+        if (center == null) {
+            return;
+        }
+
         VoidBlackHoleInstance.Config actualConfig = config == null ? VoidBlackHoleInstance.Config.DEFAULT : config;
         float actualScale = Math.max(0.01F, scale);
         Vec3 actualCenter = center.add(0.0D, actualConfig.centerYOffset() * actualScale, 0.0D);
         VoidBlackHolePayload payload = VoidBlackHolePayload.fromConfig(
+                effectId,
+                ageTicks,
                 ownerEntityId,
                 actualCenter.x,
                 actualCenter.y,
@@ -334,7 +358,105 @@ public final class ModNetworking {
 
     // 相位裂隙触发（调用场景：无来源实体的世界相位环；level/center/scale/preset 直接决定广播范围和样式）。
     public static void sendPhaseTearAt(ServerLevel level, Vec3 center, float scale, VoidRingInstance.Preset preset) {
-        sendPhaseTearAt(level, center, scale, PhaseTearPayload.NO_ENTITY, PhaseTearPayload.NO_ENTITY, preset);
+        sendPhaseTearAt(level, center, scale, 0.0F, PhaseTearPayload.NO_ENTITY, PhaseTearPayload.NO_ENTITY, preset);
+    }
+
+    public static void sendPhaseTearAt(ServerLevel level, Vec3 center, float scale, float yaw, VoidRingInstance.Preset preset) {
+        sendPhaseTearAt(level, center, scale, yaw, PhaseTearPayload.NO_ENTITY, PhaseTearPayload.NO_ENTITY, preset);
+    }
+
+    public static void sendPhaseTearPair(
+            ServerPlayer owner,
+            ServerLevel level,
+            Vec3 firstCenter,
+            float firstScale,
+            float firstYaw,
+            Vec3 secondCenter,
+            float secondScale,
+            float secondYaw,
+            VoidRingInstance.Preset preset
+    ) {
+        sendPhaseTearPair(
+                owner,
+                level,
+                UUID.randomUUID(),
+                0,
+                firstCenter,
+                firstScale,
+                firstYaw,
+                UUID.randomUUID(),
+                0,
+                secondCenter,
+                secondScale,
+                secondYaw,
+                preset
+        );
+    }
+
+    public static void sendPhaseTearPair(
+            ServerPlayer owner,
+            ServerLevel level,
+            UUID firstId,
+            int firstAgeTicks,
+            Vec3 firstCenter,
+            float firstScale,
+            float firstYaw,
+            UUID secondId,
+            int secondAgeTicks,
+            Vec3 secondCenter,
+            float secondScale,
+            float secondYaw,
+            VoidRingInstance.Preset preset
+    ) {
+        if (level == null || firstCenter == null || secondCenter == null) {
+            return;
+        }
+
+        VoidRingInstance.Preset actualPreset = preset == null ? VoidRingInstance.Preset.DEFAULT : preset;
+        float actualFirstScale = Math.max(0.01F, firstScale);
+        float actualSecondScale = Math.max(0.01F, secondScale);
+        Vec3 actualFirstCenter = firstCenter.add(0.0D, actualPreset.centerYOffset() * actualFirstScale, 0.0D);
+        Vec3 actualSecondCenter = secondCenter.add(0.0D, actualPreset.centerYOffset() * actualSecondScale, 0.0D);
+        PhaseTearPayload firstPayload = PhaseTearPayload.fromPreset(
+                firstId,
+                firstAgeTicks,
+                PhaseTearPayload.NO_ENTITY,
+                PhaseTearPayload.NO_ENTITY,
+                actualFirstCenter.x,
+                actualFirstCenter.y,
+                actualFirstCenter.z,
+                actualFirstScale,
+                firstYaw,
+                actualPreset
+        );
+        PhaseTearPayload secondPayload = PhaseTearPayload.fromPreset(
+                secondId,
+                secondAgeTicks,
+                PhaseTearPayload.NO_ENTITY,
+                PhaseTearPayload.NO_ENTITY,
+                actualSecondCenter.x,
+                actualSecondCenter.y,
+                actualSecondCenter.z,
+                actualSecondScale,
+                secondYaw,
+                actualPreset
+        );
+
+        Set<ServerPlayer> receivers = new HashSet<>();
+        double rangeSqr = PHASE_TEAR_SEND_RANGE * PHASE_TEAR_SEND_RANGE;
+        for (ServerPlayer player : level.players()) {
+            if (isNear(player, actualFirstCenter, rangeSqr) || isNear(player, actualSecondCenter, rangeSqr)) {
+                receivers.add(player);
+            }
+        }
+        if (owner != null && owner.level() == level) {
+            receivers.add(owner);
+        }
+
+        for (ServerPlayer player : receivers) {
+            PacketDistributor.sendToPlayer(player, firstPayload);
+            PacketDistributor.sendToPlayer(player, secondPayload);
+        }
     }
 
     // 相位裂隙触发（调用场景：相位环完整入口；ownerEntityId 标记来源，trackedEntityId 决定是否跟随实体）。
@@ -346,16 +468,45 @@ public final class ModNetworking {
             int trackedEntityId,
             VoidRingInstance.Preset preset
     ) {
+        sendPhaseTearAt(level, center, scale, 0.0F, ownerEntityId, trackedEntityId, preset);
+    }
+
+    public static void sendPhaseTearAt(
+            ServerLevel level,
+            Vec3 center,
+            float scale,
+            float yaw,
+            int ownerEntityId,
+            int trackedEntityId,
+            VoidRingInstance.Preset preset
+    ) {
+        sendPhaseTearAt(level, center, scale, yaw, UUID.randomUUID(), 0, ownerEntityId, trackedEntityId, preset);
+    }
+
+    public static void sendPhaseTearAt(
+            ServerLevel level,
+            Vec3 center,
+            float scale,
+            float yaw,
+            UUID effectId,
+            int ageTicks,
+            int ownerEntityId,
+            int trackedEntityId,
+            VoidRingInstance.Preset preset
+    ) {
         VoidRingInstance.Preset actualPreset = preset == null ? VoidRingInstance.Preset.DEFAULT : preset;
         float actualScale = Math.max(0.01F, scale);
         Vec3 actualCenter = center.add(0.0D, actualPreset.centerYOffset() * actualScale, 0.0D);
         PhaseTearPayload payload = PhaseTearPayload.fromPreset(
+                effectId,
+                ageTicks,
                 ownerEntityId,
                 trackedEntityId,
                 actualCenter.x,
                 actualCenter.y,
                 actualCenter.z,
                 actualScale,
+                yaw,
                 actualPreset
         );
 
@@ -365,7 +516,7 @@ public final class ModNetworking {
                 actualCenter.x,
                 actualCenter.y,
                 actualCenter.z,
-                128.0D,
+                PHASE_TEAR_SEND_RANGE,
                 payload
         );
     }
@@ -394,7 +545,7 @@ public final class ModNetworking {
         float actualScale = Math.max(0.01F, scale);
         Vec3 seedEnd = entity.position();
         Vec3 seedStart = getTrailSeedStart(entity, seedEnd, seedLength);
-        VoidTrailPayload payload = VoidTrailPayload.fromPreset(entity.getId(), actualScale, seedStart, seedEnd, actualPreset);
+        VoidTrailPayload payload = VoidTrailPayload.fromPreset(UUID.randomUUID(), entity.getId(), actualScale, seedStart, seedEnd, actualPreset);
 
         Vec3 center = seedEnd;
         PacketDistributor.sendToPlayersNear(serverLevel, null, center.x, center.y, center.z, 128.0D, payload);
@@ -415,7 +566,7 @@ public final class ModNetworking {
 
         VoidTrailInstance.Preset actualPreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
         float actualScale = Math.max(0.01F, scale);
-        VoidTrailPayload payload = VoidTrailPayload.fromSegment(ownerEntityId, actualScale, from, to, actualPreset);
+        VoidTrailPayload payload = VoidTrailPayload.fromSegment(UUID.randomUUID(), ownerEntityId, actualScale, from, to, actualPreset);
 
         PacketDistributor.sendToPlayersNear(level, null, to.x, to.y, to.z, 128.0D, payload);
     }
@@ -484,6 +635,7 @@ public final class ModNetworking {
         registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::onSetMapperTierServer);
         // 服务端黑洞释放事件：客户端发槽位和目标点，服务端重新读取模块后释放黑洞。
         registrar.playToServer(ReleaseBlackHoleModulePayload.TYPE, ReleaseBlackHoleModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlackHoleServer);
+        registrar.playToServer(CancelTeleportModulePayload.TYPE, CancelTeleportModulePayload.STREAM_CODEC, ModNetworking::onCancelTeleportServer);
     }
 
     // 客户端发包入口（调用场景：按键、GUI、转场 ready；payload 是具体 C2S 自定义包）。
@@ -559,6 +711,42 @@ public final class ModNetworking {
         PhaseWatch.useModule(serverPlayer, watchStack, slot);
     }
 
+    private static void onCancelTeleportServer(
+            CancelTeleportModulePayload payload,
+            IPayloadContext context
+    ) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        int slot = payload.slot();
+        if (slot < 0 || slot >= PhaseWatch.WATCH_MODULE_SLOT_COUNT) {
+            return;
+        }
+
+        ItemStack watchStack = player.getOffhandItem();
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return;
+        }
+
+        ItemContainerContents contents = watchStack.getOrDefault(
+                DataComponents.CONTAINER,
+                ItemContainerContents.EMPTY
+        );
+        NonNullList<ItemStack> items = NonNullList.withSize(
+                PhaseWatch.WATCH_MODULE_SLOT_COUNT,
+                ItemStack.EMPTY
+        );
+        contents.copyInto(items);
+
+        ItemStack moduleStack = items.get(slot);
+        if (!(moduleStack.getItem() instanceof TeleportVoidModule)) {
+            return;
+        }
+
+        TeleportVoidModuleClock.cancelDeploy(player, slot);
+    }
+
     // 黑洞释放接收（调用场景：客户端松开黑洞模块蓄力；slot 是模块槽，x/y/z 是释放目标点）。
     private static void onReleaseBlackHoleServer(
             ReleaseBlackHoleModulePayload payload,
@@ -606,12 +794,14 @@ public final class ModNetworking {
 
     // 拖尾接收（调用场景：服务端同步箭/瞬移拖尾；trackEntity 决定追踪实体还是生成一次性线段）。
     private static void onTrailClient(VoidTrailPayload payload, IPayloadContext context) {
-        if (!payload.trackEntity()) {
-            VoidTrailManager.addTrailSegment(payload.seedStart(), payload.seedEnd(), payload.scale(), payload.toPreset());
-            return;
-        }
+        context.enqueueWork(() -> {
+            if (!payload.trackEntity()) {
+                VoidTrailManager.addTrailSegment(payload.effectId(), payload.seedStart(), payload.seedEnd(), payload.scale(), payload.toPreset());
+                return;
+            }
 
-        VoidTrailManager.trackEntity(payload.entityId(), payload.scale(), payload.toPreset(), payload.seedStart(), payload.seedEnd());
+            VoidTrailManager.trackEntity(payload.effectId(), payload.entityId(), payload.scale(), payload.toPreset(), payload.seedStart(), payload.seedEnd());
+        });
     }
 
     // 能量 HUD 接收（调用场景：服务端同步手表能量；percent 是百分比，visible 控制客户端显示）。
@@ -647,6 +837,7 @@ public final class ModNetworking {
     // 炮台射击接收（调用场景：服务端结算炮台命中后；targetX/Y/Z 是命中点，beamConfig 是客户端光束配置）。
     private static void onTurretShotClient(TurretShotFxPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> PhaseEmitterClientManager.playShotFx(
+                payload.effectId(),
                 payload.playerId(),
                 payload.emitterIndex(),
                 new Vec3(payload.targetX(), payload.targetY(), payload.targetZ()),
@@ -739,10 +930,12 @@ public final class ModNetworking {
             }
 
             VoidBlackHoleManager.addBlackHole(
+                    payload.effectId(),
                     payload.ownerEntityId(),
                     new Vec3(payload.centerX(), payload.centerY(), payload.centerZ()),
                     payload.scale(),
-                    payload.toConfig()
+                    payload.toConfig(),
+                    payload.ageTicks()
             );
         });
     }
@@ -750,6 +943,13 @@ public final class ModNetworking {
     // 持续循环声音接收（调用场景：服务端事件生命周期 start/stop；客户端负责真正循环和停止）。
     private static void onLoopSoundClient(ContinuousLoopSoundPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> ContinuousLoopSoundClient.handle(payload));
+    }
+
+    private static boolean isNear(ServerPlayer player, Vec3 center, double rangeSqr) {
+        if (player == null || center == null) {
+            return false;
+        }
+        return player.distanceToSqr(center.x, center.y, center.z) <= rangeSqr;
     }
 
     private static Vec3 getTrailSeedStart(Entity entity, Vec3 seedEnd, double seedLength) {
@@ -767,34 +967,42 @@ public final class ModNetworking {
 
     // 相位裂隙接收（调用场景：服务端广播相位环；ownerEntityId 标记来源，trackedEntityId 存在时跟随实体）。
     private static void onPhaseTearClient(PhaseTearPayload payload, IPayloadContext context) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) {
-            return;
-        }
+        context.enqueueWork(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null) {
+                return;
+            }
 
-        Entity trackedEntity = payload.hasTrackedEntity() ? mc.level.getEntity(payload.trackedEntityId()) : null;
-        VoidRingInstance.Preset preset = payload.toPreset();
-        Vec3 center = new Vec3(payload.centerX(), payload.centerY(), payload.centerZ());
-        if (payload.hasTrackedEntity() && trackedEntity != null) {
-            VoidRingManager.addTrackedRing(
-                    payload.ownerEntityId(),
-                    payload.trackedEntityId(),
-                    center,
-                    payload.scale(),
-                    preset
-            );
-        } else {
-            VoidRingManager.addRing(
-                    payload.ownerEntityId(),
-                    center,
-                    payload.scale(),
-                    preset
-            );
-        }
+            Entity trackedEntity = payload.hasTrackedEntity() ? mc.level.getEntity(payload.trackedEntityId()) : null;
+            VoidRingInstance.Preset preset = payload.toPreset();
+            Vec3 center = new Vec3(payload.centerX(), payload.centerY(), payload.centerZ());
+            if (payload.hasTrackedEntity() && trackedEntity != null) {
+                VoidRingManager.addTrackedRing(
+                        payload.effectId(),
+                        payload.ownerEntityId(),
+                        payload.trackedEntityId(),
+                        center,
+                        payload.scale(),
+                        preset,
+                        payload.yaw(),
+                        payload.ageTicks()
+                );
+            } else {
+                VoidRingManager.addRing(
+                        payload.effectId(),
+                        payload.ownerEntityId(),
+                        center,
+                        payload.scale(),
+                        preset,
+                        payload.yaw(),
+                        payload.ageTicks()
+                );
+            }
 
-        if (trackedEntity instanceof LivingEntity livingEntity) {
-            VoidClock.flashVoidEntity(livingEntity);
-        }
+            if (trackedEntity instanceof LivingEntity livingEntity) {
+                VoidClock.flashVoidEntity(livingEntity);
+            }
+        });
     }
 
     // 手动炮台输入接收（调用场景：客户端左右键状态变化；shooting 是左键，volleyShooting 是右键齐射）。

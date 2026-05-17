@@ -77,6 +77,7 @@ public class CreativeModeTabs {
                         addModuleItems(output, ModItem.DASH_VOID_MODULE.get());
                         addModuleItems(output, ModItem.BLINK_VOID_MODULE.get());
                         addModuleItems(output, ModItem.SAFE_BLINK_VOID_MODULE.get());
+                        addModuleItems(output, ModItem.TELEPORT_VOID_MODULE.get());
                         addModuleItems(output, ModItem.PHASE_TURRET_MODULE.get());
                         addModuleItems(output, ModItem.HEALTH_PHASE_TURRET_MODULE.get());
                         addModuleItems(output, ModItem.ASSIST_PHASE_TURRET_MODULE.get());
@@ -111,6 +112,9 @@ public class CreativeModeTabs {
     }
     public static ItemStack getSafeBlinkVoidModuleItem(){
         return getModuleItem(ModItem.SAFE_BLINK_VOID_MODULE.get(), ModuleMode.BURST);
+    }
+    public static ItemStack getTeleportVoidModuleItem(){
+        return getModuleItem(ModItem.TELEPORT_VOID_MODULE.get(), ModuleMode.BURST);
     }
     public static ItemStack getPhaseTurretModuleItem(){
         return getModuleItem(ModItem.PHASE_TURRET_MODULE.get(), ModuleMode.BURST);

@@ -81,8 +81,9 @@ public class VoidModule extends ModuleItem {
         float cooldownDuration = 1F;
         float energyEfficiency = 1F;
         float activeDuration = 1F;
-        float moveSpeedOffset = 1;
+        float moveSpeedOffset = DEFAULT_MOVE_SPEED_OFFSET;
         List<ModuleModifierData> modifiers = data.modifiers();
+        moveSpeedOffset -= moveSpeedOffset * data.level() * 0.1F;
 
         for(ModuleModifierData modifier : modifiers){
             ModuleModifierType modifierType = modifier.type();
@@ -92,7 +93,7 @@ public class VoidModule extends ModuleItem {
                 cooldownDuration = addLess(cooldownDuration, modifier.level(), 0.15F);
             }
             if(modifierType == SPEED_BOOST){
-                moveSpeedOffset += modifier.level()*0.1F+data.level()*0.1F;
+                moveSpeedOffset -= moveSpeedOffset * modifier.level() * 0.1F;
             }
             if(modifierType == ACTIVE_DURATION){
                 activeDuration += modifier.level()*0.15F+data.level()*0.1F;

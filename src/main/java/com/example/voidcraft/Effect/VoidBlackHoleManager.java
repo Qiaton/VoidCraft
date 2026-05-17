@@ -8,10 +8,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public final class VoidBlackHoleManager {
     private static final List<VoidBlackHoleInstance> BLACK_HOLES = new ArrayList<>();
     private static final Map<String, VoidBlackHoleInstance> PERSISTENT_BLACK_HOLES = new HashMap<>();
+    private static final Map<UUID, VoidBlackHoleInstance> BLACK_HOLE_IDS = new HashMap<>();
 
     private VoidBlackHoleManager() {
     }
@@ -22,6 +24,21 @@ public final class VoidBlackHoleManager {
 
     public static VoidBlackHoleInstance addBlackHole(int ownerEntityId, Vec3 center, float scale, VoidBlackHoleInstance.Config config) {
         VoidBlackHoleInstance blackHole = new VoidBlackHoleInstance(center, Math.max(0.01F, scale), config, ownerEntityId);
+        BLACK_HOLES.add(blackHole);
+        return blackHole;
+    }
+
+    public static VoidBlackHoleInstance addBlackHole(UUID effectId, int ownerEntityId, Vec3 center, float scale, VoidBlackHoleInstance.Config config, int ageTicks) {
+        if (effectId == null) {
+            VoidBlackHoleInstance blackHole = addBlackHole(ownerEntityId, center, scale, config);
+            setAge(blackHole, ageTicks);
+            return blackHole;
+        }
+
+        removeBlackHole(effectId);
+        VoidBlackHoleInstance blackHole = new VoidBlackHoleInstance(center, Math.max(0.01F, scale), config, ownerEntityId);
+        setAge(blackHole, ageTicks);
+        BLACK_HOLE_IDS.put(effectId, blackHole);
         BLACK_HOLES.add(blackHole);
         return blackHole;
     }
@@ -108,13 +125,30 @@ public final class VoidBlackHoleManager {
             }
             if (instance.isDead()) {
                 PERSISTENT_BLACK_HOLES.values().remove(instance);
+                BLACK_HOLE_IDS.values().remove(instance);
                 iterator.remove();
             }
         }
     }
 
+    private static void removeBlackHole(UUID effectId) {
+        VoidBlackHoleInstance blackHole = BLACK_HOLE_IDS.remove(effectId);
+        if (blackHole != null) {
+            PERSISTENT_BLACK_HOLES.values().remove(blackHole);
+            BLACK_HOLES.remove(blackHole);
+        }
+    }
+
+    private static void setAge(VoidBlackHoleInstance blackHole, int ageTicks) {
+        if (blackHole == null) {
+            return;
+        }
+        blackHole.age = Math.max(0, Math.min(ageTicks, Math.max(0, blackHole.config.durationTicks() - 1)));
+    }
+
     private static void clear() {
         BLACK_HOLES.clear();
         PERSISTENT_BLACK_HOLES.clear();
+        BLACK_HOLE_IDS.clear();
     }
 }

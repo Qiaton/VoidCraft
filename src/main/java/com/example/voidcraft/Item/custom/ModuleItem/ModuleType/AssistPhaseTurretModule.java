@@ -197,6 +197,9 @@ public class AssistPhaseTurretModule extends ModuleItem {
             if (!(moduleStack.getItem() instanceof AssistPhaseTurretModule module)) {
                 if (state != null && !ModuleSkillClock.hasChannel(player, slot)) {
                     removeFire(player, slot);
+                    if (!hasTurret(player, slot)) {
+                        ModNetworking.sendAssistTurretState(player, false);
+                    }
                 }
                 continue;
             }

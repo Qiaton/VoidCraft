@@ -17,11 +17,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public final class VoidTrailManager {
     private static final Map<Integer, TrailTracker> TRACKERS = new HashMap<>();
     private static final Map<Integer, TrailTracker> ENTITY_TRACKERS = new HashMap<>();
+    private static final Map<UUID, Integer> ENTITY_TRAIL_IDS = new HashMap<>();
     private static final List<VoidTrailInstance> WORLD_TRAILS = new ArrayList<>();
+    private static final Map<UUID, VoidTrailInstance> WORLD_TRAIL_IDS = new HashMap<>();
     private static final List<VoidTrailInstance> VISIBLE_TRAILS = new ArrayList<>();
     private static VoidTrailInstance.Preset activePreset = VoidTrailInstance.Preset.DEFAULT;
 
@@ -33,7 +36,9 @@ public final class VoidTrailManager {
         activePreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
         TRACKERS.clear();
         ENTITY_TRACKERS.clear();
+        ENTITY_TRAIL_IDS.clear();
         WORLD_TRAILS.clear();
+        WORLD_TRAIL_IDS.clear();
         VISIBLE_TRAILS.clear();
     }
 
@@ -90,8 +95,16 @@ public final class VoidTrailManager {
 
     // 追踪实体的完整入口；seedStart/seedEnd 可用于注册时先补一段起始轨迹。
     public static void trackEntity(int entityId, float scale, VoidTrailInstance.Preset preset, Vec3 seedStart, Vec3 seedEnd) {
+        trackEntity(null, entityId, scale, preset, seedStart, seedEnd);
+    }
+
+    public static void trackEntity(UUID effectId, int entityId, float scale, VoidTrailInstance.Preset preset, Vec3 seedStart, Vec3 seedEnd) {
         if (entityId < 0) {
             return;
+        }
+
+        if (effectId != null) {
+            ENTITY_TRAIL_IDS.put(effectId, entityId);
         }
 
         VoidTrailInstance.Preset actualPreset = preset == null ? VoidTrailInstance.Preset.DEFAULT : preset;
@@ -114,7 +127,15 @@ public final class VoidTrailManager {
 
     // 在两个世界坐标之间直接生成一段一次性拖尾，不依赖实体连续移动采样。
     public static void addTrailSegment(Vec3 from, Vec3 to, float scale, VoidTrailInstance.Preset preset) {
+        addTrailSegment(null, from, to, scale, preset);
+    }
+
+    public static void addTrailSegment(UUID effectId, Vec3 from, Vec3 to, float scale, VoidTrailInstance.Preset preset) {
         if (from == null || to == null || from.distanceToSqr(to) < 1.0E-8D) {
+            return;
+        }
+
+        if (effectId != null && WORLD_TRAIL_IDS.containsKey(effectId)) {
             return;
         }
 
@@ -123,6 +144,9 @@ public final class VoidTrailManager {
         VoidTrailInstance trail = new VoidTrailInstance(actualScale, actualPreset);
         appendInterpolatedPoints(trail, from, to, actualScale, actualPreset);
         WORLD_TRAILS.add(trail);
+        if (effectId != null) {
+            WORLD_TRAIL_IDS.put(effectId, trail);
+        }
     }
 
     // 给玩家自己的拖尾补一段坐标轨迹，适合 Blink 这种瞬移行为。
@@ -176,7 +200,11 @@ public final class VoidTrailManager {
         }
         WORLD_TRAILS.removeIf(trail -> {
             trail.tick();
-            return trail.isEmpty();
+            if (trail.isEmpty()) {
+                WORLD_TRAIL_IDS.values().remove(trail);
+                return true;
+            }
+            return false;
         });
     }
 
@@ -224,6 +252,7 @@ public final class VoidTrailManager {
             if (entity == null || entity.isRemoved()) {
                 tracker.missingTicks++;
                 if (tracker.missingTicks > tracker.trail.preset.lifetimeTicks() && tracker.trail.isEmpty()) {
+                    ENTITY_TRAIL_IDS.values().remove(entry.getKey());
                     iterator.remove();
                 }
                 continue;
@@ -385,7 +414,9 @@ public final class VoidTrailManager {
     private static void clear() {
         TRACKERS.clear();
         ENTITY_TRACKERS.clear();
+        ENTITY_TRAIL_IDS.clear();
         WORLD_TRAILS.clear();
+        WORLD_TRAIL_IDS.clear();
         VISIBLE_TRAILS.clear();
         activePreset = VoidTrailInstance.Preset.DEFAULT;
     }

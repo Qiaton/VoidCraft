@@ -23,6 +23,7 @@ public final class VoidRingRenderer {
     private static final float VOLUME_STACK_DEPTH_SCALE = 0.52F;
     private static final float VOLUME_SHELL_CORE_ALPHA = 1.0F;
     private static final double BILLBOARD_EPSILON = 1.0E-8D;
+    private static final double SCREEN_MASK_VIEW_MARGIN = 0.08D;
 
     private VoidRingRenderer() {
     }
@@ -174,7 +175,7 @@ public final class VoidRingRenderer {
                 1.0F
         );
 
-        renderTexturedLayer(
+        renderTexturedLayerBothSides(
                 buffer,
                 matrix4f,
                 scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), 1.0F),
@@ -203,7 +204,7 @@ public final class VoidRingRenderer {
                 1.0F
         ) * ring.preset.shaderCompatBloomAlphaScale();
 
-        renderTexturedLayer(
+        renderTexturedLayerBothSides(
                 buffer,
                 matrix4f,
                 scaleFromBase(metrics.halfHeight(), ring.preset.shaderGlowHeightScale(), 1.0F),
@@ -213,7 +214,7 @@ public final class VoidRingRenderer {
                 ring.preset.color(),
                 light
         );
-        renderTexturedLayer(
+        renderTexturedLayerBothSides(
                 buffer,
                 matrix4f,
                 metrics.halfHeight() * 0.78F,
@@ -378,12 +379,14 @@ public final class VoidRingRenderer {
         Vec3 vertical = facingData.vertical();
         Vec3 planeCenter = center.add(forward.scale(-0.003D));
 
-        Vec3 centerNdc = projectPoint(mc, planeCenter, modelViewMatrix, projectionMatrix);
-        Vec3 leftNdc = projectPoint(mc, planeCenter.subtract(horizontal.scale(maskMetrics.halfWidth())), modelViewMatrix, projectionMatrix);
-        Vec3 rightNdc = projectPoint(mc, planeCenter.add(horizontal.scale(maskMetrics.halfWidth())), modelViewMatrix, projectionMatrix);
-        Vec3 downNdc = projectPoint(mc, planeCenter.subtract(vertical.scale(maskMetrics.halfHeight())), modelViewMatrix, projectionMatrix);
-        Vec3 upNdc = projectPoint(mc, planeCenter.add(vertical.scale(maskMetrics.halfHeight())), modelViewMatrix, projectionMatrix);
-        if (centerNdc == null || leftNdc == null || rightNdc == null || downNdc == null || upNdc == null) {
+        Vec3 centerNdc = mc.gameRenderer.projectPointToScreen(planeCenter);
+        Vec3 leftNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(horizontal.scale(halfWidth)));
+        Vec3 rightNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(horizontal.scale(halfWidth)));
+        Vec3 downNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(vertical.scale(halfHeight)));
+        Vec3 upNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(vertical.scale(halfHeight)));
+        if (!arePointsOk(centerNdc, leftNdc, rightNdc, downNdc, upNdc)
+                || !hasScreenDepth(centerNdc, leftNdc, rightNdc, downNdc, upNdc)
+                || !isScreenBoxOnScreen(centerNdc, leftNdc, rightNdc, downNdc, upNdc)) {
             return null;
         }
 
@@ -394,6 +397,13 @@ public final class VoidRingRenderer {
         if (halfWidthU <= 0.0001F || halfHeightV <= 0.0001F) {
             return null;
         }
+        float rightAxisU = (float) ((rightNdc.x - leftNdc.x) * 0.25D);
+        float rightAxisV = (float) ((rightNdc.y - leftNdc.y) * 0.25D);
+        float upAxisU = (float) ((upNdc.x - downNdc.x) * 0.25D);
+        float upAxisV = (float) ((upNdc.y - downNdc.y) * 0.25D);
+        if (!areScreenAxesOk(rightAxisU, rightAxisV, upAxisU, upAxisV)) {
+            return null;
+        }
 
         float centerDepth = Mth.clamp((float) (centerNdc.z * 0.5D + 0.5D), 0.0F, 1.0F);
         return new ScreenMaskData(
@@ -401,6 +411,10 @@ public final class VoidRingRenderer {
                 Mth.clamp(centerV, 0.0F, 1.0F),
                 Mth.clamp(halfWidthU, 0.0F, 1.0F),
                 Mth.clamp(halfHeightV, 0.0F, 1.0F),
+                rightAxisU,
+                rightAxisV,
+                upAxisU,
+                upAxisV,
                 centerDepth
         );
     }
@@ -446,18 +460,30 @@ public final class VoidRingRenderer {
     }
 
     public static FacingData computeFacingData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
-        return computeFacingData(center, cameraPos, ring.preset.followCameraPitch());
+        return computeFacingData(
+                center,
+                cameraPos,
+                ring.yaw(),
+                ring.preset.followCameraYaw(),
+                ring.preset.followCameraPitch()
+        );
     }
 
     public static FacingData computeDistortionFacingData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
-        return computeFacingData(center, cameraPos, ring.preset.distortionFollowCameraPitch());
+        return computeFacingData(
+                center,
+                cameraPos,
+                ring.yaw(),
+                ring.preset.distortionFollowCameraYaw(),
+                ring.preset.distortionFollowCameraPitch()
+        );
     }
 
-    private static FacingData computeFacingData(Vec3 center, Vec3 cameraPos, boolean followPitch) {
+    private static FacingData computeFacingData(Vec3 center, Vec3 cameraPos, float fixedYaw, boolean followYaw, boolean followPitch) {
         Vec3 toCamera = cameraPos.subtract(center);
         double horizontalLength = Math.sqrt(toCamera.x * toCamera.x + toCamera.z * toCamera.z);
-        float yaw = (float) Math.atan2(toCamera.x, toCamera.z);
-        if (!followPitch) {
+        float yaw = followYaw ? (float) Math.atan2(toCamera.x, toCamera.z) : fixedYaw;
+        if (!followYaw || !followPitch) {
             return new FacingData(
                     yaw,
                     0.0F,
@@ -675,6 +701,33 @@ public final class VoidRingRenderer {
             int color,
             int light
     ) {
+        renderTexturedLayer(buffer, matrix4f, halfHeight, halfWidth, z, alpha, color, light, false);
+    }
+
+    private static void renderTexturedLayerBothSides(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            float halfHeight,
+            float halfWidth,
+            float z,
+            float alpha,
+            int color,
+            int light
+    ) {
+        renderTexturedLayer(buffer, matrix4f, halfHeight, halfWidth, z, alpha, color, light, true);
+    }
+
+    private static void renderTexturedLayer(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            float halfHeight,
+            float halfWidth,
+            float z,
+            float alpha,
+            int color,
+            int light,
+            boolean bothSides
+    ) {
         int a = alphaToByte(alpha);
         if (a <= 0 || halfHeight <= 0.001F || halfWidth <= 0.001F) {
             return;
@@ -687,6 +740,14 @@ public final class VoidRingRenderer {
         putCompatVertex(buffer, matrix4f, halfWidth, -halfHeight, z, r, g, b, a, 1.0F, 1.0F, light);
         putCompatVertex(buffer, matrix4f, halfWidth, halfHeight, z, r, g, b, a, 1.0F, 0.0F, light);
         putCompatVertex(buffer, matrix4f, -halfWidth, halfHeight, z, r, g, b, a, 0.0F, 0.0F, light);
+        if (!bothSides) {
+            return;
+        }
+
+        putCompatVertex(buffer, matrix4f, -halfWidth, halfHeight, z, r, g, b, a, 0.0F, 0.0F, light, -1.0F);
+        putCompatVertex(buffer, matrix4f, halfWidth, halfHeight, z, r, g, b, a, 1.0F, 0.0F, light, -1.0F);
+        putCompatVertex(buffer, matrix4f, halfWidth, -halfHeight, z, r, g, b, a, 1.0F, 1.0F, light, -1.0F);
+        putCompatVertex(buffer, matrix4f, -halfWidth, -halfHeight, z, r, g, b, a, 0.0F, 1.0F, light, -1.0F);
     }
 
     private static void renderShaderGlowVolumeShell(
@@ -835,6 +896,46 @@ public final class VoidRingRenderer {
         return Mth.sqrt(Math.max(0.0F, 1.0F - normalizedDepth * normalizedDepth));
     }
 
+    private static boolean arePointsOk(Vec3 first, Vec3 second, Vec3 third, Vec3 fourth, Vec3 fifth) {
+        return isPointOk(first)
+                && isPointOk(second)
+                && isPointOk(third)
+                && isPointOk(fourth)
+                && isPointOk(fifth);
+    }
+
+    private static boolean isPointOk(Vec3 point) {
+        return Double.isFinite(point.x) && Double.isFinite(point.y) && Double.isFinite(point.z);
+    }
+
+    private static boolean hasScreenDepth(Vec3 center, Vec3 left, Vec3 right, Vec3 down, Vec3 up) {
+        return isDepthOnScreen(center)
+                || isDepthOnScreen(left)
+                || isDepthOnScreen(right)
+                || isDepthOnScreen(down)
+                || isDepthOnScreen(up);
+    }
+
+    private static boolean isDepthOnScreen(Vec3 point) {
+        return point.z >= -1.0D && point.z <= 1.0D;
+    }
+
+    private static boolean isScreenBoxOnScreen(Vec3 center, Vec3 left, Vec3 right, Vec3 down, Vec3 up) {
+        double minX = Math.min(center.x, Math.min(left.x, Math.min(right.x, Math.min(down.x, up.x))));
+        double maxX = Math.max(center.x, Math.max(left.x, Math.max(right.x, Math.max(down.x, up.x))));
+        double minY = Math.min(center.y, Math.min(left.y, Math.min(right.y, Math.min(down.y, up.y))));
+        double maxY = Math.max(center.y, Math.max(left.y, Math.max(right.y, Math.max(down.y, up.y))));
+        return maxX >= -1.0D - SCREEN_MASK_VIEW_MARGIN
+                && minX <= 1.0D + SCREEN_MASK_VIEW_MARGIN
+                && maxY >= -1.0D - SCREEN_MASK_VIEW_MARGIN
+                && minY <= 1.0D + SCREEN_MASK_VIEW_MARGIN;
+    }
+
+    private static boolean areScreenAxesOk(float rightAxisU, float rightAxisV, float upAxisU, float upAxisV) {
+        float determinant = rightAxisU * upAxisV - rightAxisV * upAxisU;
+        return Math.abs(determinant) > 0.000001F;
+    }
+
     private static int alphaToByte(float alpha) {
         return Mth.clamp((int) (alpha * 255.0F), 0, 255);
     }
@@ -884,12 +985,30 @@ public final class VoidRingRenderer {
             float v,
             int light
     ) {
+        putCompatVertex(buffer, matrix4f, x, y, z, r, g, b, a, u, v, light, 1.0F);
+    }
+
+    private static void putCompatVertex(
+            VertexConsumer buffer,
+            Matrix4f matrix4f,
+            float x,
+            float y,
+            float z,
+            int r,
+            int g,
+            int b,
+            int a,
+            float u,
+            float v,
+            int light,
+            float normalZ
+    ) {
         buffer.addVertex(matrix4f, x, y, z)
                 .setColor(r, g, b, a)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(light)
-                .setNormal(0.0F, 0.0F, 1.0F);
+                .setNormal(0.0F, 0.0F, normalZ);
     }
 
     private static void putMaskVertex(
@@ -909,10 +1028,17 @@ public final class VoidRingRenderer {
     private record RenderMetrics(float halfHeight, float halfWidth, float fade, float lineAlpha, float lineHalfWidth) {
     }
 
-    private record MaskMetrics(float halfHeight, float halfWidth) {
-    }
-
-    public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV, float centerDepth) {
+    public record ScreenMaskData(
+            float centerU,
+            float centerV,
+            float halfWidthU,
+            float halfHeightV,
+            float rightAxisU,
+            float rightAxisV,
+            float upAxisU,
+            float upAxisV,
+            float centerDepth
+    ) {
     }
 
     public record FacingData(float yaw, float pitch, Vec3 forward, Vec3 horizontal, Vec3 vertical) {

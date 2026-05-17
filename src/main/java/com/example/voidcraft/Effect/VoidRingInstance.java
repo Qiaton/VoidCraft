@@ -14,21 +14,26 @@ public class VoidRingInstance {
     public final int ownerEntityId;
     public final int trackedEntityId;
     public final boolean persistent;
+    private final float yaw;
     public int age;
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset) {
-        this(center, scale, preset, -1, -1, false);
+        this(center, scale, preset, -1, -1, false, 0.0F);
     }
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset, int trackedEntityId) {
-        this(center, scale, preset, -1, trackedEntityId, false);
+        this(center, scale, preset, -1, trackedEntityId, false, 0.0F);
     }
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset, int ownerEntityId, int trackedEntityId) {
-        this(center, scale, preset, ownerEntityId, trackedEntityId, false);
+        this(center, scale, preset, ownerEntityId, trackedEntityId, false, 0.0F);
     }
 
     public VoidRingInstance(Vec3 center, float scale, Preset preset, int ownerEntityId, int trackedEntityId, boolean persistent) {
+        this(center, scale, preset, ownerEntityId, trackedEntityId, persistent, 0.0F);
+    }
+
+    public VoidRingInstance(Vec3 center, float scale, Preset preset, int ownerEntityId, int trackedEntityId, boolean persistent, float yaw) {
         this.fallbackCenter = center;
         this.previousCenter = center;
         this.targetCenter = center;
@@ -37,6 +42,7 @@ public class VoidRingInstance {
         this.ownerEntityId = ownerEntityId;
         this.trackedEntityId = trackedEntityId;
         this.persistent = persistent;
+        this.yaw = yaw;
         this.age = 0;
     }
 
@@ -67,6 +73,10 @@ public class VoidRingInstance {
             return false;
         }
         return this.age >= this.preset.durationTicks();
+    }
+
+    public float yaw() {
+        return this.yaw;
     }
 
     // 设置持续 ring 的目标坐标，实际渲染中心会在 tickPersistent 里平滑追过去。
@@ -141,7 +151,9 @@ public class VoidRingInstance {
         private final RenderStyle renderStyle;
         private final int durationTicks;
         private final float centerYOffset;
+        private final boolean followCameraYaw;
         private final boolean followCameraPitch;
+        private final boolean distortionFollowCameraYaw;
         private final boolean distortionFollowCameraPitch;
         private final float startHalfHeight;
         private final float peakHalfHeight;
@@ -183,7 +195,9 @@ public class VoidRingInstance {
             this.renderStyle = builder.renderStyle;
             this.durationTicks = builder.durationTicks;
             this.centerYOffset = builder.centerYOffset;
+            this.followCameraYaw = builder.followCameraYaw;
             this.followCameraPitch = builder.followCameraPitch;
+            this.distortionFollowCameraYaw = builder.distortionFollowCameraYaw;
             this.distortionFollowCameraPitch = builder.distortionFollowCameraPitch;
             this.startHalfHeight = builder.startHalfHeight;
             this.peakHalfHeight = builder.peakHalfHeight;
@@ -234,8 +248,16 @@ public class VoidRingInstance {
             return this.centerYOffset;
         }
 
+        public boolean followCameraYaw() {
+            return this.followCameraYaw;
+        }
+
         public boolean followCameraPitch() {
             return this.followCameraPitch;
+        }
+
+        public boolean distortionFollowCameraYaw() {
+            return this.distortionFollowCameraYaw;
         }
 
         public boolean distortionFollowCameraPitch() {
@@ -399,7 +421,9 @@ public class VoidRingInstance {
             private RenderStyle renderStyle = RenderStyle.FULL; // 渲染档位；高频小闪光可以切到 FLASH 轻量路径。
             private int durationTicks = 5; // 特效总时长，单位 tick。
             private float centerYOffset = 0.98F; // 特效中心相对玩家脚底的上移量，决定白光贴在身体哪一段。
+            private boolean followCameraYaw = true; // 是否在水平面转向镜头；传送门这类固定面可以关掉。
             private boolean followCameraPitch = false; // 是否连 Y 轴俯仰也一起朝向镜头；关掉时只会在 XZ 平面转向镜头。
+            private boolean distortionFollowCameraYaw = true; // 扭曲后处理层是否在水平面转向镜头。
             private boolean distortionFollowCameraPitch = false; // 扭曲后处理层是否完整跟随镜头俯仰，默认沿用世界竖直感。
             private float startHalfHeight = 0.88F; // 起始阶段白光半高。
             private float peakHalfHeight = 2.52F; // 爆发阶段白光半高。
@@ -444,7 +468,9 @@ public class VoidRingInstance {
                 this.renderStyle = preset.renderStyle;
                 this.durationTicks = preset.durationTicks;
                 this.centerYOffset = preset.centerYOffset;
+                this.followCameraYaw = preset.followCameraYaw;
                 this.followCameraPitch = preset.followCameraPitch;
+                this.distortionFollowCameraYaw = preset.distortionFollowCameraYaw;
                 this.distortionFollowCameraPitch = preset.distortionFollowCameraPitch;
                 this.startHalfHeight = preset.startHalfHeight;
                 this.peakHalfHeight = preset.peakHalfHeight;
@@ -498,8 +524,18 @@ public class VoidRingInstance {
                 return this;
             }
 
+            public Builder followCameraYaw(boolean followCameraYaw) {
+                this.followCameraYaw = followCameraYaw;
+                return this;
+            }
+
             public Builder followCameraPitch(boolean followCameraPitch) {
                 this.followCameraPitch = followCameraPitch;
+                return this;
+            }
+
+            public Builder distortionFollowCameraYaw(boolean distortionFollowCameraYaw) {
+                this.distortionFollowCameraYaw = distortionFollowCameraYaw;
                 return this;
             }
 

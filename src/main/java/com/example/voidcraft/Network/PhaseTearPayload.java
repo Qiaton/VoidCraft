@@ -8,17 +8,24 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.UUID;
+
 public record PhaseTearPayload(
+        UUID effectId,
+        int ageTicks,
         int ownerEntityId,
         int trackedEntityId,
         double centerX,
         double centerY,
         double centerZ,
         float scale,
+        float yaw,
         VoidRingInstance.Preset.RenderStyle renderStyle,
         int durationTicks,
         float centerYOffset,
+        boolean followCameraYaw,
         boolean followCameraPitch,
+        boolean distortionFollowCameraYaw,
         boolean distortionFollowCameraPitch,
         float startHalfHeight,
         float peakHalfHeight,
@@ -75,17 +82,50 @@ public record PhaseTearPayload(
             float scale,
             VoidRingInstance.Preset preset
     ) {
+        return fromPreset(UUID.randomUUID(), 0, ownerEntityId, trackedEntityId, centerX, centerY, centerZ, scale, 0.0F, preset);
+    }
+
+    public static PhaseTearPayload fromPreset(
+            int ownerEntityId,
+            int trackedEntityId,
+            double centerX,
+            double centerY,
+            double centerZ,
+            float scale,
+            float yaw,
+            VoidRingInstance.Preset preset
+    ) {
+        return fromPreset(UUID.randomUUID(), 0, ownerEntityId, trackedEntityId, centerX, centerY, centerZ, scale, yaw, preset);
+    }
+
+    public static PhaseTearPayload fromPreset(
+            UUID effectId,
+            int ageTicks,
+            int ownerEntityId,
+            int trackedEntityId,
+            double centerX,
+            double centerY,
+            double centerZ,
+            float scale,
+            float yaw,
+            VoidRingInstance.Preset preset
+    ) {
         return new PhaseTearPayload(
+                effectId == null ? UUID.randomUUID() : effectId,
+                Math.max(0, ageTicks),
                 ownerEntityId,
                 trackedEntityId,
                 centerX,
                 centerY,
                 centerZ,
                 scale,
+                yaw,
                 preset.renderStyle(),
                 preset.durationTicks(),
                 preset.centerYOffset(),
+                preset.followCameraYaw(),
                 preset.followCameraPitch(),
+                preset.distortionFollowCameraYaw(),
                 preset.distortionFollowCameraPitch(),
                 preset.startHalfHeight(),
                 preset.peakHalfHeight(),
@@ -130,7 +170,9 @@ public record PhaseTearPayload(
                 .renderStyle(this.renderStyle)
                 .durationTicks(this.durationTicks)
                 .centerYOffset(this.centerYOffset)
+                .followCameraYaw(this.followCameraYaw)
                 .followCameraPitch(this.followCameraPitch)
+                .distortionFollowCameraYaw(this.distortionFollowCameraYaw)
                 .distortionFollowCameraPitch(this.distortionFollowCameraPitch)
                 .startHalfHeight(this.startHalfHeight)
                 .peakHalfHeight(this.peakHalfHeight)
@@ -184,16 +226,21 @@ public record PhaseTearPayload(
     }
 
     private static void encode(RegistryFriendlyByteBuf buffer, PhaseTearPayload payload) {
+        writeUuid(buffer, payload.effectId);
+        ByteBufCodecs.VAR_INT.encode(buffer, payload.ageTicks);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.ownerEntityId);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.trackedEntityId);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerX);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerY);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerZ);
         ByteBufCodecs.FLOAT.encode(buffer, payload.scale);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.yaw);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.renderStyle.id());
         ByteBufCodecs.VAR_INT.encode(buffer, payload.durationTicks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.centerYOffset);
+        ByteBufCodecs.BOOL.encode(buffer, payload.followCameraYaw);
         ByteBufCodecs.BOOL.encode(buffer, payload.followCameraPitch);
+        ByteBufCodecs.BOOL.encode(buffer, payload.distortionFollowCameraYaw);
         ByteBufCodecs.BOOL.encode(buffer, payload.distortionFollowCameraPitch);
         ByteBufCodecs.FLOAT.encode(buffer, payload.startHalfHeight);
         ByteBufCodecs.FLOAT.encode(buffer, payload.peakHalfHeight);
@@ -233,16 +280,21 @@ public record PhaseTearPayload(
     }
 
     private static PhaseTearPayload decode(RegistryFriendlyByteBuf buffer) {
+        UUID effectId = readUuid(buffer);
+        int ageTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         int ownerEntityId = ByteBufCodecs.VAR_INT.decode(buffer);
         int trackedEntityId = ByteBufCodecs.VAR_INT.decode(buffer);
         double centerX = ByteBufCodecs.DOUBLE.decode(buffer);
         double centerY = ByteBufCodecs.DOUBLE.decode(buffer);
         double centerZ = ByteBufCodecs.DOUBLE.decode(buffer);
         float scale = ByteBufCodecs.FLOAT.decode(buffer);
+        float yaw = ByteBufCodecs.FLOAT.decode(buffer);
         VoidRingInstance.Preset.RenderStyle renderStyle = VoidRingInstance.Preset.RenderStyle.byId(ByteBufCodecs.VAR_INT.decode(buffer));
         int durationTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         float centerYOffset = ByteBufCodecs.FLOAT.decode(buffer);
+        boolean followCameraYaw = ByteBufCodecs.BOOL.decode(buffer);
         boolean followCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
+        boolean distortionFollowCameraYaw = ByteBufCodecs.BOOL.decode(buffer);
         boolean distortionFollowCameraPitch = ByteBufCodecs.BOOL.decode(buffer);
         float startHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
         float peakHalfHeight = ByteBufCodecs.FLOAT.decode(buffer);
@@ -281,16 +333,21 @@ public record PhaseTearPayload(
         float noiseScrollSpeed = ByteBufCodecs.FLOAT.decode(buffer);
 
         return new PhaseTearPayload(
+                effectId,
+                ageTicks,
                 ownerEntityId,
                 trackedEntityId,
                 centerX,
                 centerY,
                 centerZ,
                 scale,
+                yaw,
                 renderStyle,
                 durationTicks,
                 centerYOffset,
+                followCameraYaw,
                 followCameraPitch,
+                distortionFollowCameraYaw,
                 distortionFollowCameraPitch,
                 startHalfHeight,
                 peakHalfHeight,
@@ -328,5 +385,15 @@ public record PhaseTearPayload(
                 noiseFrequency,
                 noiseScrollSpeed
         );
+    }
+
+    private static void writeUuid(RegistryFriendlyByteBuf buffer, UUID uuid) {
+        UUID actualUuid = uuid == null ? UUID.randomUUID() : uuid;
+        buffer.writeLong(actualUuid.getMostSignificantBits());
+        buffer.writeLong(actualUuid.getLeastSignificantBits());
+    }
+
+    private static UUID readUuid(RegistryFriendlyByteBuf buffer) {
+        return new UUID(buffer.readLong(), buffer.readLong());
     }
 }

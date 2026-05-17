@@ -7,8 +7,11 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.UUID;
+
 // 炮台射击只把命中坐标和光束配置同步给客户端，伤害始终在服务端结算。
 public record TurretShotFxPayload(
+        UUID effectId,
         int playerId,
         int emitterIndex,
         double targetX,
@@ -37,6 +40,7 @@ public record TurretShotFxPayload(
     public static final StreamCodec<ByteBuf, TurretShotFxPayload> STREAM_CODEC =
             StreamCodec.of(
                     (buf, payload) -> {
+                        writeUuid(buf, payload.effectId());
                         buf.writeInt(payload.playerId());
                         buf.writeInt(payload.emitterIndex());
                         buf.writeDouble(payload.targetX());
@@ -60,6 +64,7 @@ public record TurretShotFxPayload(
                         buf.writeInt(payload.glowColor());
                     },
                     buf -> new TurretShotFxPayload(
+                            readUuid(buf),
                             buf.readInt(),
                             buf.readInt(),
                             buf.readDouble(),
@@ -92,8 +97,21 @@ public record TurretShotFxPayload(
             double targetZ,
             VoidBeamInstance.Config config
     ) {
+        return fromConfig(UUID.randomUUID(), playerId, emitterIndex, targetX, targetY, targetZ, config);
+    }
+
+    public static TurretShotFxPayload fromConfig(
+            UUID effectId,
+            int playerId,
+            int emitterIndex,
+            double targetX,
+            double targetY,
+            double targetZ,
+            VoidBeamInstance.Config config
+    ) {
         VoidBeamInstance.Config actualConfig = config == null ? VoidBeamInstance.Config.DEFAULT : config;
         return new TurretShotFxPayload(
+                effectId == null ? UUID.randomUUID() : effectId,
                 playerId,
                 emitterIndex,
                 targetX,
@@ -137,6 +155,16 @@ public record TurretShotFxPayload(
                 .coreColor(this.coreColor)
                 .glowColor(this.glowColor)
                 .build();
+    }
+
+    private static void writeUuid(ByteBuf buffer, UUID uuid) {
+        UUID actualUuid = uuid == null ? UUID.randomUUID() : uuid;
+        buffer.writeLong(actualUuid.getMostSignificantBits());
+        buffer.writeLong(actualUuid.getLeastSignificantBits());
+    }
+
+    private static UUID readUuid(ByteBuf buffer) {
+        return new UUID(buffer.readLong(), buffer.readLong());
     }
 
     @Override

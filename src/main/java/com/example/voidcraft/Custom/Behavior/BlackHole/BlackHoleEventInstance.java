@@ -15,6 +15,7 @@ public class BlackHoleEventInstance {
     public final Vec3 center;
     public final float pullRadius;
     public final float pullStrength;
+    public final int totalDuration;
     public int duration;
     public final int coreColor;
     public final int color;
@@ -37,6 +38,7 @@ public class BlackHoleEventInstance {
         this.center = center;
         this.pullRadius = pullRadius;
         this.pullStrength = pullStrength;
+        this.totalDuration = Math.max(1, duration);
         this.duration = duration;
         this.coreColor = coreColor;
         this.color = color;
@@ -93,6 +95,9 @@ public class BlackHoleEventInstance {
     }
     public VoidBlackHoleInstance.Config getConfig() {
         return config;
+    }
+    public int getAgeTicks() {
+        return Math.max(0, this.totalDuration - this.duration);
     }
     public float getCoreRadius() {
         return (float) Math.max(0.80D, Math.min(2.20D, this.pullRadius * 0.36D + 0.20D));
