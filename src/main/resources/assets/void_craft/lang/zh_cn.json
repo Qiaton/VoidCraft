@@ -24,6 +24,7 @@
   "item.void_craft.dash_void_module_item": "冲刺虚空模块",
   "item.void_craft.blink_void_module_item": "闪现虚空模块",
   "item.void_craft.safe_blink_void_module_item": "安全闪现虚空模块",
+  "item.void_craft.teleport_void_module_item": "传送虚空模块",
   "item.void_craft.phase_turret_module_item": "相位炮台模块",
   "item.void_craft.health_phase_turret_module_item": "恢复型相位炮台模块",
   "item.void_craft.assist_phase_turret_module_item": "辅助相位炮台模块",
@@ -215,5 +216,6 @@
   "screen.void_craft.void_energy_converter.count": "入%s/%s 出%s/%s",
   "screen.void_craft.void_energy_converter.input_count": "输入 %s/%s",
   "screen.void_craft.void_energy_converter.output_count": "输出 %s/%s",
-  "screen.void_craft.void_energy_converter.open_connections": "连接列表"
+  "screen.void_craft.void_energy_converter.open_connections": "连接列表",
+  "message.void_craft.teleport_void_module.deploy_energy": "传送能量 %s%%"
 }

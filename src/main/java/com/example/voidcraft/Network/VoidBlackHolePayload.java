@@ -8,7 +8,11 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.UUID;
+
 public record VoidBlackHolePayload(
+        UUID effectId,
+        int ageTicks,
         int ownerEntityId,
         double centerX,
         double centerY,
@@ -66,8 +70,23 @@ public record VoidBlackHolePayload(
             float scale,
             VoidBlackHoleInstance.Config config
     ) {
+        return fromConfig(UUID.randomUUID(), 0, ownerEntityId, centerX, centerY, centerZ, scale, config);
+    }
+
+    public static VoidBlackHolePayload fromConfig(
+            UUID effectId,
+            int ageTicks,
+            int ownerEntityId,
+            double centerX,
+            double centerY,
+            double centerZ,
+            float scale,
+            VoidBlackHoleInstance.Config config
+    ) {
         VoidBlackHoleInstance.Config actualConfig = config == null ? VoidBlackHoleInstance.Config.DEFAULT : config;
         return new VoidBlackHolePayload(
+                effectId == null ? UUID.randomUUID() : effectId,
+                Math.max(0, ageTicks),
                 ownerEntityId,
                 centerX,
                 centerY,
@@ -157,6 +176,8 @@ public record VoidBlackHolePayload(
     }
 
     private static void encode(RegistryFriendlyByteBuf buffer, VoidBlackHolePayload payload) {
+        writeUuid(buffer, payload.effectId);
+        ByteBufCodecs.VAR_INT.encode(buffer, payload.ageTicks);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.ownerEntityId);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerX);
         ByteBufCodecs.DOUBLE.encode(buffer, payload.centerY);
@@ -198,6 +219,8 @@ public record VoidBlackHolePayload(
     }
 
     private static VoidBlackHolePayload decode(RegistryFriendlyByteBuf buffer) {
+        UUID effectId = readUuid(buffer);
+        int ageTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         int ownerEntityId = ByteBufCodecs.VAR_INT.decode(buffer);
         double centerX = ByteBufCodecs.DOUBLE.decode(buffer);
         double centerY = ByteBufCodecs.DOUBLE.decode(buffer);
@@ -238,6 +261,8 @@ public record VoidBlackHolePayload(
         float noiseScrollSpeed = ByteBufCodecs.FLOAT.decode(buffer);
 
         return new VoidBlackHolePayload(
+                effectId,
+                ageTicks,
                 ownerEntityId,
                 centerX,
                 centerY,
@@ -277,5 +302,15 @@ public record VoidBlackHolePayload(
                 noiseFrequency,
                 noiseScrollSpeed
         );
+    }
+
+    private static void writeUuid(RegistryFriendlyByteBuf buffer, UUID uuid) {
+        UUID actualUuid = uuid == null ? UUID.randomUUID() : uuid;
+        buffer.writeLong(actualUuid.getMostSignificantBits());
+        buffer.writeLong(actualUuid.getLeastSignificantBits());
+    }
+
+    private static UUID readUuid(RegistryFriendlyByteBuf buffer) {
+        return new UUID(buffer.readLong(), buffer.readLong());
     }
 }

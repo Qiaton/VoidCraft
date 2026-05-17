@@ -25,7 +25,10 @@ public class DashClock {
         UUID playerId = player.getUUID();
         Integer tick = DASH_TICKS.get(playerId);
 
-        if(tick == null || tick <= 0){
+        if(tick == null){
+            return;
+        }
+        if(tick <= 0){
             clearDash(player);
             return;
         }

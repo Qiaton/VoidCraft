@@ -11,6 +11,7 @@ in vec2 texCoord;
 out vec4 fragColor;
 
 const int MAX_EFFECTS = 16;
+const float SCREEN_AXIS_PACK_RANGE = 2.0;
 
 float decodeU16(vec2 packedBytes) {
     vec2 bytes = round(clamp(packedBytes, 0.0, 1.0) * 255.0);
@@ -23,6 +24,10 @@ vec2 decodePair(ivec2 texelCoord) {
         decodeU16(encoded.rg),
         decodeU16(encoded.ba)
     );
+}
+
+vec2 decodeSignedPair(ivec2 texelCoord) {
+    return (decodePair(texelCoord) * 2.0 - 1.0) * SCREEN_AXIS_PACK_RANGE;
 }
 
 float luma(vec3 color) {
@@ -319,7 +324,17 @@ void accumulateAnalyticPhaseEffects(
             continue;
         }
 
+        vec2 rightAxis = decodeSignedPair(ivec2(10, row));
+        vec2 upAxis = decodeSignedPair(ivec2(11, row));
+        vec2 delta = texCoord - screenCenter;
+        float determinant = rightAxis.x * upAxis.y - rightAxis.y * upAxis.x;
         vec2 normalized = (texCoord - screenCenter) / max(screenExtents, vec2(0.0001));
+        if (abs(determinant) > 0.000001 && length(rightAxis) > 0.0001 && length(upAxis) > 0.0001) {
+            normalized = vec2(
+                (delta.x * upAxis.y - delta.y * upAxis.x) / determinant,
+                (rightAxis.x * delta.y - rightAxis.y * delta.x) / determinant
+            );
+        }
         float dist = length(normalized);
         float maskAlpha = 1.0 - smoothstep(0.62, 1.0, dist);
         if (maskAlpha <= 0.0001) {
@@ -395,10 +410,70 @@ vec2 phaseWorldTransitionOffset(float enterProgress, float exitProgress, float h
     return (dir * shimmer * 0.020 + tangent * wave * 0.010) * mask;
 }
 
+float voidInOutEllipseMask(float progress, float edgeWidth) {
+    if (progress <= 0.0) {
+        return 0.0;
+    }
+
+    float dist = length(transitionAspectPoint(texCoord));
+    float radius = transitionCoverRadius() * easeInOut(progress);
+    return transitionInsideEllipse(dist, radius, edgeWidth);
+}
+
+vec2 voidInOutOffset(float warpProgress, float maskProgress, float effectOn, float time) {
+    if (effectOn < 0.5 || warpProgress <= 0.0) {
+        return vec2(0.0);
+    }
+
+    vec2 aspectPoint = transitionAspectPoint(texCoord);
+    float dist = length(aspectPoint);
+    float radius = transitionCoverRadius() * easeInOut(warpProgress);
+    vec2 dir = dist > 0.0001 ? normalize(texCoord - vec2(0.5)) : vec2(0.0);
+    vec2 tangent = vec2(-dir.y, dir.x);
+    float flowNoise = noise(texCoord * 22.0 + vec2(time * 0.36, -time * 0.29));
+    float foldNoise = noise(texCoord * 48.0 + vec2(-time * 0.22, time * 0.41));
+    float wave = sin(dist * 44.0 - time * 6.4 + flowNoise * 6.28318);
+    float innerEdge = max(0.0, radius - 0.20);
+    float outerEdge = max(radius, innerEdge + 0.0001);
+    float edgeMask = smoothstep(innerEdge, outerEdge, dist)
+            * (1.0 - smoothstep(radius, radius + 0.16, dist));
+    float insideMask = transitionInsideEllipse(dist, radius, 0.18);
+    float strength = max(edgeMask, insideMask * 0.42) * (1.0 - maskProgress * 0.65);
+    float shimmer = mix(wave, foldNoise * 2.0 - 1.0, 0.38);
+    return (dir * shimmer * 0.022 + tangent * wave * 0.012) * strength;
+}
+
+float voidInOutWhite(float warpProgress, float maskProgress, float effectOn) {
+    if (effectOn < 0.5) {
+        return 0.0;
+    }
+
+    float dist = length(transitionAspectPoint(texCoord));
+    float coverRadius = transitionCoverRadius();
+    float warpRadius = coverRadius * easeInOut(warpProgress);
+    float warpInnerEdge = max(0.0, warpRadius - 0.18);
+    float warpOuterEdge = max(warpRadius, warpInnerEdge + 0.0001);
+    float warpEdge = smoothstep(warpInnerEdge, warpOuterEdge, dist)
+            * (1.0 - smoothstep(warpRadius, warpRadius + 0.20, dist));
+    float warpFill = transitionInsideEllipse(dist, warpRadius, 0.26);
+    float warpLight = (warpEdge * 0.46 + warpFill * 0.12) * (1.0 - maskProgress * 0.70);
+
+    float maskRadius = coverRadius * easeInOut(maskProgress);
+    float maskInnerEdge = max(0.0, maskRadius - 0.12);
+    float maskOuterEdge = max(maskRadius, maskInnerEdge + 0.0001);
+    float maskEdge = smoothstep(maskInnerEdge, maskOuterEdge, dist)
+            * (1.0 - smoothstep(maskRadius, maskRadius + 0.14, dist))
+            * smoothstep(0.0, 0.08, maskProgress);
+
+    return clamp(warpLight + maskEdge * 0.30, 0.0, 0.62);
+}
+
 void main() {
     vec2 headerFlags = decodePair(ivec2(0, 0));
     vec2 transitionProgress = decodePair(ivec2(1, 0));
     vec2 transitionFlags = decodePair(ivec2(2, 0));
+    vec2 voidInOutProgress = decodePair(ivec2(3, 0));
+    vec2 voidInOutFlags = decodePair(ivec2(4, 0));
     float fullScreenPhaseStrength = clamp(headerFlags.x, 0.0, 1.0);
     float time = headerFlags.y * 128.0;
     float enterProgress = clamp(transitionProgress.x, 0.0, 1.0);
@@ -406,6 +481,9 @@ void main() {
     float holdWhite = transitionFlags.x;
     float transitionStage = transitionFlags.y;
     float transitionActive = transitionStage > 0.001 ? 1.0 : 0.0;
+    float voidInOutWarpProgress = clamp(voidInOutProgress.x, 0.0, 1.0);
+    float voidInOutMaskProgress = clamp(voidInOutProgress.y, 0.0, 1.0);
+    float voidInOutActive = voidInOutFlags.x;
 
     vec2 pixelSize = 1.0 / vec2(textureSize(InSampler, 0));
     vec2 totalOffset = vec2(0.0);
@@ -446,9 +524,11 @@ void main() {
     }
 
     totalOffset += phaseWorldTransitionOffset(enterProgress, exitProgress, holdWhite, transitionActive, time);
+    totalOffset += voidInOutOffset(voidInOutWarpProgress, voidInOutMaskProgress, voidInOutActive, time);
 
     vec2 uv = clamp(texCoord + totalOffset, pixelSize * 0.5, vec2(1.0) - pixelSize * 0.5);
     vec3 color = texture(InSampler, uv).rgb;
+    color = mix(color, texture(InSampler, texCoord).rgb, voidInOutEllipseMask(voidInOutMaskProgress, 0.18) * step(0.5, voidInOutActive));
 
     if (fullScreenPhaseStrength > 0.001) {
         color = mix(color, applyFullScreenPhase(color), 0.84 * fullScreenPhaseStrength);
@@ -457,5 +537,6 @@ void main() {
     color = mix(color, color * vec3(0.024, 0.028, 0.060), clamp(blackHoleShadow, 0.0, 1.0));
     color += strongestEdge * vec3(0.020, 0.028, 0.040);
     color = mix(color, color + vec3(0.032, 0.046, 0.062), membranePresence * 0.12);
+    color = mix(color, vec3(1.0), voidInOutWhite(voidInOutWarpProgress, voidInOutMaskProgress, voidInOutActive));
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

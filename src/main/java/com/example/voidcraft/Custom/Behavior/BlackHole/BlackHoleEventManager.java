@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 @EventBusSubscriber
 public class BlackHoleEventManager {
     public static Map<UUID,BlackHoleEventInstance> EVENTS = new HashMap<>();
+    private static final int VISUAL_SYNC_INTERVAL_TICKS = 20;
     public static void addChannel(Player player, ServerLevel level, Vec3 center, float radius, float strength, int coreColor, int color){
         UUID uuid = UUID.randomUUID();
         UUID owner = player.getUUID();
@@ -36,7 +37,7 @@ public class BlackHoleEventManager {
         UUID uuid = UUID.randomUUID();
         UUID owner = entity.getUUID();
         BlackHoleEventInstance blackHole = new BlackHoleEventInstance(owner,uuid,level,center,radius,strength,duration,coreColor,color,coreDamage,hurtPlayers,pullPlayers,damageType,getViewYaw(entity));
-        ModNetworking.sendBlackHoleAt(level,center,1,blackHole.getConfig());
+        ModNetworking.sendBlackHoleAt(level, center, 1, blackHole.uuid, blackHole.getAgeTicks(), -1, blackHole.getConfig());
         EVENTS.put(blackHole.uuid,blackHole);
         startSound(blackHole);
     }
@@ -57,6 +58,9 @@ public class BlackHoleEventManager {
             try {
                 if (instance.duration > 0) {
                     instance.duration--;
+                    if (instance.duration > 0 && instance.duration % VISUAL_SYNC_INTERVAL_TICKS == 0) {
+                        syncVisual(instance);
+                    }
                 } else {
                     stopSound(instance);
                     iterator.remove();
@@ -81,6 +85,22 @@ public class BlackHoleEventManager {
                 ModSound.BLACK_HOLE_PULL_VOLUME,
                 ModSound.BLACK_HOLE_PULL_PITCH,
                 blackHole.duration
+        );
+    }
+
+    private static void syncVisual(BlackHoleEventInstance blackHole) {
+        if (blackHole == null) {
+            return;
+        }
+
+        ModNetworking.sendBlackHoleAt(
+                blackHole.level,
+                blackHole.center,
+                1,
+                blackHole.uuid,
+                blackHole.getAgeTicks(),
+                -1,
+                blackHole.getConfig()
         );
     }
 

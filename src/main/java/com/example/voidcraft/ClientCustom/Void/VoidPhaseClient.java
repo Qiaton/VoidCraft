@@ -56,13 +56,16 @@ public class VoidPhaseClient {
         boolean inPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
         boolean hasNearbyTears = VoidRingManager.hasActiveRings();
         boolean hasActiveBlackHoles = VoidBlackHoleManager.hasActiveBlackHoles();
+        boolean hasVoidInOutEffect = VoidInOutEffectClient.isActive();
         boolean shouldApplyPost = inVoid
                 || inPhaseDimension
                 || hasNearbyTears
                 || hasActiveBlackHoles
-                || PhaseWorldTransitionClient.isActive();
+                || PhaseWorldTransitionClient.isActive()
+                || hasVoidInOutEffect;
 
         if (attachmentInVoid != lastAttachmentInVoid) {             //如果附件虚空状态发生改变 发送一条改变状态的日志
+            VoidInOutEffectClient.start();
             LOGGER.debug("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);
             lastAttachmentInVoid = attachmentInVoid;
         }

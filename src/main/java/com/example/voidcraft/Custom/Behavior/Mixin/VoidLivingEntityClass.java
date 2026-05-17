@@ -1,5 +1,6 @@
 package com.example.voidcraft.Custom.Behavior.Mixin;
 
+import com.example.voidcraft.Custom.Clock.ModuleSkill.TeleportVoidModuleClock;
 import com.example.voidcraft.ModAttachments;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
@@ -30,6 +31,12 @@ public class VoidLivingEntityClass {
 
         // 不在水/岩浆里，直接走原版
         if (!entity.isInFluidType()) {
+            return;
+        }
+
+        if (TeleportVoidModuleClock.isMoving(entity)) {
+            entity.move(MoverType.SELF, entity.getDeltaMovement());
+            ci.cancel();
             return;
         }
 

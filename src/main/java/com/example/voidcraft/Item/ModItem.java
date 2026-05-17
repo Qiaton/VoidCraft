@@ -18,6 +18,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.SafeBlinkVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TearBlackHoleModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
 import com.example.voidcraft.Item.custom.SpatialSword;
@@ -202,6 +203,12 @@ public class ModItem {
             "safe_blink_void_module_item",
             SafeBlinkVoidModule::new,
             new Item.Properties()
+
+    );
+    public static final DeferredItem<Item> TELEPORT_VOID_MODULE = ITEMS.registerItem(
+            "teleport_void_module_item",
+            TeleportVoidModule::new,
+            props-> props
 
     );
     public static final DeferredItem<Item> PHASE_TURRET_MODULE = ITEMS.registerItem(

@@ -8,10 +8,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class VoidRingManager {
     private static final List<VoidRingInstance> RINGS = new ArrayList<>();
     private static final Map<String, VoidRingInstance> PERSISTENT_RINGS = new HashMap<>();
+    private static final Map<UUID, VoidRingInstance> RING_IDS = new HashMap<>();
 
     // 在固定世界坐标生成一圈相位环，适合瞬时爆点、落点预览和不需要跟随实体的效果。
     public static VoidRingInstance addRing(Vec3 center) {
@@ -20,12 +22,31 @@ public class VoidRingManager {
 
     // 固定坐标相位环的完整入口：scale 控大小，preset 控外观和生命周期。
     public static VoidRingInstance addRing(Vec3 center, float scale, VoidRingInstance.Preset preset) {
-        return addRing(-1, center, scale, preset);
+        return addRing(-1, center, scale, preset, 0.0F);
     }
 
     // 带 owner 的固定坐标环，用于渲染层识别来源实体，比如第一人称过滤或后处理归属。
     public static VoidRingInstance addRing(int ownerEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset) {
-        VoidRingInstance ring = new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, -1);
+        return addRing(ownerEntityId, center, scale, preset, 0.0F);
+    }
+
+    public static VoidRingInstance addRing(int ownerEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset, float yaw) {
+        VoidRingInstance ring = new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, -1, false, yaw);
+        RINGS.add(ring);
+        return ring;
+    }
+
+    public static VoidRingInstance addRing(UUID effectId, int ownerEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset, float yaw, int ageTicks) {
+        if (effectId == null) {
+            VoidRingInstance ring = addRing(ownerEntityId, center, scale, preset, yaw);
+            setAge(ring, ageTicks);
+            return ring;
+        }
+
+        removeRing(effectId);
+        VoidRingInstance ring = new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, -1, false, yaw);
+        setAge(ring, ageTicks);
+        RING_IDS.put(effectId, ring);
         RINGS.add(ring);
         return ring;
     }
@@ -37,7 +58,26 @@ public class VoidRingManager {
 
     // 跟随实体环的完整入口：owner 表示效果来源，tracked 表示实际跟随谁。
     public static void addTrackedRing(int ownerEntityId, int trackedEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset) {
-        RINGS.add(new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, trackedEntityId));
+        addTrackedRing(ownerEntityId, trackedEntityId, center, scale, preset, 0.0F);
+    }
+
+    public static void addTrackedRing(int ownerEntityId, int trackedEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset, float yaw) {
+        RINGS.add(new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, trackedEntityId, false, yaw));
+    }
+
+    public static void addTrackedRing(UUID effectId, int ownerEntityId, int trackedEntityId, Vec3 center, float scale, VoidRingInstance.Preset preset, float yaw, int ageTicks) {
+        if (effectId == null) {
+            VoidRingInstance ring = new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, trackedEntityId, false, yaw);
+            setAge(ring, ageTicks);
+            RINGS.add(ring);
+            return;
+        }
+
+        removeRing(effectId);
+        VoidRingInstance ring = new VoidRingInstance(center, Math.max(0.01F, scale), preset, ownerEntityId, trackedEntityId, false, yaw);
+        setAge(ring, ageTicks);
+        RING_IDS.put(effectId, ring);
+        RINGS.add(ring);
     }
 
     // 创建或更新一个持续存在的固定坐标环：同一个 id 会复用旧 ring，只平滑移动到新坐标，适合技能指示器。
@@ -93,13 +133,30 @@ public class VoidRingManager {
             instance.age++;
             if (instance.isDead()) {
                 PERSISTENT_RINGS.values().remove(instance);
+                RING_IDS.values().remove(instance);
                 iterator.remove();
             }
         }
     }
 
+    private static void removeRing(UUID effectId) {
+        VoidRingInstance ring = RING_IDS.remove(effectId);
+        if (ring != null) {
+            PERSISTENT_RINGS.values().remove(ring);
+            RINGS.remove(ring);
+        }
+    }
+
+    private static void setAge(VoidRingInstance ring, int ageTicks) {
+        if (ring == null) {
+            return;
+        }
+        ring.age = Math.max(0, Math.min(ageTicks, Math.max(0, ring.preset.durationTicks() - 1)));
+    }
+
     private static void clear() {
         RINGS.clear();
         PERSISTENT_RINGS.clear();
+        RING_IDS.clear();
     }
 }

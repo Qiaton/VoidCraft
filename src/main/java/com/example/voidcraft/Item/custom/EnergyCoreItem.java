@@ -211,7 +211,7 @@ public class EnergyCoreItem extends Item {
         BASIC(1L, 1.0D),
         PLUS(2L, 1.5D),
         PRO(3L, 2.0D),
-        MAX(4L, 3.0D);
+        MAX(8L, 3.0D);
 
         private final long rechargePerTick;
         private final double lifetimeMultiplier;

@@ -9,7 +9,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.UUID;
+
 public record VoidTrailPayload(
+        UUID effectId,
         int entityId,
         boolean trackEntity,
         float scale,
@@ -59,18 +62,27 @@ public record VoidTrailPayload(
     );
 
     public static VoidTrailPayload fromPreset(int entityId, float scale, VoidTrailInstance.Preset preset) {
-        return fromPreset(entityId, scale, null, null, preset);
+        return fromPreset(UUID.randomUUID(), entityId, scale, null, null, preset);
     }
 
     public static VoidTrailPayload fromPreset(int entityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
-        return fromPreset(entityId, true, scale, seedStart, seedEnd, preset);
+        return fromPreset(UUID.randomUUID(), entityId, true, scale, seedStart, seedEnd, preset);
+    }
+
+    public static VoidTrailPayload fromPreset(UUID effectId, int entityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
+        return fromPreset(effectId, entityId, true, scale, seedStart, seedEnd, preset);
     }
 
     public static VoidTrailPayload fromSegment(int ownerEntityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
-        return fromPreset(ownerEntityId, false, scale, seedStart, seedEnd, preset);
+        return fromPreset(UUID.randomUUID(), ownerEntityId, false, scale, seedStart, seedEnd, preset);
+    }
+
+    public static VoidTrailPayload fromSegment(UUID effectId, int ownerEntityId, float scale, Vec3 seedStart, Vec3 seedEnd, VoidTrailInstance.Preset preset) {
+        return fromPreset(effectId, ownerEntityId, false, scale, seedStart, seedEnd, preset);
     }
 
     private static VoidTrailPayload fromPreset(
+            UUID effectId,
             int entityId,
             boolean trackEntity,
             float scale,
@@ -80,6 +92,7 @@ public record VoidTrailPayload(
     ) {
         boolean hasSeedSegment = seedStart != null && seedEnd != null && seedStart.distanceToSqr(seedEnd) >= 1.0E-8D;
         return new VoidTrailPayload(
+                effectId == null ? UUID.randomUUID() : effectId,
                 entityId,
                 trackEntity,
                 scale,
@@ -170,6 +183,7 @@ public record VoidTrailPayload(
     }
 
     private static void encode(RegistryFriendlyByteBuf buffer, VoidTrailPayload payload) {
+        writeUuid(buffer, payload.effectId);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.entityId);
         ByteBufCodecs.BOOL.encode(buffer, payload.trackEntity);
         ByteBufCodecs.FLOAT.encode(buffer, payload.scale);
@@ -213,6 +227,7 @@ public record VoidTrailPayload(
 
     private static VoidTrailPayload decode(RegistryFriendlyByteBuf buffer) {
         return new VoidTrailPayload(
+                readUuid(buffer),
                 ByteBufCodecs.VAR_INT.decode(buffer),
                 ByteBufCodecs.BOOL.decode(buffer),
                 ByteBufCodecs.FLOAT.decode(buffer),
@@ -253,5 +268,15 @@ public record VoidTrailPayload(
                 ByteBufCodecs.VAR_INT.decode(buffer),
                 ByteBufCodecs.VAR_INT.decode(buffer)
         );
+    }
+
+    private static void writeUuid(RegistryFriendlyByteBuf buffer, UUID uuid) {
+        UUID actualUuid = uuid == null ? UUID.randomUUID() : uuid;
+        buffer.writeLong(actualUuid.getMostSignificantBits());
+        buffer.writeLong(actualUuid.getLeastSignificantBits());
+    }
+
+    private static UUID readUuid(RegistryFriendlyByteBuf buffer) {
+        return new UUID(buffer.readLong(), buffer.readLong());
     }
 }

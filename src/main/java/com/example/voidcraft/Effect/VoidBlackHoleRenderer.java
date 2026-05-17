@@ -18,6 +18,7 @@ public final class VoidBlackHoleRenderer {
     private static final int HORIZONTAL_SEGMENTS = 32;
     private static final int VERTICAL_SEGMENTS = 16;
     private static final double BILLBOARD_EPSILON = 1.0E-8D;
+    private static final double SCREEN_MASK_VIEW_MARGIN = 0.08D;
 
     private VoidBlackHoleRenderer() {
     }
@@ -63,7 +64,7 @@ public final class VoidBlackHoleRenderer {
                 light,
                 true,
                 false,
-                false
+                true
         );
     }
 
@@ -146,12 +147,14 @@ public final class VoidBlackHoleRenderer {
         Vec3 vertical = facingData.vertical();
         Vec3 planeCenter = center.add(forward.scale(-0.003D));
 
-        Vec3 centerNdc = projectPoint(mc, planeCenter, modelViewMatrix, projectionMatrix);
-        Vec3 leftNdc = projectPoint(mc, planeCenter.subtract(horizontal.scale(halfWidth)), modelViewMatrix, projectionMatrix);
-        Vec3 rightNdc = projectPoint(mc, planeCenter.add(horizontal.scale(halfWidth)), modelViewMatrix, projectionMatrix);
-        Vec3 downNdc = projectPoint(mc, planeCenter.subtract(vertical.scale(halfHeight)), modelViewMatrix, projectionMatrix);
-        Vec3 upNdc = projectPoint(mc, planeCenter.add(vertical.scale(halfHeight)), modelViewMatrix, projectionMatrix);
-        if (centerNdc == null || leftNdc == null || rightNdc == null || downNdc == null || upNdc == null) {
+        Vec3 centerNdc = mc.gameRenderer.projectPointToScreen(planeCenter);
+        Vec3 leftNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(horizontal.scale(halfWidth)));
+        Vec3 rightNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(horizontal.scale(halfWidth)));
+        Vec3 downNdc = mc.gameRenderer.projectPointToScreen(planeCenter.subtract(vertical.scale(halfHeight)));
+        Vec3 upNdc = mc.gameRenderer.projectPointToScreen(planeCenter.add(vertical.scale(halfHeight)));
+        if (!arePointsOk(centerNdc, leftNdc, rightNdc, downNdc, upNdc)
+                || !hasScreenDepth(centerNdc, leftNdc, rightNdc, downNdc, upNdc)
+                || !isScreenBoxOnScreen(centerNdc, leftNdc, rightNdc, downNdc, upNdc)) {
             return null;
         }
 
@@ -162,6 +165,13 @@ public final class VoidBlackHoleRenderer {
         if (halfWidthU <= 0.0001F || halfHeightV <= 0.0001F) {
             return null;
         }
+        float rightAxisU = (float) ((rightNdc.x - leftNdc.x) * 0.25D);
+        float rightAxisV = (float) ((rightNdc.y - leftNdc.y) * 0.25D);
+        float upAxisU = (float) ((upNdc.x - downNdc.x) * 0.25D);
+        float upAxisV = (float) ((upNdc.y - downNdc.y) * 0.25D);
+        if (!areScreenAxesOk(rightAxisU, rightAxisV, upAxisU, upAxisV)) {
+            return null;
+        }
 
         float centerDepth = Mth.clamp((float) (centerNdc.z * 0.5D + 0.5D), 0.0F, 1.0F);
         return new ScreenMaskData(
@@ -169,6 +179,10 @@ public final class VoidBlackHoleRenderer {
                 Mth.clamp(centerV, 0.0F, 1.0F),
                 Mth.clamp(halfWidthU, 0.0F, 1.0F),
                 Mth.clamp(halfHeightV, 0.0F, 1.0F),
+                rightAxisU,
+                rightAxisV,
+                upAxisU,
+                upAxisV,
                 centerDepth
         );
     }
@@ -722,6 +736,46 @@ public final class VoidBlackHoleRenderer {
         return 0.5F - localY * 0.5F;
     }
 
+    private static boolean arePointsOk(Vec3 first, Vec3 second, Vec3 third, Vec3 fourth, Vec3 fifth) {
+        return isPointOk(first)
+                && isPointOk(second)
+                && isPointOk(third)
+                && isPointOk(fourth)
+                && isPointOk(fifth);
+    }
+
+    private static boolean isPointOk(Vec3 point) {
+        return Double.isFinite(point.x) && Double.isFinite(point.y) && Double.isFinite(point.z);
+    }
+
+    private static boolean hasScreenDepth(Vec3 center, Vec3 left, Vec3 right, Vec3 down, Vec3 up) {
+        return isDepthOnScreen(center)
+                || isDepthOnScreen(left)
+                || isDepthOnScreen(right)
+                || isDepthOnScreen(down)
+                || isDepthOnScreen(up);
+    }
+
+    private static boolean isDepthOnScreen(Vec3 point) {
+        return point.z >= -1.0D && point.z <= 1.0D;
+    }
+
+    private static boolean isScreenBoxOnScreen(Vec3 center, Vec3 left, Vec3 right, Vec3 down, Vec3 up) {
+        double minX = Math.min(center.x, Math.min(left.x, Math.min(right.x, Math.min(down.x, up.x))));
+        double maxX = Math.max(center.x, Math.max(left.x, Math.max(right.x, Math.max(down.x, up.x))));
+        double minY = Math.min(center.y, Math.min(left.y, Math.min(right.y, Math.min(down.y, up.y))));
+        double maxY = Math.max(center.y, Math.max(left.y, Math.max(right.y, Math.max(down.y, up.y))));
+        return maxX >= -1.0D - SCREEN_MASK_VIEW_MARGIN
+                && minX <= 1.0D + SCREEN_MASK_VIEW_MARGIN
+                && maxY >= -1.0D - SCREEN_MASK_VIEW_MARGIN
+                && minY <= 1.0D + SCREEN_MASK_VIEW_MARGIN;
+    }
+
+    private static boolean areScreenAxesOk(float rightAxisU, float rightAxisV, float upAxisU, float upAxisV) {
+        float determinant = rightAxisU * upAxisV - rightAxisV * upAxisU;
+        return Math.abs(determinant) > 0.000001F;
+    }
+
     private static int alphaToByte(float alpha) {
         return Mth.clamp((int) (alpha * 255.0F), 0, 255);
     }
@@ -745,7 +799,17 @@ public final class VoidBlackHoleRenderer {
     private record RenderMetrics(float halfHeight, float halfWidth, float fade, float time) {
     }
 
-    public record ScreenMaskData(float centerU, float centerV, float halfWidthU, float halfHeightV, float centerDepth) {
+    public record ScreenMaskData(
+            float centerU,
+            float centerV,
+            float halfWidthU,
+            float halfHeightV,
+            float rightAxisU,
+            float rightAxisV,
+            float upAxisU,
+            float upAxisV,
+            float centerDepth
+    ) {
     }
 
     public record FacingData(float yaw, float pitch, Vec3 forward, Vec3 horizontal, Vec3 vertical) {

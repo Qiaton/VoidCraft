@@ -2,9 +2,12 @@ package com.example.voidcraft.ClientCustom.Event;
 
 import com.example.voidcraft.ClientCustom.Key.ModKeyMappings;
 import com.example.voidcraft.ClientCustom.ModuleInputMode;
+import com.example.voidcraft.ClientCustom.Void.VoidInOutEffectClient;
 import com.example.voidcraft.Custom.ModuleSlotHelper;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.VoidCraft;
+import com.example.voidcraft.Network.CancelTeleportModulePayload;
 import com.example.voidcraft.Network.UseWatchModulePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -26,6 +29,7 @@ public final class ClientKeyEvents {
 
     // 记录取消键上一 tick 是否已经按下，防止按住 Q 时每 tick 重复触发取消逻辑。
     private static boolean wasCancelDown;
+    private static final boolean[] teleportDeploying = new boolean[2];
     private static final int HOLD_RELEASE_HINT_INTERVAL_TICKS = 20;
 
     @SubscribeEvent
@@ -34,6 +38,7 @@ public final class ClientKeyEvents {
 
         if (mc.player == null || mc.level == null) {
             HoldReleaseInputState.cancelAll();
+            cancelTeleportDeploying();
             wasCancelDown = false;
             return;
         }
@@ -112,6 +117,10 @@ public final class ClientKeyEvents {
             canceled = true;
         }
 
+        if (cancelTeleportDeploy(mc)) {
+            canceled = true;
+        }
+
         return canceled;
     }
 
@@ -158,6 +167,7 @@ public final class ClientKeyEvents {
     private static boolean handleSkillKey(Minecraft mc, int slot, KeyMapping key, boolean slotUsable) {
         if (!slotUsable) {
             HoldReleaseInputState.cancel(slot);
+            teleportDeploying[slot] = false;
             return false;
         }
 
@@ -172,16 +182,49 @@ public final class ClientKeyEvents {
 
     private static boolean handleClickKey(Minecraft mc, int slot, KeyMapping key) {
         HoldReleaseInputState.cancel(slot);
+        ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
 
         boolean clicked = false;
         while (key.consumeClick()) {
-            PacketDistributor.sendToServer(new UseWatchModulePayload(slot));
+            ClientPacketDistributor.sendToServer(new UseWatchModulePayload(slot));
+            if (moduleStack.getItem() instanceof TeleportVoidModule) {
+                VoidInOutEffectClient.start();
+                teleportDeploying[slot] = !teleportDeploying[slot];
+            } else {
+                teleportDeploying[slot] = false;
+            }
             clicked = true;
         }
         if (clicked) {
             suppressConflictingKeyMappings(mc, key);
         }
         return clicked;
+    }
+
+    private static boolean cancelTeleportDeploy(Minecraft mc) {
+        boolean canceled = false;
+        for (int slot = 0; slot < 2; slot++) {
+            if (!teleportDeploying[slot]) {
+                continue;
+            }
+
+            ItemStack moduleStack = ModuleSlotHelper.getModuleStackFromSlot(mc, slot);
+            if (!(moduleStack.getItem() instanceof TeleportVoidModule)) {
+                teleportDeploying[slot] = false;
+                continue;
+            }
+
+            ClientPacketDistributor.sendToServer(new CancelTeleportModulePayload(slot));
+            teleportDeploying[slot] = false;
+            canceled = true;
+        }
+        return canceled;
+    }
+
+    private static void cancelTeleportDeploying() {
+        for (int slot = 0; slot < teleportDeploying.length; slot++) {
+            teleportDeploying[slot] = false;
+        }
     }
 
     private static boolean handleHoldReleaseKey(Minecraft mc, int slot, KeyMapping key) {
@@ -254,6 +297,7 @@ public final class ClientKeyEvents {
 
     private static void cancelBlockedSkillSlot(Minecraft mc, int slot) {
         HoldReleaseInputState.cancel(slot);
+        teleportDeploying[slot] = false;
         HoldReleaseClientDispatcher.cancel(mc, slot);
     }
 }
