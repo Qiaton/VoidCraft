@@ -60,7 +60,7 @@ public class DashVoidModuleClock {
                     continue;
                 }
 
-                VoidClock.setVoidTicks(player, 2);
+                VoidClock.setPhaseTicks(player, 2);
                 DashClock.keepDash(player, 2, stats.strength());
                 FlowEffect.fov_effect= (DashClock.getDashPower(player)*0.16F);
                 return;

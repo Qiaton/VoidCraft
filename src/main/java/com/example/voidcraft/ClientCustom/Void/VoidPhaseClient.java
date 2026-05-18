@@ -50,7 +50,7 @@ public class VoidPhaseClient {
             return;
         }
 
-        boolean attachmentInVoid = player.getData(ModAttachments.IN_VOID.get());
+        boolean attachmentInVoid = player.getData(ModAttachments.IN_PHASE.get());
         boolean usingSpatialSword = player.isUsingItem() && player.getUseItem().getItem() instanceof SpatialSword;
         boolean inVoid = attachmentInVoid || usingSpatialSword;      //根据条件判断是否在虚空
         boolean inPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
@@ -66,7 +66,7 @@ public class VoidPhaseClient {
 
         if (attachmentInVoid != lastAttachmentInVoid) {             //如果附件虚空状态发生改变 发送一条改变状态的日志
             VoidInOutEffectClient.start();
-            LOGGER.debug("[VoidPhase] attachment in_void changed -> {}", attachmentInVoid);
+            LOGGER.debug("[VoidPhase] attachment in_phase changed -> {}", attachmentInVoid);
             lastAttachmentInVoid = attachmentInVoid;
         }
         if (inVoid != lastResolvedInVoid) {                         //如果虚空状态发生改变 发送一条各组件状态的日志

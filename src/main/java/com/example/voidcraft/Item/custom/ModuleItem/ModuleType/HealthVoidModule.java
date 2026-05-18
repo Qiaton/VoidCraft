@@ -23,7 +23,7 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addL
 public class HealthVoidModule extends ModuleItem {
     private static final long ENERGY_COST = 25L;
     private static final long COOLDOWN_TICKS = 600L;
-    private static final Integer VOID_TICK = 50;
+    private static final Integer PHASE_TICK = 50;
     private static final float DEFAULT_MOVE_SPEED_OFFSET = 1F;
     public static final float MOVE_SPEED = 0.15F;
     private static final float HEALTH_DEFAULT = 0.08F;
@@ -47,7 +47,7 @@ public class HealthVoidModule extends ModuleItem {
             long offEnergy = stats.channelEnergyCost();
             if(ModuleSkillClock.hasChannel(player,slot)){
                 ModuleSkillClock.stopChannel(player,slot);
-                VoidClock.stopVoid(player);
+                VoidClock.stopPhase(player);
             }
             else{
                 if(!ModuleSkillClock.tryUseEnergy(player,offEnergy)){
@@ -61,8 +61,8 @@ public class HealthVoidModule extends ModuleItem {
         if(mode == BURST){
             boolean cooldownReady = ModuleSkillClock.canUseNow(player,slot);
             if(!cooldownReady){
-                if(VoidClock.getInVoid(player)){
-                        VoidClock.stopVoid(player);
+                if(VoidClock.getInPhase(player)){
+                        VoidClock.stopPhase(player);
                         ModuleSkillClock.stopChannel(player,slot);
                         Clock.removeClock(UUID);
                         return;
@@ -76,7 +76,7 @@ public class HealthVoidModule extends ModuleItem {
             ModSound.playEnterVoid(level, player);
             player.heal(stats.burstHealAmount());
             ModuleSkillClock.startChannel(player,slot,0);
-            UUID = Clock.addClock((int) (VOID_TICK* stats.activeDuration()),()->{
+            UUID = Clock.addClock((int) (PHASE_TICK* stats.activeDuration()),()->{
                 ModuleSkillClock.stopChannel(player,slot);
                 UUID = null;
             });
@@ -84,7 +84,7 @@ public class HealthVoidModule extends ModuleItem {
             if(cooldownReady){
                 ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
             }
-            VoidClock.setVoidTicks(player, stats.activeTicks());
+            VoidClock.setPhaseTicks(player, stats.activeTicks());
         }
     }
 
@@ -127,7 +127,7 @@ public class HealthVoidModule extends ModuleItem {
         }
 
         public int activeTicks() {
-            return (int)(VOID_TICK * activeDuration);
+            return (int)(PHASE_TICK * activeDuration);
         }
 
         public float voidSpeed() {

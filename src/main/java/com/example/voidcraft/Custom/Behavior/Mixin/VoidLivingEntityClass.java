@@ -16,7 +16,7 @@ public class VoidLivingEntityClass {
     @Inject(method = "isPushable",at = @At("HEAD"),cancellable = true)
     public void noPushable(CallbackInfoReturnable<Boolean> cir){
         LivingEntity entity = (LivingEntity)(Object)this;
-        if(entity.getData(ModAttachments.IN_VOID.get())){   //虚空实体不参与活体推挤
+        if(entity.getData(ModAttachments.IN_PHASE.get())){   //相位实体不参与活体推挤
             cir.setReturnValue(false);
         }
     }
@@ -25,7 +25,7 @@ public class VoidLivingEntityClass {
         LivingEntity entity = (LivingEntity)(Object)this;
 
         // 不是虚空，直接走原版
-        if (!entity.getData(ModAttachments.IN_VOID.get())) {
+        if (!entity.getData(ModAttachments.IN_PHASE.get())) {
             return;
         }
 
@@ -69,7 +69,7 @@ public class VoidLivingEntityClass {
     @Inject(method = "isPickable",at = @At("HEAD"),cancellable = true)
     public void noPickable(CallbackInfoReturnable<Boolean> cir){
         LivingEntity entity = (LivingEntity)(Object)this;
-        if(entity.getData(ModAttachments.IN_VOID.get())){   //虚空实体不响应准星选取
+        if(entity.getData(ModAttachments.IN_PHASE.get())){   //相位实体不响应准星选取
             cir.setReturnValue(false);
         }
     }
@@ -78,7 +78,7 @@ public class VoidLivingEntityClass {
     private void setVoidSpeed(CallbackInfoReturnable<Float> cir) {
         LivingEntity entity = (LivingEntity)(Object)this;
 
-        if (entity.getData(ModAttachments.IN_VOID.get())) {
+        if (entity.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(entity.getData(ModAttachments.VOID_SPEED.get()));
         }
     }

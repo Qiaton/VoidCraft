@@ -24,7 +24,7 @@ import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addL
 public class DashVoidModule extends ModuleItem {
     private static final long ENERGY_COST = 40L;
     private static final long COOLDOWN_TICKS = 300L;
-    private static final Integer VOID_TICK = 25;
+    private static final Integer PHASE_TICK = 25;
     public static final float DASH_SPEED = 3F;
     private static final float BURST_ENERGY_COST = 700;
 
@@ -44,7 +44,7 @@ public class DashVoidModule extends ModuleItem {
             long offEnergy = stats.channelEnergyCost();
             if(ModuleSkillClock.hasChannel(player,slot)){
                 ModuleSkillClock.stopChannel(player,slot);
-                VoidClock.stopVoid(player);
+                VoidClock.stopPhase(player);
                 DashClock.clearDash(player);
                 player.setDeltaMovement(0,0,0);
                 FlowEffect.fov_effect=0;
@@ -64,7 +64,7 @@ public class DashVoidModule extends ModuleItem {
             boolean cooldownReady = ModuleSkillClock.canUseNow(player,slot);
             if(DashClock.getDashPower(player)>0){
                 DashClock.clearDash(player);
-                VoidClock.stopVoid(player);
+                VoidClock.stopPhase(player);
                 return;
             }
             if(!cooldownReady && !ModuleSkillClock.tryUseEnergy(player,stats.burstEnergyCost())){
@@ -77,7 +77,7 @@ public class DashVoidModule extends ModuleItem {
             if(cooldownReady){
                 ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
             }
-            VoidClock.setVoidTicks(player,activeTicks);
+            VoidClock.setPhaseTicks(player,activeTicks);
         }
     }
 
@@ -115,7 +115,7 @@ public class DashVoidModule extends ModuleItem {
         }
 
         public int activeTicks() {
-            return (int)(VOID_TICK * activeDuration);
+            return (int)(PHASE_TICK * activeDuration);
         }
         public long cooldownTicks() {
             return (long)(COOLDOWN_TICKS / cooldownDuration);

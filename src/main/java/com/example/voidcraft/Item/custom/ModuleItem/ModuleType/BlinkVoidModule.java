@@ -110,7 +110,7 @@ public class BlinkVoidModule extends ModuleItem {
             ModNetworking.sendTrailSegment(serverLevel, player.getId(), trailStart, trailEnd, trailScale, trailPreset);
         }
         ModNetworking.sendPhaseTear(player,VoidRingInstance.Preset.DEFAULT);
-        VoidClock.setVoidTicks(player, 2);
+        VoidClock.setPhaseTicks(player, 2);
         player.connection.teleport(
                 feetTarget.x,
                 feetTarget.y,

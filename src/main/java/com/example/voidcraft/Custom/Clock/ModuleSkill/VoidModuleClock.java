@@ -60,7 +60,7 @@ public class VoidModuleClock {
                 }
 
                 player.setData(ModAttachments.VOID_SPEED.get(), stats.voidSpeed());
-                VoidClock.setVoidTicks(player, 2);
+                VoidClock.setPhaseTicks(player, 2);
                 return;
             }
         }

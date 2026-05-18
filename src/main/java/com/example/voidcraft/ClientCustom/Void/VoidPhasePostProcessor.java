@@ -397,7 +397,7 @@ public final class VoidPhasePostProcessor {
             return 0.0F;
         }
 
-        boolean playerInVoid = mc.player.getData(ModAttachments.IN_VOID.get())
+        boolean playerInVoid = mc.player.getData(ModAttachments.IN_PHASE.get())
                 || (mc.player.isUsingItem() && mc.player.getUseItem().getItem() instanceof SpatialSword);
         if (playerInVoid) {
             return 1.0F;

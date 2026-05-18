@@ -14,10 +14,16 @@ public class ModAttachments {       //模组的附件中心
             NeoForgeRegistries.ATTACHMENT_TYPES,//create参数为（类型，id）
             VoidCraft.MODID
     );
-    public static  Supplier<AttachmentType<Boolean>> IN_VOID = VOID_ATTACHMENTS.register(
-            "in_void",//创建一个Supplier类型的布尔类附件 Supplier可以理解为异步执行 先不给你值 等需要的时候再给
+    public static Supplier<AttachmentType<Boolean>> IN_PHASE = VOID_ATTACHMENTS.register(
+            "in_phase",//原来的虚空状态改名成相位状态，保留免伤、特效、不可交互等规则
             ()-> AttachmentType.builder(()->false)
-                    .sync(ByteBufCodecs.BOOL)//这个附件是一个布尔值 把它同步到服务器上 不然的话客户端不知道你进虚空 会有显示bug
+                    .sync(ByteBufCodecs.BOOL)
+                    .build()
+    );
+    public static Supplier<AttachmentType<Boolean>> IN_VOID = VOID_ATTACHMENTS.register(
+            "in_void",//新的虚空状态，用来控制不受方块碰撞；开启时也会带上相位状态
+            ()-> AttachmentType.builder(()->false)
+                    .sync(ByteBufCodecs.BOOL)//同步给客户端，避免本地玩家移动和渲染状态不同步
                     .build()//需要附件的时候创建一个默认值为false的附件 .build完成创建
     );//用刚刚定义的注册起注册一个IN_VOID附件 参数（注册id，注册值）
     public static Supplier<AttachmentType<Float>> VOID_SPEED = VOID_ATTACHMENTS.register(

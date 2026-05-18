@@ -217,7 +217,7 @@ public final class VoidTrailManager {
             }
 
             seenPlayers.add(player.getId());
-            boolean inVoid = player.getData(ModAttachments.IN_VOID.get());
+            boolean inVoid = player.getData(ModAttachments.IN_PHASE.get());
             if (player == localPlayer) {
                 inVoid |= player.isUsingItem() && player.getUseItem().getItem() instanceof SpatialSword;
             }
