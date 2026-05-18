@@ -7,7 +7,6 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
-import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.Network.ModNetworking;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.NonNullList;
@@ -453,7 +452,6 @@ public class TeleportVoidModuleClock {
 
     private static void keepMoveVoid(Entity entity) {
         if (entity instanceof LivingEntity livingEntity) {
-            livingEntity.setData(ModAttachments.IN_VOID.get(), true);
             VoidClock.setVoidTicks(livingEntity, 2);
         }
     }

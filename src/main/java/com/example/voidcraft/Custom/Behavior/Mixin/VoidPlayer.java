@@ -12,14 +12,14 @@ public class VoidPlayer {
     @Inject(method = "canBeHitByProjectile", at = @At("HEAD"), cancellable = true) //虚空内不会被弹射物命中
     private void noArrowHit(CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player)(Object)this;
-        if (player.getData(ModAttachments.IN_VOID.get())) {
+        if (player.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(false);
         }
     }
     @Inject(method = "isPushedByFluid", at = @At("HEAD"), cancellable = true)
     private void noFluid(CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player)(Object)this;
-        if (player.getData(ModAttachments.IN_VOID.get())) {
+        if (player.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(false);
         }
     }
@@ -27,7 +27,7 @@ public class VoidPlayer {
     private void setVoidSpeed(CallbackInfoReturnable<Float> cir) {
         Player player = (Player)(Object)this;
 
-        if (player.getData(ModAttachments.IN_VOID.get())) {
+        if (player.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(player.getData(ModAttachments.VOID_SPEED)); // 虚空内移速
         }
     }

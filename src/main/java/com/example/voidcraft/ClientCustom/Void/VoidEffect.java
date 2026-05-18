@@ -182,6 +182,22 @@ public class VoidEffect {
 
     }
     @SubscribeEvent
+    public static void noInvisible(RegisterRenderStateModifiersEvent event) {
+        event.registerEntityModifier(
+                new TypeToken<LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>>() {},
+                (entity, state) -> {
+                    boolean inVoid = entity.getData(ModAttachments.IN_PHASE.get());
+                    state.setRenderData(IN_VOID_RENDER, inVoid);
+                    if (VoidClock.hasVoidFlash(entity) || inVoid) {               //虚空实体不投普通影子
+                        float alpha = VoidClock.getVoidFlashAlpha(entity);
+                        state.shadowRadius = 0.0F;
+                        state.shadowPieces.clear();
+                        state.setRenderData(VOID_PLAYER_ALPHA, alpha);
+                    }
+                }
+        );
+    }
+    @SubscribeEvent
     public static void addVoidPlayerLayer(EntityRenderersEvent.AddLayers event) {
         for(EntityType<?> entityType : event.getEntityTypes()) {
             EntityRenderer<?> renderer = event.getRenderer(entityType);
@@ -231,8 +247,7 @@ public class VoidEffect {
         float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);//获取相机的帧间隔
         PhaseEmitterClientManager.updateBeforeRender(partialTick);
         boolean firstPerson = mc.options.getCameraType().isFirstPerson();
-        boolean localInVoid = mc.player.getData(ModAttachments.IN_VOID.get());
-        boolean usingSpatialSword = mc.player.isUsingItem() && mc.player.getUseItem().getItem() instanceof SpatialSword;
+        boolean localInVoid = mc.player.getData(ModAttachments.IN_PHASE.get());
         boolean localInPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
         boolean phaseTransitionActive = PhaseWorldTransitionClient.isActive();
         boolean voidInOutEffectActive = VoidInOutEffectClient.isActive();

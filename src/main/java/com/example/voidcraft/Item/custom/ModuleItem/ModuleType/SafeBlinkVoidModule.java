@@ -127,7 +127,7 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
     }
 
     public static void setBlink(ServerPlayer player, Vec3 target) {
-        VoidClock.setVoidTicks(player, 2);
+        VoidClock.setPhaseTicks(player, 2);
         int x = Mth.floor(target.x);
         int y = Mth.floor(target.y);
         int z = Mth.floor(target.z);

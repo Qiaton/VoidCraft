@@ -1,5 +1,6 @@
 package com.example.voidcraft.Custom.Behavior.Mixin;
 
+import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.World.PhasePlayerStateHandler;
 import net.minecraft.world.entity.player.Player;
 import org.objectweb.asm.Opcodes;
@@ -21,8 +22,9 @@ public class PhasePlayerTraversalMixin {
     )
     private void voidcraft$keepPhaseTraversalNoPhysics(CallbackInfo ci) {
         Player player = (Player) (Object) this;
-        if (PhasePlayerStateHandler.canPhaseThrough(player)) {
-            // 原版每 tick 会按旁观者状态重置 noPhysics，这里把相位维度的穿墙状态补回去。
+        if (PhasePlayerStateHandler.canPhaseThrough(player)
+                || player.getData(ModAttachments.IN_VOID.get())) {
+            // 原版每 tick 会按旁观者状态重置 noPhysics，这里把穿方块状态补回去。
             player.noPhysics = true;
             player.setOnGround(false);
             player.resetFallDistance();

@@ -19,7 +19,7 @@ public class VoidEntity {
             return;
         }
 
-        if (livingEntity.getData(ModAttachments.IN_VOID.get())) {
+        if (livingEntity.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(false);
         }
     }
@@ -31,7 +31,7 @@ public class VoidEntity {
             return;
         }
 
-        if (livingEntity.getData(ModAttachments.IN_VOID.get())) {
+        if (livingEntity.getData(ModAttachments.IN_PHASE.get())) {
             ci.cancel();
         }
     }
@@ -41,7 +41,7 @@ public class VoidEntity {
         Entity self = (Entity)(Object)this;
 
         if (self instanceof LivingEntity livingEntity
-                && livingEntity.getData(ModAttachments.IN_VOID.get())) {
+                && livingEntity.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(false);
         }
     }
@@ -51,7 +51,7 @@ public class VoidEntity {
         Entity self = (Entity)(Object)this;
 
         if (self instanceof LivingEntity livingEntity
-                && livingEntity.getData(ModAttachments.IN_VOID.get())) {
+                && livingEntity.getData(ModAttachments.IN_PHASE.get())) {
             cir.setReturnValue(false);
         }
     }
