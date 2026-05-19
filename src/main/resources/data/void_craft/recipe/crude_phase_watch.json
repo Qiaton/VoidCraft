@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": "#void_craft:energies",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    " I ",
+    "IEI",
+    " I "
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:crude_phase_watch"
+  }
+}

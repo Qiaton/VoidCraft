@@ -26,6 +26,7 @@ import java.util.UUID;
 public class ModuleSkillClock {
     public static Map<UUID,Map<Integer,Long>> COOLDOWN_TICKS = new HashMap<>();
     public static Map<UUID, Map<Integer, Long>> CHANNEL_ENERGY = new HashMap<>();
+    private static final Map<UUID, Map<Integer, RunCooldown>> RUN_COOLDOWN_TICKS = new HashMap<>();
     private static final Map<UUID,Integer> ACTIONBAR_LOCK_TICKS = new HashMap<>();
     private static final long MAX_ENERGY = 1000L;
     private static final long TICKS_PER_SECOND = 20L;
@@ -158,6 +159,37 @@ public class ModuleSkillClock {
         }
 
     }
+    @SubscribeEvent
+    public static void tickRunCooldown(PlayerTickEvent.Post event) {
+        if (event.getEntity().level().isClientSide()) {
+            return;
+        }
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        Map<Integer, RunCooldown> data = RUN_COOLDOWN_TICKS.get(player.getUUID());
+        if (data == null) {
+            return;
+        }
+
+        data.entrySet().removeIf(entry -> {
+            RunCooldown runCooldown = entry.getValue();
+            runCooldown.tickLeft--;
+            if (runCooldown.tickLeft > 0) {
+                return false;
+            }
+
+            if (runCooldown.cooldownTicks > 0L) {
+                setCooldown(player, entry.getKey(), runCooldown.cooldownTicks);
+            }
+            return true;
+        });
+
+        if (data.isEmpty()) {
+            RUN_COOLDOWN_TICKS.remove(player.getUUID());
+        }
+    }
     public static void setCooldown(ServerPlayer player, int slot, long cooldownTicks) {
         UUID playerId = player.getUUID();
         Map<Integer, Long> playerCooldowns = COOLDOWN_TICKS.computeIfAbsent(playerId, k -> new HashMap<>());
@@ -174,7 +206,46 @@ public class ModuleSkillClock {
 
     public static boolean canUseNow(ServerPlayer player, int slot) {
         long cooldownTicks = getCooldown(player, slot);
-        return cooldownTicks <= 0;
+        return cooldownTicks <= 0 && !hasRunCooldown(player, slot);
+    }
+
+    public static void startRunCooldown(ServerPlayer player, int slot, int runTicks, long cooldownTicks) {
+        if (runTicks <= 0) {
+            if (cooldownTicks > 0L) {
+                setCooldown(player, slot, cooldownTicks);
+            }
+            return;
+        }
+
+        Map<Integer, RunCooldown> playerCooldowns =
+                RUN_COOLDOWN_TICKS.computeIfAbsent(player.getUUID(), k -> new HashMap<>());
+        playerCooldowns.put(slot, new RunCooldown(runTicks, cooldownTicks));
+    }
+
+    public static void stopRunCooldown(ServerPlayer player, int slot) {
+        RunCooldown runCooldown = removeRunCooldown(player, slot);
+        if (runCooldown != null && runCooldown.cooldownTicks > 0L) {
+            setCooldown(player, slot, runCooldown.cooldownTicks);
+        }
+    }
+
+    public static boolean hasRunCooldown(ServerPlayer player, int slot) {
+        Map<Integer, RunCooldown> playerCooldowns = RUN_COOLDOWN_TICKS.get(player.getUUID());
+        return playerCooldowns != null && playerCooldowns.containsKey(slot);
+    }
+
+    private static RunCooldown removeRunCooldown(ServerPlayer player, int slot) {
+        Map<Integer, RunCooldown> playerCooldowns = RUN_COOLDOWN_TICKS.get(player.getUUID());
+        if (playerCooldowns == null) {
+            return null;
+        }
+
+        RunCooldown runCooldown = playerCooldowns.remove(slot);
+        if (playerCooldowns.isEmpty()) {
+            RUN_COOLDOWN_TICKS.remove(player.getUUID());
+        }
+
+        return runCooldown;
     }
 
     public static long getEnergy(ServerPlayer player){
@@ -250,6 +321,7 @@ public class ModuleSkillClock {
             // channel 停止时通知两种炮台模块分别清自己的状态。
             PhaseTurretModule.onChannelStop(player, slot);
             AssistPhaseTurretModule.onChannelStop(player, slot);
+            stopRunCooldown(player, slot);
         }
     }
     public static void stopChannel(ServerPlayer player, int slot) {
@@ -263,6 +335,7 @@ public class ModuleSkillClock {
             // 单槽停止也走同一条清理入口，避免炮台球或锁定目标残留。
             PhaseTurretModule.onChannelStop(player, slot);
             AssistPhaseTurretModule.onChannelStop(player, slot);
+            stopRunCooldown(player, slot);
         }
 
         if (channel.isEmpty()) {
@@ -299,6 +372,7 @@ public class ModuleSkillClock {
         UUID playerId = player.getUUID();
         CHANNEL_ENERGY.remove(playerId);
         COOLDOWN_TICKS.remove(playerId);
+        RUN_COOLDOWN_TICKS.remove(playerId);
         ACTIONBAR_LOCK_TICKS.remove(playerId);
         // 登出时只清服务器运行时状态，避免 UUID 表一直挂到进程结束。
         PhaseTurretModule.clearPlayer(player);
@@ -348,5 +422,15 @@ public class ModuleSkillClock {
         }
 
         return !invalidSlots.isEmpty();
+    }
+
+    private static final class RunCooldown {
+        private int tickLeft;
+        private final long cooldownTicks;
+
+        private RunCooldown(int tickLeft, long cooldownTicks) {
+            this.tickLeft = tickLeft;
+            this.cooldownTicks = cooldownTicks;
+        }
     }
 }

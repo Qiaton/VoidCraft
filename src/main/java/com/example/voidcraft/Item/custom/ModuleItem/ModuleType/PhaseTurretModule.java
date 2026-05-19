@@ -50,8 +50,8 @@ public class PhaseTurretModule extends ModuleItem {
     private static final double AIM_ASSIST_RADIUS = 0.5D;
     private static final int BASE_MODULE_LEVEL = 1;
     private static final int BASE_EMITTER_COUNT = 1;
-    private static final float SHOT_DAMAGE = 1.0F;
-    private static final float SHOT_DAMAGE_PER_LEVEL = 1F;
+    private static final float SHOT_DAMAGE = 2.5F;
+    private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
     private static final int FIRE_INTERVAL_TICKS = 5;
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
@@ -408,9 +408,7 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
-        if (cooldownReady) {
-            ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
-        } else if (!ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
+        if (!cooldownReady && !ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
             return;
         }
 
@@ -418,8 +416,10 @@ public class PhaseTurretModule extends ModuleItem {
         AssistPhaseTurretModule.stopOtherBursts(player, slot);
         // BURST 只临时开启手动炮台姿态，不额外走 channel 每 tick 能量消耗。
         ModuleSkillClock.startChannel(player, slot, 0);
+        int activeTicks = stats.burstActiveTicks();
+        ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.burstCooldownTicks() : 0L);
         FireState state = new FireState();
-        state.burstUntilTick = player.tickCount + stats.burstActiveTicks();
+        state.burstUntilTick = player.tickCount + activeTicks;
         FIRE_STATES
                 .computeIfAbsent(player.getUUID(), uuid -> new HashMap<>())
                 .put(slot, state);
@@ -481,26 +481,23 @@ public class PhaseTurretModule extends ModuleItem {
     }
 
     protected void shootRight(ServerPlayer player, ItemStack moduleStack, FireState state) {
-        int shotCount = getDueShotCount(player, state, getFireTicks(moduleStack));
-        if (shotCount <= 0) {
+        if (!canShootVolley(player, state, getFireTicks(moduleStack))) {
             return;
         }
 
         int emitterCount = getEmitterCount(moduleStack);
-        for (int shotIndex = 0; shotIndex < shotCount; shotIndex++) {
-            // 右键齐射：每个球各打一束，单束伤害降到普通射击的 1/4，并在准星附近散开。
-            for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
-                ShotResult result = shoot(
-                        player,
-                        moduleStack,
-                        emitterIndex,
-                        getVolleyLook(player),
-                        VOLLEY_DAMAGE_MULTIPLIER,
-                        true
-                );
+        // 右键走独立齐射分支：每次只打一轮，不补旧欠账，避免卡顿后把整串齐射一次性补回来。
+        for (int emitterIndex = 0; emitterIndex < emitterCount; emitterIndex++) {
+            ShotResult result = shoot(
+                    player,
+                    moduleStack,
+                    emitterIndex,
+                    getVolleyLook(player),
+                    VOLLEY_DAMAGE_MULTIPLIER,
+                    true
+            );
 
-                sendShotResult(player, emitterIndex, result);
-            }
+            sendShotResult(player, emitterIndex, result);
         }
     }
 
@@ -523,6 +520,20 @@ public class PhaseTurretModule extends ModuleItem {
         }
 
         return shotCount;
+    }
+
+    private static boolean canShootVolley(ServerPlayer player, FireState state, float fireIntervalTicks) {
+        double interval = Math.max(0.05D, fireIntervalTicks);
+        if (state.nextVolleyTick <= 0.0D || state.nextVolleyTick < player.tickCount - 1.0D) {
+            state.nextVolleyTick = player.tickCount;
+        }
+
+        if (player.tickCount + FIRE_TICK_EPSILON < state.nextVolleyTick) {
+            return false;
+        }
+
+        state.nextVolleyTick = player.tickCount + interval;
+        return true;
     }
 
     protected static int nextEmitter(FireState state, int emitterCount) {
@@ -1156,6 +1167,7 @@ public class PhaseTurretModule extends ModuleItem {
         // nextFireTick 保留小数，3.33 tick/发会自然累积成 3/3/4 tick 的节奏。
         private int nextEmitterIndex;
         private double nextFireTick;
+        private double nextVolleyTick;
         private boolean shooting;
         private boolean volleyShooting;
         private int burstUntilTick;

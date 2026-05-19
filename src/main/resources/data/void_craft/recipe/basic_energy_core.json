@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "V": "void_craft:void_ore"
+  },
+  "pattern": [
+    " I ",
+    "IVI",
+    " I "
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:basic_energy_core"
+  }
+}

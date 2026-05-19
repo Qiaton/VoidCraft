@@ -65,6 +65,7 @@ public class DashVoidModule extends ModuleItem {
             if(DashClock.getDashPower(player)>0){
                 DashClock.clearDash(player);
                 VoidClock.stopPhase(player);
+                ModuleSkillClock.stopRunCooldown(player, slot);
                 return;
             }
             if(!cooldownReady && !ModuleSkillClock.tryUseEnergy(player,stats.burstEnergyCost())){
@@ -74,9 +75,7 @@ public class DashVoidModule extends ModuleItem {
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
             int activeTicks = stats.activeTicks();
             DashClock.setDash(player,activeTicks, stats.strength());
-            if(cooldownReady){
-                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
-            }
+            ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.cooldownTicks() : 0L);
             VoidClock.setPhaseTicks(player,activeTicks);
         }
     }

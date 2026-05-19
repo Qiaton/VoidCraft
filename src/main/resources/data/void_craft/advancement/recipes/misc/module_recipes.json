@@ -1,0 +1,29 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "requirements": [
+    [
+      "tick"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "void_craft:phase_turret_module_item",
+      "void_craft:assist_phase_turret_module_item",
+      "void_craft:health_phase_turret_module_item",
+      "void_craft:black_hole_module_item",
+      "void_craft:tear_black_hole_module_item",
+      "void_craft:annihilation_black_hole_module_item",
+      "void_craft:health_void_module_item",
+      "void_craft:dash_void_module_item",
+      "void_craft:blink_void_module_item",
+      "void_craft:safe_blink_void_module_item",
+      "void_craft:teleport_void_module_item",
+      "void_craft:world_module_item"
+    ]
+  }
+}

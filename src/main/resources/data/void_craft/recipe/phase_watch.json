@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "void_craft:attuned_phase_watch",
+    "H": "void_craft:high_purity_void_crystal",
+    "I": "minecraft:iron_ingot",
+    "V": "void_craft:void_energy"
+  },
+  "pattern": [
+    "IVI",
+    "IAI",
+    "IHI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:phase_watch"
+  }
+}

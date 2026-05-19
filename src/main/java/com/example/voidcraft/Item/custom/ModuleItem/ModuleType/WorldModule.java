@@ -32,24 +32,18 @@ public class WorldModule extends ModuleItem {
         if (stats == null || stats.mode() != BURST) {
             return;
         }
-
         if (!ModuleSkillClock.canUseNow(player, slot)) {
-            return;
+            long energyCost = stats.offEnergy();
+            if(!(ModuleSkillClock.tryUseEnergy(player,energyCost))){
+                return;
+            }
         }
-
         if (!GoWorld.canGo(player)) {
             return;
         }
-
-        long energyCost = stats.offEnergy();
-        if(!(ModuleSkillClock.tryUseEnergy(player,energyCost))){
-            return;
-        }
-
         if (!GoWorld.goWorld(player)) {
             return;
         }
-
         ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
     }
 
