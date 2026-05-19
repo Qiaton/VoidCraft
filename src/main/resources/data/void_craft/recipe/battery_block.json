@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "void_craft:basic_energy_core",
+    "V": "void_craft:void_energy"
+  },
+  "pattern": [
+    "BBB",
+    "BVB",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:battery_block"
+  }
+}

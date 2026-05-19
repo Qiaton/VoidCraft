@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "minecraft:diamond",
+    "I": "minecraft:iron_ingot",
+    "L": "void_craft:low_purity_void_crystal"
+  },
+  "pattern": [
+    "DID",
+    "ILI",
+    "DID"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:attuned_phase_watch"
+  }
+}

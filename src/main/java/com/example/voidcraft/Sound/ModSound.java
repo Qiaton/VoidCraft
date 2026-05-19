@@ -22,6 +22,18 @@ public class ModSound {
             "enter_void",
             SoundEvent::createVariableRangeEvent
     );
+    public static final DeferredHolder<SoundEvent, SoundEvent> TELEPORT_PORTAL_ENTER = SOUND_EVENTS.register(
+            "teleport_portal_enter",
+            SoundEvent::createVariableRangeEvent
+    );
+    public static final DeferredHolder<SoundEvent, SoundEvent> TELEPORT_DEPLOY_START = SOUND_EVENTS.register(
+            "teleport_deploy_start",
+            SoundEvent::createVariableRangeEvent
+    );
+    public static final DeferredHolder<SoundEvent, SoundEvent> TELEPORT_DEPLOY_END = SOUND_EVENTS.register(
+            "teleport_deploy_end",
+            SoundEvent::createVariableRangeEvent
+    );
     public static final DeferredHolder<SoundEvent, SoundEvent> OUT_VOID = SOUND_EVENTS.register(
             "out_void",
             SoundEvent::createVariableRangeEvent
@@ -63,6 +75,12 @@ public class ModSound {
     public static final SoundSource VOID_SOUND_SOURCE = SoundSource.PLAYERS;
     public static final float ENTER_VOID_VOLUME = 6.0F;
     public static final float ENTER_VOID_PITCH = 1.0F;
+    public static final float TELEPORT_PORTAL_ENTER_VOLUME = 6.0F;
+    public static final float TELEPORT_PORTAL_ENTER_PITCH = 1.0F;
+    public static final float TELEPORT_DEPLOY_START_VOLUME = 6.0F;
+    public static final float TELEPORT_DEPLOY_START_PITCH = 1.0F;
+    public static final float TELEPORT_DEPLOY_END_VOLUME = 6.0F;
+    public static final float TELEPORT_DEPLOY_END_PITCH = 1.0F;
     public static final float OUT_VOID_VOLUME = 6.0F;
     public static final float OUT_VOID_PITCH = 1.0F;
     public static final float LOOP_VOID_VOLUME = 6.0F;
@@ -90,6 +108,36 @@ public class ModSound {
 
     public static void playEnterVoid(Level level, Player player) {
         playAtPlayer(level, player, ENTER_VOID.get(), ENTER_VOID_VOLUME, ENTER_VOID_PITCH);
+    }
+
+    public static void playTeleportPortalEnter(Level level, Vec3 position) {
+        playAtPos(
+                level,
+                position,
+                TELEPORT_PORTAL_ENTER.get(),
+                TELEPORT_PORTAL_ENTER_VOLUME,
+                TELEPORT_PORTAL_ENTER_PITCH
+        );
+    }
+
+    public static void playTeleportDeployStart(Level level, Player player) {
+        playAtPlayer(
+                level,
+                player,
+                TELEPORT_DEPLOY_START.get(),
+                TELEPORT_DEPLOY_START_VOLUME,
+                TELEPORT_DEPLOY_START_PITCH
+        );
+    }
+
+    public static void playTeleportDeployEnd(Level level, Player player) {
+        playAtPlayer(
+                level,
+                player,
+                TELEPORT_DEPLOY_END.get(),
+                TELEPORT_DEPLOY_END_VOLUME,
+                TELEPORT_DEPLOY_END_PITCH
+        );
     }
 
     public static void playOutVoid(Level level, Player player) {

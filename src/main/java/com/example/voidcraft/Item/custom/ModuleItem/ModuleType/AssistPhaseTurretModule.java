@@ -168,15 +168,17 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 ModuleSkillClock.stopChannel(player, slot);
                 return;
             }
-
-            boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
-            if (cooldownReady) {
-                ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
-            } else if (!ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
+            if (hasBurst(player, slot)) {
+                stopBurst(player, slot);
                 return;
             }
 
-            startBurst(player, moduleStack, slot, stats);
+            boolean cooldownReady = ModuleSkillClock.canUseNow(player, slot);
+            if (!cooldownReady && !ModuleSkillClock.tryUseEnergy(player, stats.burstEnergyCost())) {
+                return;
+            }
+
+            startBurst(player, moduleStack, slot, stats, cooldownReady ? stats.burstCooldownTicks() : 0L);
         }
     }
 
@@ -213,6 +215,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
             boolean burstActive = isBurstOn(player, state);
             if (state != null && state.burstUntilTick > 0 && !burstActive) {
                 // BURST 到期后只清 burst 状态；如果同槽 CHANNEL 还开着，继续保留 FireState。
+                ModuleSkillClock.stopRunCooldown(player, slot);
                 state.burstUntilTick = 0;
                 if (!channelActive) {
                     removeFire(player, slot);
@@ -267,14 +270,28 @@ public class AssistPhaseTurretModule extends ModuleItem {
         RECENT_ATTACK_TARGETS.remove(playerId);
     }
 
-    private void startBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
+    private void startBurst(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats, long cooldownTicks) {
         stopOtherTurrets(player, slot);
         stopOtherBursts(player, slot);
 
         FireState state = getFire(player, slot);
-        state.burstUntilTick = player.tickCount + stats.burstActiveTicks();
+        int activeTicks = stats.burstActiveTicks();
+        ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownTicks);
+        state.burstUntilTick = player.tickCount + activeTicks;
         ModNetworking.sendAssistTurretState(player, true, moduleStack);
         fire(player, moduleStack, slot, stats);
+    }
+
+    private static void stopBurst(ServerPlayer player, int slot) {
+        FireState state = findFire(player, slot);
+        if (state != null) {
+            state.burstUntilTick = 0;
+            removeFire(player, slot);
+        }
+        ModuleSkillClock.stopRunCooldown(player, slot);
+        if (!hasTurret(player, slot)) {
+            ModNetworking.sendAssistTurretState(player, false);
+        }
     }
 
     protected boolean fire(ServerPlayer player, ItemStack moduleStack, int slot, Stats stats) {
@@ -621,6 +638,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 return false;
             }
 
+            ModuleSkillClock.stopRunCooldown(player, slot);
             state.burstUntilTick = 0;
             return !ModuleSkillClock.hasChannel(player, slot);
         });
@@ -716,7 +734,16 @@ public class AssistPhaseTurretModule extends ModuleItem {
     }
 
     private static boolean clearFire(ServerPlayer player) {
-        return FIRE_STATES.remove(player.getUUID()) != null;
+        Map<Integer, FireState> playerStates = FIRE_STATES.remove(player.getUUID());
+        if (playerStates == null) {
+            return false;
+        }
+
+        for (Integer slot : playerStates.keySet()) {
+            ModuleSkillClock.stopRunCooldown(player, slot);
+        }
+
+        return true;
     }
 
     public static Stats getStats(ItemStack moduleStack) {

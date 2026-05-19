@@ -33,6 +33,7 @@ public record PhaseTearPayload(
         float startHalfWidth,
         float peakHalfWidth,
         float endHalfWidth,
+        float ellipseTurn,
         int peakHoldTicks,
         float glowAlpha,
         float glowWidthScale,
@@ -133,6 +134,7 @@ public record PhaseTearPayload(
                 preset.startHalfWidth(),
                 preset.peakHalfWidth(),
                 preset.endHalfWidth(),
+                preset.ellipseTurn(),
                 preset.peakHoldTicks(),
                 preset.glowAlpha(),
                 preset.glowWidthScale(),
@@ -180,6 +182,7 @@ public record PhaseTearPayload(
                 .startHalfWidth(this.startHalfWidth)
                 .peakHalfWidth(this.peakHalfWidth)
                 .endHalfWidth(this.endHalfWidth)
+                .ellipseTurn(this.ellipseTurn)
                 .peakHoldTicks(this.peakHoldTicks)
                 .glowAlpha(this.glowAlpha)
                 .glowWidthScale(this.glowWidthScale)
@@ -248,6 +251,7 @@ public record PhaseTearPayload(
         ByteBufCodecs.FLOAT.encode(buffer, payload.startHalfWidth);
         ByteBufCodecs.FLOAT.encode(buffer, payload.peakHalfWidth);
         ByteBufCodecs.FLOAT.encode(buffer, payload.endHalfWidth);
+        ByteBufCodecs.FLOAT.encode(buffer, payload.ellipseTurn);
         ByteBufCodecs.VAR_INT.encode(buffer, payload.peakHoldTicks);
         ByteBufCodecs.FLOAT.encode(buffer, payload.glowAlpha);
         ByteBufCodecs.FLOAT.encode(buffer, payload.glowWidthScale);
@@ -302,6 +306,7 @@ public record PhaseTearPayload(
         float startHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
         float peakHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
         float endHalfWidth = ByteBufCodecs.FLOAT.decode(buffer);
+        float ellipseTurn = ByteBufCodecs.FLOAT.decode(buffer);
         int peakHoldTicks = ByteBufCodecs.VAR_INT.decode(buffer);
         float glowAlpha = ByteBufCodecs.FLOAT.decode(buffer);
         float glowWidthScale = ByteBufCodecs.FLOAT.decode(buffer);
@@ -355,6 +360,7 @@ public record PhaseTearPayload(
                 startHalfWidth,
                 peakHalfWidth,
                 endHalfWidth,
+                ellipseTurn,
                 peakHoldTicks,
                 glowAlpha,
                 glowWidthScale,

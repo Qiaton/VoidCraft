@@ -9,6 +9,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType;
 import com.example.voidcraft.ModDataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
@@ -23,6 +24,7 @@ import net.neoforged.neoforge.event.LootTableLoadEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public final class ModLootTables {
     private static final Set<ResourceLocation> COMMON_CHESTS = Set.of(
@@ -118,6 +120,39 @@ public final class ModLootTables {
             new WeightedInt(3, 1)
     };
 
+    private static final WeightedItem[] COMMON_WATCHES = {
+            new WeightedItem(ModItem.CRUDE_PHASE_WATCH, 1)
+    };
+
+    private static final WeightedItem[] MID_WATCHES = {
+            new WeightedItem(ModItem.CRUDE_PHASE_WATCH, 100),
+            new WeightedItem(ModItem.ATTUNED_PHASE_WATCH, 50),
+            new WeightedItem(ModItem.PHASE_WATCH, 1)
+    };
+
+    private static final WeightedItem[] HIGH_WATCHES = {
+            new WeightedItem(ModItem.ATTUNED_PHASE_WATCH, 45),
+            new WeightedItem(ModItem.PHASE_WATCH, 40),
+            new WeightedItem(ModItem.RESONANT_PHASE_WATCH, 4),
+            new WeightedItem(ModItem.VOID_ENERGY_PHASE_WATCH, 1)
+    };
+
+    private static final WeightedItem[] COMMON_CORES = {
+            new WeightedItem(ModItem.BASIC_ENERGY_CORE, 1)
+    };
+
+    private static final WeightedItem[] MID_CORES = {
+            new WeightedItem(ModItem.BASIC_ENERGY_CORE, 99),
+            new WeightedItem(ModItem.ADVANCED_ENERGY_CORE, 1)
+    };
+
+    private static final WeightedItem[] HIGH_CORES = {
+            new WeightedItem(ModItem.BASIC_ENERGY_CORE, 250),
+            new WeightedItem(ModItem.ADVANCED_ENERGY_CORE, 120),
+            new WeightedItem(ModItem.ELITE_ENERGY_CORE, 50),
+            new WeightedItem(ModItem.MAX_ENERGY_CORE, 1)
+    };
+
     private static final WeightedModifierType[] STRUCTURE_MODIFIER_TYPES = {
             new WeightedModifierType(ModuleModifierType.COOLDOWN_REDUCTION, 45),
             new WeightedModifierType(ModuleModifierType.SPEED_BOOST, 35),
@@ -142,15 +177,21 @@ public final class ModLootTables {
         LootTable table = event.getTable();
 
         if (COMMON_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_common_phase_watch", 0.20F, COMMON_WATCHES));
+            addPool(table, itemPool("void_craft_common_energy_core", 0.20F, COMMON_CORES));
             addPool(table, modifierPool("void_craft_common_modifier", 0.15F, STRUCTURE_MODIFIER_TYPES, COMMON_MODIFIER_LEVELS));
         }
 
         if (MID_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_mid_phase_watch", 0.25F, MID_WATCHES));
+            addPool(table, itemPool("void_craft_mid_energy_core", 0.25F, MID_CORES));
             addPool(table, midModulePool());
             addPool(table, modifierPool("void_craft_mid_modifier", 0.30F, STRUCTURE_MODIFIER_TYPES, MID_MODIFIER_LEVELS));
         }
 
         if (HIGH_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_high_phase_watch", 0.60F, HIGH_WATCHES));
+            addPool(table, itemPool("void_craft_high_energy_core", 0.35F, HIGH_CORES));
             addPool(table, highModulePool());
             addPool(table, modifierPool("void_craft_high_modifier", 0.50F, STRUCTURE_MODIFIER_TYPES, HIGH_MODIFIER_LEVELS));
             addPool(table, modifierPool("void_craft_high_modifier_bonus", 0.10F, STRUCTURE_MODIFIER_TYPES, HIGH_MODIFIER_LEVELS));
@@ -233,6 +274,19 @@ public final class ModLootTables {
             for (WeightedInt level : modifierLevels) {
                 pool.add(modifierEntry(modifierType.type(), level.value(), modifierType.weight() * level.weight()));
             }
+        }
+
+        return pool.build();
+    }
+
+    private static LootPool itemPool(String name, float chance, WeightedItem[] items) {
+        LootPool.Builder pool = LootPool.lootPool()
+                .name(name)
+                .setRolls(ConstantValue.exactly(1.0F))
+                .when(LootItemRandomChanceCondition.randomChance(chance));
+
+        for (WeightedItem item : items) {
+            pool.add(itemEntry(item.item().get(), item.weight()));
         }
 
         return pool.build();
@@ -345,6 +399,11 @@ public final class ModLootTables {
                 ));
     }
 
+    private static LootItem.Builder<?> itemEntry(Item item, int weight) {
+        return LootItem.lootTableItem(item)
+                .setWeight(weight);
+    }
+
     private static LootItem.Builder<?> moduleEntry(
             ModuleMode mode,
             int level,
@@ -373,6 +432,9 @@ public final class ModLootTables {
     }
 
     private record WeightedModifierType(ModuleModifierType type, int weight) {
+    }
+
+    private record WeightedItem(Supplier<? extends Item> item, int weight) {
     }
 
     private record WeightedModifierSet(List<ModuleModifierData> modifiers, int weight) {

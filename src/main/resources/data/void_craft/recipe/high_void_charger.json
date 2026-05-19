@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "H": "void_craft:high_purity_void_crystal",
+    "I": "minecraft:iron_block",
+    "V": "void_craft:void_energy"
+  },
+  "pattern": [
+    "III",
+    "VHV",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:high_void_charger"
+  }
+}

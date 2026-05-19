@@ -161,6 +161,7 @@ public class VoidRingInstance {
         private final float startHalfWidth;
         private final float peakHalfWidth;
         private final float endHalfWidth;
+        private final float ellipseTurn;
         private final int peakHoldTicks;
         private final float glowAlpha;
         private final float glowWidthScale;
@@ -205,6 +206,7 @@ public class VoidRingInstance {
             this.startHalfWidth = builder.startHalfWidth;
             this.peakHalfWidth = builder.peakHalfWidth;
             this.endHalfWidth = builder.endHalfWidth;
+            this.ellipseTurn = Mth.clamp(builder.ellipseTurn, 0.0F, 1.0F);
             this.peakHoldTicks = Mth.clamp(builder.peakHoldTicks, 0, Math.max(0, builder.durationTicks - 1));
             this.glowAlpha = builder.glowAlpha;
             this.glowWidthScale = builder.glowWidthScale;
@@ -286,6 +288,10 @@ public class VoidRingInstance {
 
         public float endHalfWidth() {
             return this.endHalfWidth;
+        }
+
+        public float ellipseTurn() {
+            return this.ellipseTurn;
         }
 
         public int peakHoldTicks() {
@@ -431,6 +437,7 @@ public class VoidRingInstance {
             private float startHalfWidth = 0.42F; // 起始阶段白光半宽，越小越像先从细线亮起。
             private float peakHalfWidth = 1.85F; // 爆发阶段白光半宽，决定白光瞬间张开的最大宽度。
             private float endHalfWidth = 0.028F; // 收线阶段白光半宽，越小最后那条线越细。
+            private float ellipseTurn = 0.0F; // 椭圆自身在所在平面内转多少圈；0-1 对应 0-360 度。
             private int peakHoldTicks = 1; // 白光到达最大形态后额外停留的时长，单位 tick。
             private float glowAlpha = 0.56F; // 白光外层柔光透明度，数值越高外沿会更亮、更有包裹感。
             private float glowWidthScale = 1.14F; // 非 shader 路径下，白光外圈相对主体的横向放大量。
@@ -478,6 +485,7 @@ public class VoidRingInstance {
                 this.startHalfWidth = preset.startHalfWidth;
                 this.peakHalfWidth = preset.peakHalfWidth;
                 this.endHalfWidth = preset.endHalfWidth;
+                this.ellipseTurn = preset.ellipseTurn;
                 this.peakHoldTicks = preset.peakHoldTicks;
                 this.glowAlpha = preset.glowAlpha;
                 this.glowWidthScale = preset.glowWidthScale;
@@ -571,6 +579,11 @@ public class VoidRingInstance {
 
             public Builder endHalfWidth(float endHalfWidth) {
                 this.endHalfWidth = Math.max(0.001F, endHalfWidth);
+                return this;
+            }
+
+            public Builder ellipseTurn(float ellipseTurn) {
+                this.ellipseTurn = Mth.clamp(ellipseTurn, 0.0F, 1.0F);
                 return this;
             }
 

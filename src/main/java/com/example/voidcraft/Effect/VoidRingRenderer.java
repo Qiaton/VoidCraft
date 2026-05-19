@@ -377,6 +377,15 @@ public final class VoidRingRenderer {
         Vec3 forward = facingData.forward();
         Vec3 horizontal = facingData.horizontal();
         Vec3 vertical = facingData.vertical();
+        float ellipseAngle = ellipseAngle(ring);
+        if (Math.abs(ellipseAngle) > 0.0001F) {
+            float cos = Mth.cos(ellipseAngle);
+            float sin = Mth.sin(ellipseAngle);
+            Vec3 baseHorizontal = horizontal;
+            Vec3 baseVertical = vertical;
+            horizontal = baseHorizontal.scale(cos).add(baseVertical.scale(sin));
+            vertical = baseVertical.scale(cos).subtract(baseHorizontal.scale(sin));
+        }
         Vec3 planeCenter = center.add(forward.scale(-0.003D));
 
         Vec3 centerNdc = mc.gameRenderer.projectPointToScreen(planeCenter);
@@ -446,10 +455,12 @@ public final class VoidRingRenderer {
 
     public static void applyCameraFacingRotation(PoseStack poseStack, VoidRingInstance ring, FacingData facingData) {
         applyFacingRotation(poseStack, facingData, ring.preset.followCameraPitch());
+        applyEllipseTurn(poseStack, ring);
     }
 
     public static void applyDistortionFacingRotation(PoseStack poseStack, VoidRingInstance ring, FacingData facingData) {
         applyFacingRotation(poseStack, facingData, ring.preset.distortionFollowCameraPitch());
+        applyEllipseTurn(poseStack, ring);
     }
 
     private static void applyFacingRotation(PoseStack poseStack, FacingData facingData, boolean followPitch) {
@@ -457,6 +468,14 @@ public final class VoidRingRenderer {
         if (followPitch) {
             poseStack.mulPose(com.mojang.math.Axis.XP.rotation(facingData.pitch()));
         }
+    }
+
+    private static void applyEllipseTurn(PoseStack poseStack, VoidRingInstance ring) {
+        float ellipseAngle = ellipseAngle(ring);
+        if (Math.abs(ellipseAngle) <= 0.0001F) {
+            return;
+        }
+        poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(ellipseAngle));
     }
 
     public static FacingData computeFacingData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
@@ -881,6 +900,13 @@ public final class VoidRingRenderer {
 
     private static float scaleFromBase(float base, float maxScale, float blend) {
         return base * Mth.lerp(Mth.clamp(blend, 0.0F, 1.0F), 1.0F, Math.max(1.0F, maxScale));
+    }
+
+    private static float ellipseAngle(VoidRingInstance ring) {
+        if (ring == null) {
+            return 0.0F;
+        }
+        return ring.preset.ellipseTurn() * Mth.TWO_PI;
     }
 
     private static float volumeStackTotalWeight() {

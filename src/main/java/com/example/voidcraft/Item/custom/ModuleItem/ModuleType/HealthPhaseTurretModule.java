@@ -15,9 +15,9 @@ import net.minecraft.world.phys.Vec3;
 public class HealthPhaseTurretModule extends PhaseTurretModule {
     private static final int BASE_MODULE_LEVEL = 1;
     private static final float DAMAGE_SCALE = 0.65F;
-    private static final float SELF_HEAL_PER_LEVEL = 0.10F;
+    private static final float SELF_HEAL_PER_LEVEL = 0.07F;
     private static final float FRIEND_HEAL = 0.20F;
-    private static final float FRIEND_HEAL_PER_LEVEL = 0.12F;
+    private static final float FRIEND_HEAL_PER_LEVEL = 0.05F;
 
     private static final int LEFT_BEAM_CORE = 0xF2A4C9;
     private static final int LEFT_BEAM_GLOW = 0xD9327C;

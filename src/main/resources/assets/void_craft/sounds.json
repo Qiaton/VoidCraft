@@ -7,6 +7,30 @@
       }
     ]
   },
+  "teleport_portal_enter": {
+    "sounds": [
+      {
+        "name": "void_craft:teleport_portal_enter",
+        "stream": false
+      }
+    ]
+  },
+  "teleport_deploy_start": {
+    "sounds": [
+      {
+        "name": "void_craft:teleport_deploy_start",
+        "stream": false
+      }
+    ]
+  },
+  "teleport_deploy_end": {
+    "sounds": [
+      {
+        "name": "void_craft:teleport_deploy_end",
+        "stream": false
+      }
+    ]
+  },
   "out_void": {
     "sounds": [
       {

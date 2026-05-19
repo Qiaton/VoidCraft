@@ -76,15 +76,14 @@ public class HealthVoidModule extends ModuleItem {
             ModSound.playEnterVoid(level, player);
             player.heal(stats.burstHealAmount());
             ModuleSkillClock.startChannel(player,slot,0);
+            int activeTicks = stats.activeTicks();
+            ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.cooldownTicks() : 0L);
             UUID = Clock.addClock((int) (PHASE_TICK* stats.activeDuration()),()->{
                 ModuleSkillClock.stopChannel(player,slot);
                 UUID = null;
             });
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
-            if(cooldownReady){
-                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
-            }
-            VoidClock.setPhaseTicks(player, stats.activeTicks());
+            VoidClock.setPhaseTicks(player, activeTicks);
         }
     }
 

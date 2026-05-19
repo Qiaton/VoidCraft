@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "void_craft:rift_tear"
+    "void_craft:rift_tear",
+    "void_craft:void_hunter"
   ]
 }

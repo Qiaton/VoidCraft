@@ -8,6 +8,7 @@ import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.Sound.ModSound;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
@@ -76,6 +77,7 @@ public class TeleportVoidModuleClock {
         DeployData data = new DeployData(player.getUUID(), level, slot, stats, getViewYaw(player), stats.deployEnergy(), points);
         DEPLOYS.computeIfAbsent(player.getUUID(), uuid -> new HashMap<>()).put(slot, data);
         setDeploySpeed(player, stats.deploySpeed());
+        ModSound.playTeleportDeployStart(level, player);
         sendEnergyTip(player, data, true);
         return true;
     }
@@ -104,6 +106,7 @@ public class TeleportVoidModuleClock {
         }
         addGates(data, getViewYaw(player));
         addTouchCooldown(player);
+        ModSound.playTeleportDeployEnd(level, player);
         return true;
     }
 
@@ -316,6 +319,7 @@ public class TeleportVoidModuleClock {
             return;
         }
 
+        ModSound.playTeleportPortalEnter(gate.level, gate.center);
         playMoveLight(entity);
         MoveData data = new MoveData(entity, gate.level, points, gate.blocksPerSecond / 20.0D);
         if (data.pathLength <= MIN_GATE_DISTANCE) {

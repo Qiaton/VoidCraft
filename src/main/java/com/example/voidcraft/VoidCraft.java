@@ -8,6 +8,7 @@ import com.example.voidcraft.Item.ModItem;
 import com.example.voidcraft.loot.MobEnergyDrops;
 import com.example.voidcraft.loot.ModLootTables;
 import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.Recipe.ModRecipeSerializers;
 import com.example.voidcraft.Sound.ModSound;
 import com.example.voidcraft.World.ChunkMapperChunkTickets;
 import com.example.voidcraft.World.ModWorldGeneration;
@@ -29,6 +30,7 @@ public class VoidCraft {
         ModBlockEntities.register(bus);
         ModCapabilities.register(bus);
         ModItem.register(bus);
+        ModRecipeSerializers.register(bus);
         ModAttachments.register(bus);
         ModSound.register(bus);
         ModNetworking.register(bus);

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "void_craft:basic_energy_core",
+    "D": "minecraft:diamond",
+    "I": "minecraft:iron_ingot",
+    "L": "void_craft:low_purity_void_crystal",
+    "V": "void_craft:void_energy"
+  },
+  "pattern": [
+    " L ",
+    "DBD",
+    "IVI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:advanced_energy_core"
+  }
+}

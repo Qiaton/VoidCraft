@@ -59,6 +59,7 @@ public class VoidModule extends ModuleItem {
             if(!cooldownReady){
                 if(VoidClock.getInPhase(player)){
                     VoidClock.stopPhase(player);
+                    ModuleSkillClock.stopRunCooldown(player, slot);
                     return;
                 }
                 if(!ModuleSkillClock.tryUseEnergy(player,stats.channelEnergyCost()*38)) {
@@ -67,10 +68,9 @@ public class VoidModule extends ModuleItem {
             }
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
             ModSound.playEnterVoid(level, player);
-            if(cooldownReady){
-                ModuleSkillClock.setCooldown(player, slot, stats.cooldownTicks());
-            }
-            VoidClock.setPhaseTicks(player, stats.activeTicks());
+            int activeTicks = stats.activeTicks();
+            ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.cooldownTicks() : 0L);
+            VoidClock.setPhaseTicks(player, activeTicks);
         }
     }
 

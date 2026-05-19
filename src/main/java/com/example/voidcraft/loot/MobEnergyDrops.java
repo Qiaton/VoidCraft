@@ -13,9 +13,14 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 public final class MobEnergyDrops {
-    private static final float CHAOS_CHANCE = 0.008F;
-    private static final float NEUTRAL_CHANCE = 0.02F;
-    private static final float PURE_CHANCE = 0.05F;
+    private static final float CHAOS_CHANCE = 0.05F;
+    private static final float NEUTRAL_CHANCE = 0.10F;
+    private static final float PURE_CHANCE = 0.80F;
+    private static final int PURE_ONE_WEIGHT = 100;
+    private static final int PURE_TWO_WEIGHT = 50;
+    private static final int PURE_THREE_WEIGHT = 5;
+    private static final int PURE_FOUR_WEIGHT = 1;
+    private static final int PURE_TOTAL_WEIGHT = PURE_ONE_WEIGHT + PURE_TWO_WEIGHT + PURE_THREE_WEIGHT + PURE_FOUR_WEIGHT;
 
     private MobEnergyDrops() {
     }
@@ -37,7 +42,7 @@ public final class MobEnergyDrops {
 
         float chance = getChance(entity);
         if (entity.getRandom().nextFloat() < chance) {
-            addDrop(event, entity, item);
+            addDrop(event, entity, item, getCount(entity, item));
         }
     }
 
@@ -69,6 +74,37 @@ public final class MobEnergyDrops {
         return PURE_CHANCE;
     }
 
+    private static int getCount(LivingEntity entity, Item item) {
+        if (item == ModItem.PURE_ENERGY.get() || item == ModItem.NEUTRAL_ENERGY.get()) {
+            return getPureCount(entity);
+        }
+
+        if (item != ModItem.CHAOS_ENERGY.get()) {
+            return 1;
+        }
+
+        return 1;
+    }
+
+    private static int getPureCount(LivingEntity entity) {
+        int roll = entity.getRandom().nextInt(PURE_TOTAL_WEIGHT);
+        if (roll < PURE_FOUR_WEIGHT) {
+            return 4;
+        }
+
+        roll -= PURE_FOUR_WEIGHT;
+        if (roll < PURE_THREE_WEIGHT) {
+            return 3;
+        }
+
+        roll -= PURE_THREE_WEIGHT;
+        if (roll < PURE_TWO_WEIGHT) {
+            return 2;
+        }
+
+        return 1;
+    }
+
     private static boolean isBadMob(LivingEntity entity) {
         return entity instanceof Enemy || entity.getType().getCategory() == MobCategory.MONSTER;
     }
@@ -81,13 +117,13 @@ public final class MobEnergyDrops {
         return !(entity instanceof Player) && entity.getType().getCategory().isFriendly();
     }
 
-    private static void addDrop(LivingDropsEvent event, LivingEntity entity, Item item) {
+    private static void addDrop(LivingDropsEvent event, LivingEntity entity, Item item, int count) {
         event.getDrops().add(new ItemEntity(
                 entity.level(),
                 entity.getX(),
                 entity.getY(),
                 entity.getZ(),
-                new ItemStack(item)
+                new ItemStack(item, count)
         ));
     }
 }
