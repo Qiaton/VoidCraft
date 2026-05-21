@@ -3,12 +3,12 @@ package com.example.voidcraft.Custom.Behavior;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.TriState;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityInvulnerabilityCheckEvent;
@@ -20,7 +20,7 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 @EventBusSubscriber
 public class VoidEvents {
-    public static final Identifier VOID_SPEED_ID = Identifier.fromNamespaceAndPath(VoidCraft.MODID, "void_speed");
+    public static final ResourceLocation VOID_SPEED_ID = ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "void_speed");
     @SubscribeEvent
     //虚空内无法受伤
     public static void noVoidHurt(EntityInvulnerabilityCheckEvent event){//这一大串相当于 造成伤害时

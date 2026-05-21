@@ -12,19 +12,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
-import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -54,7 +52,6 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     private final List<VoidEnergyBinding> inputSources = new ArrayList<>();
     private final List<VoidEnergyBinding> outputTargets = new ArrayList<>();
     private final VoidEnergyFeHandler[] feHandlers = new VoidEnergyFeHandler[Direction.values().length];
-    private final FeJournal feJournal = new FeJournal();
 
     public VoidEnergyConverterBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.VOID_ENERGY_CONVERTER_BLOCK_ENTITY.get(), pos, blockState);
@@ -73,44 +70,52 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", 0L));
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        this.voidEnergy = clampEnergy(tag.getLong("VoidEnergy"));
         this.lastFeTick = -1L;
         this.feInputThisTick = 0;
         this.feOutputThisTick = 0;
 
         this.inputSources.clear();
-        for (ValueInput child : input.childrenListOrEmpty("InputSources")) {
+        ListTag inputList = tag.getList("InputSources", Tag.TAG_COMPOUND);
+        for (int i = 0; i < inputList.size(); i++) {
             if (this.inputSources.size() >= MAX_INPUT_BINDINGS) {
                 break;
             }
-            VoidEnergyBinding.load(child).ifPresent(this.inputSources::add);
+            VoidEnergyBinding.load(inputList.getCompound(i)).ifPresent(this.inputSources::add);
         }
 
         this.outputTargets.clear();
-        for (ValueInput child : input.childrenListOrEmpty("OutputTargets")) {
+        ListTag outputList = tag.getList("OutputTargets", Tag.TAG_COMPOUND);
+        for (int i = 0; i < outputList.size(); i++) {
             if (this.outputTargets.size() >= MAX_OUTPUT_BINDINGS) {
                 break;
             }
-            VoidEnergyBinding.load(child).ifPresent(this.outputTargets::add);
+            VoidEnergyBinding.load(outputList.getCompound(i)).ifPresent(this.outputTargets::add);
         }
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
-        output.putLong("VoidEnergy", this.voidEnergy);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        tag.putLong("VoidEnergy", this.voidEnergy);
 
-        ValueOutput.ValueOutputList inputList = output.childrenList("InputSources");
+        ListTag inputList = new ListTag();
         for (VoidEnergyBinding binding : this.inputSources) {
-            binding.save(inputList.addChild());
+            CompoundTag child = new CompoundTag();
+            binding.save(child);
+            inputList.add(child);
         }
+        tag.put("InputSources", inputList);
 
-        ValueOutput.ValueOutputList outputList = output.childrenList("OutputTargets");
+        ListTag outputList = new ListTag();
         for (VoidEnergyBinding binding : this.outputTargets) {
-            binding.save(outputList.addChild());
+            CompoundTag child = new CompoundTag();
+            binding.save(child);
+            outputList.add(child);
         }
+        tag.put("OutputTargets", outputList);
     }
 
     @Override
@@ -131,7 +136,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         return CACHE_CAPACITY;
     }
 
-    public @Nullable EnergyHandler getEnergyHandler(@Nullable Direction side) {
+    public @Nullable IEnergyStorage getEnergyHandler(@Nullable Direction side) {
         if (side == null || getSideMode(side) == SideMode.NONE) {
             return null;
         }
@@ -158,7 +163,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         };
     }
 
-    private int insertFe(Direction side, int amount, TransactionContext transaction) {
+    private int insertFe(Direction side, int amount, boolean simulate) {
         if (amount <= 0 || getSideMode(side) != SideMode.INPUT) {
             return 0;
         }
@@ -186,13 +191,15 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
             return 0;
         }
 
-        this.feJournal.updateSnapshots(transaction);
-        this.voidEnergy = clampEnergy(this.voidEnergy + addVoidEnergy);
-        this.feInputThisTick += usedFe;
+        if (!simulate) {
+            this.voidEnergy = clampEnergy(this.voidEnergy + addVoidEnergy);
+            this.feInputThisTick += usedFe;
+            onVoidEnergyNetworkChanged();
+        }
         return usedFe;
     }
 
-    private int extractFe(Direction side, int amount, TransactionContext transaction) {
+    private int extractFe(Direction side, int amount, boolean simulate) {
         if (amount <= 0 || getSideMode(side) != SideMode.OUTPUT) {
             return 0;
         }
@@ -214,9 +221,11 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
             return 0;
         }
 
-        this.feJournal.updateSnapshots(transaction);
-        this.voidEnergy = clampEnergy(this.voidEnergy - usedVoidEnergy);
-        this.feOutputThisTick += extractedFe;
+        if (!simulate) {
+            this.voidEnergy = clampEnergy(this.voidEnergy - usedVoidEnergy);
+            this.feOutputThisTick += extractedFe;
+            onVoidEnergyNetworkChanged();
+        }
         return extractedFe;
     }
 
@@ -235,7 +244,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
     @Override
     public BoundVoidPosition getVoidPosition() {
         if (level == null) {
-            return new BoundVoidPosition(Identifier.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
+            return new BoundVoidPosition(ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
         }
         return BoundVoidPosition.of(level, worldPosition);
     }
@@ -322,32 +331,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, value));
     }
 
-    private record EnergySnapshot(long voidEnergy, long lastFeTick, int feInputThisTick, int feOutputThisTick) {
-    }
-
-    private final class FeJournal extends SnapshotJournal<EnergySnapshot> {
-        @Override
-        protected EnergySnapshot createSnapshot() {
-            return new EnergySnapshot(voidEnergy, lastFeTick, feInputThisTick, feOutputThisTick);
-        }
-
-        @Override
-        protected void revertToSnapshot(EnergySnapshot snapshot) {
-            voidEnergy = snapshot.voidEnergy();
-            lastFeTick = snapshot.lastFeTick();
-            feInputThisTick = snapshot.feInputThisTick();
-            feOutputThisTick = snapshot.feOutputThisTick();
-        }
-
-        @Override
-        protected void onRootCommit(EnergySnapshot originalState) {
-            if (originalState.voidEnergy() != voidEnergy) {
-                onVoidEnergyNetworkChanged();
-            }
-        }
-    }
-
-    private static final class VoidEnergyFeHandler implements EnergyHandler {
+    private static final class VoidEnergyFeHandler implements IEnergyStorage {
         private final VoidEnergyConverterBlockEntity converter;
         private final Direction side;
 
@@ -357,29 +341,39 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements VoidE
         }
 
         @Override
-        public long getAmountAsLong() {
-            return this.converter.getFeAmount(this.side);
-        }
-
-        @Override
-        public long getCapacityAsLong() {
-            return this.converter.getFeCapacity(this.side);
-        }
-
-        @Override
-        public int insert(int amount, TransactionContext transaction) {
-            if (amount < 0) {
-                throw new IllegalArgumentException("amount must be non-negative");
+        public int receiveEnergy(int maxReceive, boolean simulate) {
+            if (maxReceive < 0) {
+                throw new IllegalArgumentException("maxReceive must be non-negative");
             }
-            return this.converter.insertFe(this.side, amount, transaction);
+            return this.converter.insertFe(this.side, maxReceive, simulate);
         }
 
         @Override
-        public int extract(int amount, TransactionContext transaction) {
-            if (amount < 0) {
-                throw new IllegalArgumentException("amount must be non-negative");
+        public int extractEnergy(int maxExtract, boolean simulate) {
+            if (maxExtract < 0) {
+                throw new IllegalArgumentException("maxExtract must be non-negative");
             }
-            return this.converter.extractFe(this.side, amount, transaction);
+            return this.converter.extractFe(this.side, maxExtract, simulate);
+        }
+
+        @Override
+        public int getEnergyStored() {
+            return toInt(this.converter.getFeAmount(this.side));
+        }
+
+        @Override
+        public int getMaxEnergyStored() {
+            return toInt(this.converter.getFeCapacity(this.side));
+        }
+
+        @Override
+        public boolean canExtract() {
+            return this.converter.getSideMode(this.side) == SideMode.OUTPUT;
+        }
+
+        @Override
+        public boolean canReceive() {
+            return this.converter.getSideMode(this.side) == SideMode.INPUT;
         }
     }
 }

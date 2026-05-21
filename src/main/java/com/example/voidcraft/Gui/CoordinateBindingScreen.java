@@ -9,7 +9,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
@@ -116,18 +115,18 @@ public class CoordinateBindingScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
-        if (super.mouseClicked(event, isDoubleClick)) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (super.mouseClicked(mouseX, mouseY, button)) {
             return true;
         }
 
-        int entryIndex = entryIndexAt(event.x(), event.y());
+        int entryIndex = entryIndexAt(mouseX, mouseY);
 
         if (entryIndex != -1) {
             this.selectedIndex = entryIndex;
             updateRemoveButton();
 
-            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+            GuiDraw.playClick();
             return true;
         }
 

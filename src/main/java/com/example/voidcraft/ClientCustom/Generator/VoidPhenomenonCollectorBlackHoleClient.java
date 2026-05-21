@@ -145,6 +145,6 @@ public final class VoidPhenomenonCollectorBlackHoleClient {
     }
 
     private static String blackHoleId(ClientLevel level, BlockPos pos) {
-        return BLACK_HOLE_ID_PREFIX + level.dimension().identifier() + ":" + pos.asLong();
+        return BLACK_HOLE_ID_PREFIX + level.dimension().location() + ":" + pos.asLong();
     }
 }

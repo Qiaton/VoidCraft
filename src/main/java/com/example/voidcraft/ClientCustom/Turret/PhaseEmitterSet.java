@@ -91,23 +91,23 @@ public class PhaseEmitterSet {
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
 
-        Vec3 cameraPos = camera.position();
+        Vec3 cameraPos = camera.getPosition();
         Vec3 look = new Vec3(
-                camera.forwardVector().x(),
-                camera.forwardVector().y(),
-                camera.forwardVector().z()
+                camera.getLookVector().x(),
+                camera.getLookVector().y(),
+                camera.getLookVector().z()
         );
 
         Vec3 up = new Vec3(
-                camera.upVector().x(),
-                camera.upVector().y(),
-                camera.upVector().z()
+                camera.getUpVector().x(),
+                camera.getUpVector().y(),
+                camera.getUpVector().z()
         );
 
         Vec3 left = new Vec3(
-                camera.leftVector().x(),
-                camera.leftVector().y(),
-                camera.leftVector().z()
+                camera.getLeftVector().x(),
+                camera.getLeftVector().y(),
+                camera.getLeftVector().z()
         );
 
         Vec3 right = left.scale(-1);

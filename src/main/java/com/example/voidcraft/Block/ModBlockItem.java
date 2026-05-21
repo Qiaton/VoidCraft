@@ -20,7 +20,7 @@ public class ModBlockItem {
     public static final DeferredItem<BatteryBlockItem> BATTERY_BLOCK = BLOCK_ITEMS.registerItem(
             "battery_block",
             props -> new BatteryBlockItem(ModBlock.BATTERY_BLOCK.get(), props),
-            props -> props.useBlockDescriptionPrefix()
+            new BlockItem.Properties()
     );
     public static final DeferredItem<BlockItem> CHUNK_MAPPER_BLOCK = BLOCK_ITEMS.registerSimpleBlockItem(
             "chunk_mapper_block",

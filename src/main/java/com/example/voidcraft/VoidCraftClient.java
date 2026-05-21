@@ -13,7 +13,7 @@ import com.example.voidcraft.Gui.PhaseWorldTransitionScreenRegistration;
 import com.example.voidcraft.Gui.VoidChargerScreen;
 import com.example.voidcraft.Gui.VoidPhenomenonCollectorScreen;
 import com.example.voidcraft.World.projection.PhaseProjectionClient;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -82,11 +82,11 @@ public class VoidCraftClient {
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(
                 VanillaGuiLayers.HOTBAR,
-                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
+                ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
                 EnergyHud::render
         );
         event.registerAboveAll(
-                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_world_transition"),
+                ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_world_transition"),
                 (guiGraphics, deltaTracker) -> PhaseWorldTransitionOverlay.render(guiGraphics)
         );
     }

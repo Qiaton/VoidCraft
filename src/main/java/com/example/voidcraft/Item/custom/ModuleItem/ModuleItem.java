@@ -10,10 +10,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 public class ModuleItem extends Item {
 
@@ -28,8 +26,7 @@ public class ModuleItem extends Item {
     public void appendHoverText(
             ItemStack stack,
             TooltipContext context,
-            TooltipDisplay tooltipDisplay,
-            Consumer<Component> tooltipAdder,
+            List<Component> tooltipAdder,
             TooltipFlag flag
     ) {
         ModuleData data = stack.getOrDefault(
@@ -37,16 +34,16 @@ public class ModuleItem extends Item {
                 new ModuleData(ModuleMode.BURST, 1,List.of())
         );
 
-        tooltipAdder.accept(Component.translatable(
+        tooltipAdder.add(Component.translatable(
                 "tooltip.void_craft.module.mode",
                 data.moduleMode().getDisplayName()
         ));
-        tooltipAdder.accept(Component.translatable(
+        tooltipAdder.add(Component.translatable(
                 "tooltip.void_craft.module.level",
                 data.level()
         ));
         for(ModuleModifierData modifierData : data.modifiers()){
-            tooltipAdder.accept(Component.translatable(
+            tooltipAdder.add(Component.translatable(
                     "tooltip.void_craft.module.modifier_entry",
                     getModifierDisplayName(modifierData),
                     modifierData.level()

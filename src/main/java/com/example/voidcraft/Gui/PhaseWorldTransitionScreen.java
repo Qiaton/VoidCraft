@@ -2,34 +2,25 @@ package com.example.voidcraft.Gui;
 
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionClient;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.LevelLoadingScreen;
-import net.minecraft.client.multiplayer.LevelLoadTracker;
+import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 
-public class PhaseWorldTransitionScreen extends LevelLoadingScreen {
-    private LevelLoadTracker loadTracker;
+import java.util.function.BooleanSupplier;
 
-    public PhaseWorldTransitionScreen(LevelLoadTracker loadTracker, Reason reason) {
-        super(loadTracker, reason);
-        this.loadTracker = loadTracker;
+public class PhaseWorldTransitionScreen extends ReceivingLevelScreen {
+    private final BooleanSupplier levelReady;
+
+    public PhaseWorldTransitionScreen(BooleanSupplier levelReady, Reason reason) {
+        super(levelReady, reason);
+        this.levelReady = levelReady;
         if (PhaseWorldTransitionClient.isIdle()) {
             PhaseWorldTransitionClient.beginLoadingHoldTransition();
         }
-        PhaseWorldTransitionClient.markLoadingScreenState(loadTracker.isLevelReady());
-    }
-
-    @Override
-    public void update(LevelLoadTracker loadTracker, Reason reason) {
-        super.update(loadTracker, reason);
-        this.loadTracker = loadTracker;
-        if (PhaseWorldTransitionClient.isIdle()) {
-            PhaseWorldTransitionClient.beginLoadingHoldTransition();
-        }
-        PhaseWorldTransitionClient.markLoadingScreenState(loadTracker.isLevelReady());
+        PhaseWorldTransitionClient.markLoadingScreenState(levelReady.getAsBoolean());
     }
 
     @Override
     public void tick() {
-        PhaseWorldTransitionClient.markLoadingScreenState(this.loadTracker.isLevelReady());
+        PhaseWorldTransitionClient.markLoadingScreenState(this.levelReady.getAsBoolean());
         super.tick();
     }
 
@@ -39,7 +30,7 @@ public class PhaseWorldTransitionScreen extends LevelLoadingScreen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        PhaseWorldTransitionClient.markLoadingScreenState(this.loadTracker.isLevelReady());
+        PhaseWorldTransitionClient.markLoadingScreenState(this.levelReady.getAsBoolean());
         PhaseWorldTransitionOverlay.render(guiGraphics, true);
     }
 }

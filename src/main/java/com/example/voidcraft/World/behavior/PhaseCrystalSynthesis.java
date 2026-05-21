@@ -15,6 +15,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,7 +31,7 @@ public final class PhaseCrystalSynthesis {
     private static final int CHECK_INTERVAL = 10;
     private static final double SEARCH_RADIUS = 2.5D;
     private static final double START_RADIUS = 1.25D;
-    private static final DustParticleOptions VOID_DUST = new DustParticleOptions(0x24D9FF, 1.15F);
+    private static final DustParticleOptions VOID_DUST = new DustParticleOptions(new Vector3f(0.14F, 0.85F, 1.0F), 1.15F);
     private static final Map<UUID, Work> WORKS = new HashMap<>();
     private static final Map<UUID, UUID> ITEM_WORKS = new HashMap<>();
 

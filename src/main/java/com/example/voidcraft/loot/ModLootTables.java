@@ -7,7 +7,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierData;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType;
 import com.example.voidcraft.ModDataComponents;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -25,14 +25,14 @@ import java.util.List;
 import java.util.Set;
 
 public final class ModLootTables {
-    private static final Set<Identifier> COMMON_CHESTS = Set.of(
+    private static final Set<ResourceLocation> COMMON_CHESTS = Set.of(
             mc("chests/village/village_weaponsmith"),
             mc("chests/village/village_toolsmith"),
             mc("chests/village/village_armorer"),
             mc("chests/ruined_portal")
     );
 
-    private static final Set<Identifier> MID_CHESTS = Set.of(
+    private static final Set<ResourceLocation> MID_CHESTS = Set.of(
             mc("chests/simple_dungeon"),
             mc("chests/abandoned_mineshaft"),
             mc("chests/shipwreck_map"),
@@ -42,13 +42,13 @@ public final class ModLootTables {
             mc("chests/jungle_temple")
     );
 
-    private static final Set<Identifier> HIGH_CHESTS = Set.of(
+    private static final Set<ResourceLocation> HIGH_CHESTS = Set.of(
             mc("chests/ancient_city"),
             mc("chests/end_city_treasure"),
             mc("chests/bastion_treasure")
     );
 
-    private static final Identifier FISHING_TREASURE = mc("gameplay/fishing/treasure");
+    private static final ResourceLocation FISHING_TREASURE = mc("gameplay/fishing/treasure");
 
     private static final WeightedInt[] COMMON_MODIFIER_LEVELS = {
             new WeightedInt(1, 1)
@@ -138,7 +138,7 @@ public final class ModLootTables {
     }
 
     private static void onLootTableLoad(LootTableLoadEvent event) {
-        Identifier name = event.getName();
+        ResourceLocation name = event.getName();
         LootTable table = event.getTable();
 
         if (COMMON_CHESTS.contains(name)) {
@@ -341,12 +341,7 @@ public final class ModLootTables {
                 ))
                 .apply(SetComponentsFunction.setComponent(
                         DataComponents.CUSTOM_MODEL_DATA,
-                        new CustomModelData(
-                                List.of(),
-                                List.of(),
-                                List.of(type.getId()),
-                                List.of()
-                        )
+                        new CustomModelData(type.ordinal() + 1)
                 ));
     }
 
@@ -370,8 +365,8 @@ public final class ModLootTables {
         }
     }
 
-    private static Identifier mc(String path) {
-        return Identifier.fromNamespaceAndPath("minecraft", path);
+    private static ResourceLocation mc(String path) {
+        return ResourceLocation.fromNamespaceAndPath("minecraft", path);
     }
 
     private record WeightedInt(int value, int weight) {

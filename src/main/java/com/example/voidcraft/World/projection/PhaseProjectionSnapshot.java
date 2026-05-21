@@ -2,7 +2,7 @@ package com.example.voidcraft.World.projection;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
@@ -12,7 +12,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import java.util.ArrayList;
 import java.util.List;
 
-public record PhaseProjectionSnapshot(Identifier sourceDimension, BlockPos center, List<Entry> entries) {
+public record PhaseProjectionSnapshot(ResourceLocation sourceDimension, BlockPos center, List<Entry> entries) {
     public static final int CHUNK_RADIUS = 2;
     public static final int Y_RADIUS = 64;
 
@@ -20,13 +20,13 @@ public record PhaseProjectionSnapshot(Identifier sourceDimension, BlockPos cente
         entries = List.copyOf(entries);
     }
 
-    public static PhaseProjectionSnapshot empty(Identifier sourceDimension, BlockPos center) {
+    public static PhaseProjectionSnapshot empty(ResourceLocation sourceDimension, BlockPos center) {
         return new PhaseProjectionSnapshot(sourceDimension, center, List.of());
     }
 
     public static PhaseProjectionSnapshot make(ServerLevel sourceLevel, BlockPos center) {
         if (sourceLevel == null || center == null) {
-            return empty(Identifier.fromNamespaceAndPath("minecraft", "overworld"), BlockPos.ZERO);
+            return empty(ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), BlockPos.ZERO);
         }
 
         int centerChunkX = SectionPos.blockToSectionCoord(center.getX());
@@ -36,12 +36,12 @@ public record PhaseProjectionSnapshot(Identifier sourceDimension, BlockPos cente
 
     public static PhaseProjectionSnapshot makeChunk(ServerLevel sourceLevel, BlockPos center, int chunkX, int chunkZ) {
         if (sourceLevel == null || center == null) {
-            return empty(Identifier.fromNamespaceAndPath("minecraft", "overworld"), BlockPos.ZERO);
+            return empty(ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), BlockPos.ZERO);
         }
 
-        Identifier sourceDimension = sourceLevel.dimension().identifier();
+        ResourceLocation sourceDimension = sourceLevel.dimension().location();
         List<Entry> entries = new ArrayList<>();
-        readChunk(sourceLevel, chunkX, chunkZ, getMinY(sourceLevel.getMinY(), center), getMaxY(sourceLevel.getMaxY(), center), entries);
+        readChunk(sourceLevel, chunkX, chunkZ, getMinY(sourceLevel.getMinBuildHeight(), center), getMaxY(sourceLevel.getMaxBuildHeight(), center), entries);
         return new PhaseProjectionSnapshot(sourceDimension, center.immutable(), entries);
     }
 

@@ -9,7 +9,8 @@ import com.example.voidcraft.World.PhaseDimensions;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.PostChain;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,11 +21,12 @@ import org.slf4j.Logger;
 public class VoidPhaseClient {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Identifier VOID_PHASE_IDLE_EFFECT =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "void_phase");
+    private static final ResourceLocation VOID_PHASE_IDLE_EFFECT =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "shaders/post/void_phase.json");
 
     private static boolean postEffectApplied = false;               //当前相位视觉效果状态
-    private static Identifier activePostEffectId = null;            //当前相位移动状态
+    private static ResourceLocation activePostEffectId = null;            //当前相位移动状态
+    private static PostChain activePostEffect = null;                //当前相位后处理对象
     private static boolean lastResolvedInVoid = false;              //上一次判断虚空状态的结果
     private static boolean lastAttachmentInVoid = false;            //上一次判断附件里虚空状态的结果
     private static InVoidLoopSoundInstance activeLoopSound = null;  //初始化循环播放实例
@@ -78,20 +80,25 @@ public class VoidPhaseClient {
 
         if (shouldApplyPost) {
             VoidPhasePostProcessor.ensureTextureRegistered(mc);
-            Identifier desiredEffectId = VOID_PHASE_IDLE_EFFECT;    //初始化期望相位效果
-            Identifier currentEffectId = mc.gameRenderer.currentPostEffect();
-            if (!desiredEffectId.equals(currentEffectId)) {         //维度切换会清后处理，这里按真实 renderer 状态重新挂载
+            ResourceLocation desiredEffectId = VOID_PHASE_IDLE_EFFECT;    //初始化期望相位效果
+            PostChain currentEffect = mc.gameRenderer.currentEffect();
+            if (!postEffectApplied || currentEffect == null || currentEffect != activePostEffect || !desiredEffectId.equals(activePostEffectId)) {         //维度切换会清后处理，这里按真实 renderer 状态重新挂载
                 try {
-                    mc.gameRenderer.setPostEffect(desiredEffectId); //把渲染设置的相位效果设置成期望相位效果
+                    mc.gameRenderer.loadEffect(desiredEffectId); //把渲染设置的相位效果设置成期望相位效果
                     postEffectApplied = true;                       //开启相位效果
                     activePostEffectId = desiredEffectId;           //把当前的相位效果设置成期望相位效果
+                    activePostEffect = mc.gameRenderer.currentEffect();
                     LOGGER.debug("[VoidPhase] post effect enabled: {}", desiredEffectId);
                 } catch (RuntimeException e) {
+                    postEffectApplied = false;
+                    activePostEffectId = null;
+                    activePostEffect = null;
                     LOGGER.error("[VoidPhase] failed to enable post effect {}", desiredEffectId, e);
                 }
             } else {
                 postEffectApplied = true;
                 activePostEffectId = desiredEffectId;
+                activePostEffect = currentEffect;
             }
         } else {
             clearPostEffect(mc);
@@ -125,9 +132,12 @@ public class VoidPhaseClient {
             return;
         }
 
-        mc.gameRenderer.clearPostEffect();
+        if (mc.gameRenderer.currentEffect() == activePostEffect) {
+            mc.gameRenderer.shutdownEffect();
+        }
         postEffectApplied = false;
         activePostEffectId = null;
+        activePostEffect = null;
         LOGGER.debug("[VoidPhase] post effect cleared");
     }
 

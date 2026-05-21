@@ -1,8 +1,11 @@
 package com.example.voidcraft.Gui;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.inventory.Slot;
 
 import java.util.List;
@@ -134,6 +137,10 @@ public final class GuiDraw {
                 && mouseY >= y
                 && mouseX < x + width
                 && mouseY < y + height;
+    }
+
+    public static void playClick() {
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
     }
 
     // 把太长的文本截短，避免小 GUI 里文字顶出面板。

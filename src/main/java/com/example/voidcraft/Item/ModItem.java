@@ -18,8 +18,10 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.WorldModule;
 import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModToolMaterial;
 import com.example.voidcraft.VoidCraft;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.SwordItem;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -29,7 +31,7 @@ public class ModItem {
     public static final DeferredItem<FlowType> FLOW_TYPE = ITEMS.registerItem(
             "flow_type",
             FlowType::new,
-            props->props
+            new Item.Properties()
                     .stacksTo(1)//最大堆叠
                     .durability(100)//耐久值
                     .rarity(Rarity.EPIC)//品质（游戏内物品的颜色）
@@ -38,89 +40,90 @@ public class ModItem {
     public static final DeferredItem<Item> SPATIAL_SWORD = ITEMS.registerItem(
             "spatial_sword",
             SpatialSword::new,
-            props-> props
+            new Item.Properties()
             .stacksTo(1)
             .durability(100)
-            .sword(ModToolMaterial.BLACK_BLOCK,5,-2.4F)//这是一把剑（材质，攻击加成，攻击速度 空手=4 所以这里-2.4F就是1.6）
+            .attributes(SwordItem.createAttributes(ModToolMaterial.BLACK_BLOCK,5,-2.4F))//这是一把剑（材质，攻击加成，攻击速度 空手=4 所以这里-2.4F就是1.6）
+            .component(DataComponents.TOOL, SwordItem.createToolProperties())
     );
     public static final DeferredItem<Item> CRUDE_PHASE_WATCH = ITEMS.registerItem(
             "crude_phase_watch",
             props -> new TieredPhaseWatch(props, PhaseWatchTier.CRUDE),
-            props-> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(100)
     );
     public static final DeferredItem<Item> ATTUNED_PHASE_WATCH = ITEMS.registerItem(
             "attuned_phase_watch",
             props -> new TieredPhaseWatch(props, PhaseWatchTier.ATTUNED),
-            props-> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(100)
     );
     public static final DeferredItem<Item> PHASE_WATCH = ITEMS.registerItem(
             "phase_watch",
             props -> new TieredPhaseWatch(props, PhaseWatchTier.STABILIZED),
-            props-> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(100)
     );
     public static final DeferredItem<Item> RESONANT_PHASE_WATCH = ITEMS.registerItem(
             "resonant_phase_watch",
             props -> new TieredPhaseWatch(props, PhaseWatchTier.RESONANT),
-            props-> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(100)
     );
     public static final DeferredItem<Item> VOID_ENERGY_PHASE_WATCH = ITEMS.registerItem(
             "void_energy_phase_watch",
             props -> new TieredPhaseWatch(props, PhaseWatchTier.VOID_ENERGY),
-            props-> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(100)
     );
     public static final DeferredItem<EnergyCoreItem> BASIC_ENERGY_CORE = ITEMS.registerItem(
             "basic_energy_core",
             props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.BASIC),
-            props -> props.stacksTo(1)
+            new Item.Properties().stacksTo(1)
     );
     public static final DeferredItem<EnergyCoreItem> ADVANCED_ENERGY_CORE = ITEMS.registerItem(
             "advanced_energy_core",
             props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.PLUS),
-            props -> props.stacksTo(1)
+            new Item.Properties().stacksTo(1)
     );
     public static final DeferredItem<EnergyCoreItem> ELITE_ENERGY_CORE = ITEMS.registerItem(
             "elite_energy_core",
             props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.PRO),
-            props -> props.stacksTo(1)
+            new Item.Properties().stacksTo(1)
     );
     public static final DeferredItem<EnergyCoreItem> MAX_ENERGY_CORE = ITEMS.registerItem(
             "max_energy_core",
             props -> new EnergyCoreItem(props, EnergyCoreItem.CoreTier.MAX),
-            props -> props.stacksTo(1)
+            new Item.Properties().stacksTo(1)
     );
     public static final DeferredItem<Item> ENERGY_CORE_RESIDUE = ITEMS.registerItem(
             "energy_core_residue",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<VoidCrystalItem> LOW_PURITY_VOID_CRYSTAL = ITEMS.registerItem(
             "low_purity_void_crystal",
             props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.LOW_PURITY),
-            props -> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.LOW_PURITY.durabilityMultiplier())
     );
     public static final DeferredItem<VoidCrystalItem> HIGH_PURITY_VOID_CRYSTAL = ITEMS.registerItem(
             "high_purity_void_crystal",
             props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.HIGH_PURITY),
-            props -> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.HIGH_PURITY.durabilityMultiplier())
     );
     public static final DeferredItem<VoidCrystalItem> PURE_VOID_CRYSTAL = ITEMS.registerItem(
             "pure_void_crystal",
             props -> new VoidCrystalItem(props, VoidCrystalItem.CrystalTier.PURE),
-            props -> props
+            new Item.Properties()
                     .stacksTo(1)
                     .durability(VoidCrystalItem.BASE_DURABILITY * VoidCrystalItem.CrystalTier.PURE.durabilityMultiplier())
     );
@@ -128,90 +131,90 @@ public class ModItem {
             "void_crystal_residue",
             // 虚空结晶耗尽后留下的废渣，目前只是普通物品。
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<Item> CHAOS_ENERGY = ITEMS.registerItem(
             "chaos_energy",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<Item> NEUTRAL_ENERGY = ITEMS.registerItem(
             "neutral_energy",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<Item> PURE_ENERGY = ITEMS.registerItem(
             "pure_energy",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<Item> VOID_ENERGY = ITEMS.registerItem(
             "void_energy",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<CoordinateDesignatorItem> COORDINATE_DESIGNATOR = ITEMS.registerItem(
             "coordinate_designator",
             CoordinateDesignatorItem::new,
-            props -> props.stacksTo(1)
+            new Item.Properties().stacksTo(1)
     );
     public static final DeferredItem<Item> VOID_ORE = ITEMS.registerItem(
             "void_ore",
             Item::new,
-            props -> props
+            new Item.Properties()
     );
     public static final DeferredItem<Item> MODULE_ITEM = ITEMS.registerItem(
             "void_module_item",
             VoidModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> MODULE_MODIFIER_ITEM = ITEMS.registerItem(
             "module_modifier_item",
             ModuleModifierItem::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> HEALTH_VOID_MODULE = ITEMS.registerItem(
             "health_void_module_item",
             HealthVoidModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> DASH_VOID_MODULE = ITEMS.registerItem(
             "dash_void_module_item",
             DashVoidModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> BLINK_VOID_MODULE = ITEMS.registerItem(
             "blink_void_module_item",
             BlinkVoidModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> SAFE_BLINK_VOID_MODULE = ITEMS.registerItem(
             "safe_blink_void_module_item",
             SafeBlinkVoidModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> PHASE_TURRET_MODULE = ITEMS.registerItem(
             "phase_turret_module_item",
             PhaseTurretModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> ASSIST_PHASE_TURRET_MODULE = ITEMS.registerItem(
             "assist_phase_turret_module_item",
             AssistPhaseTurretModule::new,
-            props-> props
+            new Item.Properties()
 
     );
     public static final DeferredItem<Item> WORLD_MODULE = ITEMS.registerItem(
             "world_module_item",
             WorldModule::new,
-            props-> props
+            new Item.Properties()
 
     );
 

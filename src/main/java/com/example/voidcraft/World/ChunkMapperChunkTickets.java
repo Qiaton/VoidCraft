@@ -3,7 +3,7 @@ package com.example.voidcraft.World;
 import com.example.voidcraft.Block.entity.ChunkMapperBlockEntity;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.bus.api.IEventBus;
@@ -13,7 +13,7 @@ import net.neoforged.neoforge.common.world.chunk.TicketController;
 public final class ChunkMapperChunkTickets {
     // NeoForge 区块票控制器：区块映射器用它申请和释放强加载。
     public static final TicketController CHUNK_MAPPER = new TicketController(
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "chunk_mapper"),
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "chunk_mapper"),
             ChunkMapperChunkTickets::validateTickets
     );
 

@@ -6,7 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public record VoidBlackHolePayload(
         int ownerEntityId,
@@ -57,7 +57,7 @@ public record VoidBlackHolePayload(
     public static final int NO_ENTITY = -1;
 
     public static final Type<VoidBlackHolePayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "void_black_hole"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "void_black_hole"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, VoidBlackHolePayload> STREAM_CODEC = StreamCodec.of(
             VoidBlackHolePayload::encode,

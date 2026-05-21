@@ -15,31 +15,24 @@ import com.example.voidcraft.Effect.VoidRingRenderer;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
 import com.example.voidcraft.Effect.VoidTrailRenderer;
+import com.example.voidcraft.Item.custom.SpatialSword;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.World.PhaseDimensions;
-import com.google.common.reflect.TypeToken;
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
-import net.minecraft.client.renderer.entity.state.EntityRenderState;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.rendertype.LayeringTransform;
-import net.minecraft.client.renderer.rendertype.OutputTarget;
-import net.minecraft.client.renderer.rendertype.RenderSetup;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.util.context.ContextKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
@@ -51,7 +44,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
-import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.lang.reflect.Method;
@@ -62,46 +55,64 @@ import java.util.List;
 @EventBusSubscriber(modid = VoidCraft.MODID, value = Dist.CLIENT)
 public class VoidEffect {
 
-    public static final ContextKey<Boolean> IN_VOID_RENDER =
-            new ContextKey<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "no_invisible"));
-    public static final ContextKey<Float> VOID_PLAYER_ALPHA =
-            new ContextKey<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID,"void_player_alpha"));
-    private static final Identifier VOID_PLAYER_TEXTURE =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/entity/void_player.png");
-    private static final Identifier VOID_FLAT_WHITE_TEXTURE =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_flat_white.png");
-    private static final Identifier VOID_SOFT_GLOW_TEXTURE =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_soft_glow.png");
+    private static final ResourceLocation VOID_PLAYER_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/entity/void_player.png");
+    private static final ResourceLocation VOID_FLAT_WHITE_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_flat_white.png");
+    private static final ResourceLocation VOID_SOFT_GLOW_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/void_soft_glow.png");
     private static final boolean IRIS_LOADED = ModList.get().isLoaded("iris");
     private static final Method IRIS_GET_INSTANCE_METHOD = findIrisMethod("getInstance");
     private static final Method IRIS_IS_SHADERPACK_IN_USE_METHOD = findIrisMethod("isShaderPackInUse");
+    private static final RenderStateShard.OutputStateShard VOID_MASK_TARGET =
+            new RenderStateShard.OutputStateShard(
+                    "void_mask_target",
+                    VoidPhasePostProcessor::beginMaskWrite,
+                    VoidPhasePostProcessor::endMaskWrite
+            );
     private static final RenderType VOID_WORLD_EFFECT = RenderType.create(
             "void_world_effect",
-            RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
-                    .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                    .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
-                    .sortOnUpload()
-                    .bufferSize(RenderType.SMALL_BUFFER_SIZE)
-                    .createRenderSetup()
+            com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_COLOR,
+            com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,
+            RenderType.SMALL_BUFFER_SIZE,
+            false,
+            true,
+            RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
+                    .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                    .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setOutputState(RenderStateShard.ITEM_ENTITY_TARGET)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .createCompositeState(false)
     );
     private static final RenderType VOID_MASK_EFFECT = RenderType.create(
             "void_mask_effect",
-            RenderSetup.builder(RenderPipelines.DEBUG_QUADS)
-                    .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                    .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
-                    .bufferSize(RenderType.SMALL_BUFFER_SIZE)
-                    .createRenderSetup()
+            com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_COLOR,
+            com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,
+            RenderType.SMALL_BUFFER_SIZE,
+            false,
+            true,
+            RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
+                    .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                    .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                    .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setOutputState(VOID_MASK_TARGET)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .createCompositeState(false)
     );
     private static final RenderType VOID_TRAIL_WORLD_EFFECT_COMPAT =
-            RenderTypes.eyes(VOID_FLAT_WHITE_TEXTURE);
+            RenderType.eyes(VOID_FLAT_WHITE_TEXTURE);
     private static final RenderType VOID_TRAIL_GLOW_EFFECT_COMPAT =
-            RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
+            RenderType.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
     private static final RenderType VOID_RING_WORLD_EFFECT_COMPAT =
-            RenderTypes.eyes(VOID_SOFT_GLOW_TEXTURE);
+            RenderType.eyes(VOID_SOFT_GLOW_TEXTURE);
     private static final RenderType VOID_RING_BLOOM_EFFECT_COMPAT =
-            RenderTypes.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
+            RenderType.energySwirl(VOID_SOFT_GLOW_TEXTURE, 0.0F, 0.0F);
     private static final RenderType PHASE_EMITTER_ORB_EFFECT_COMPAT =
-            RenderTypes.eyes(VOID_FLAT_WHITE_TEXTURE);
+            RenderType.eyes(VOID_FLAT_WHITE_TEXTURE);
 
     public static boolean isShaderCompatMode() {
         if (!IRIS_LOADED || IRIS_GET_INSTANCE_METHOD == null || IRIS_IS_SHADERPACK_IN_USE_METHOD == null) {
@@ -128,68 +139,57 @@ public class VoidEffect {
             return null;
         }
     }
-    public static class VoidLivingEffect<S extends LivingEntityRenderState, M extends EntityModel<? super S>>
-            extends RenderLayer<S, M> {
-        public VoidLivingEffect(RenderLayerParent<S, M> parent) {
+    public static class VoidLivingEffect<T extends LivingEntity, M extends EntityModel<T>>
+            extends RenderLayer<T, M> {
+        public VoidLivingEffect(RenderLayerParent<T, M> parent) {
             super(parent);          //沿用当前实体自己的模型，只在外面叠一层虚空材质
         }
         @Override
-        public void submit(PoseStack poseStack,
-                           SubmitNodeCollector collector,   //获取实体渲染
-                           int packedLight,         //获取实体光照信息
-                           S state,                  //获取实体当前状态
-                           float yRot,              //y轴旋转信息
-                           float xRot) {            //x轴旋转信息
-            Float alpha = state.getRenderData(VOID_PLAYER_ALPHA);
-            if (alpha == null || alpha < 0.01F) {
+        public void render(
+                PoseStack poseStack,
+                MultiBufferSource bufferSource,
+                int packedLight,
+                T livingEntity,
+                float limbSwing,
+                float limbSwingAmount,
+                float partialTick,
+                float ageInTicks,
+                float netHeadYaw,
+                float headPitch
+        ) {
+            boolean inVoid = livingEntity.getData(ModAttachments.IN_VOID.get());
+            if (!VoidClock.hasVoidFlash(livingEntity) && !inVoid) {
+                return;
+            }
+            float alpha = VoidClock.getVoidFlashAlpha(livingEntity);
+            if (alpha < 0.01F) {
                 return;
             }
             int a = Mth.clamp((int)(alpha*255), 0, 255);        //虚空闪光效果实现
             int tintColor = (a<<24)|0xFFFFFF;
-            collector.order(EntityRenderState.NO_OUTLINE)
-                    .submitModel(
-                            this.getParentModel(),
-                            state,
-                            poseStack,
-                            RenderTypes.entityTranslucent(VOID_PLAYER_TEXTURE),
-                            packedLight,
-                            LivingEntityRenderer.getOverlayCoords(state, 0.0F),
-                            tintColor,
-                            null,
-                            state.outlineColor,
-                            null
-                    );
+            VertexConsumer buffer = bufferSource.getBuffer(RenderType.entityTranslucent(VOID_PLAYER_TEXTURE));
+            this.getParentModel().renderToBuffer(
+                    poseStack,
+                    buffer,
+                    packedLight,
+                    LivingEntityRenderer.getOverlayCoords(livingEntity, 0.0F),
+                    tintColor
+            );
         }
 
 
     }
     @SubscribeEvent
-    public static void noInvisible(RegisterRenderStateModifiersEvent event) {
-        event.registerEntityModifier(
-                new TypeToken<LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>>() {},
-                (entity, state) -> {
-                    boolean inVoid = entity.getData(ModAttachments.IN_VOID.get());
-                    state.setRenderData(IN_VOID_RENDER, inVoid);
-                    if (VoidClock.hasVoidFlash(entity) || inVoid) {               //虚空实体不投普通影子
-                        float alpha = VoidClock.getVoidFlashAlpha(entity);
-                        state.shadowRadius = 0.0F;
-                        state.shadowPieces.clear();
-                        state.setRenderData(VOID_PLAYER_ALPHA, alpha);
-                    }
-                }
-        );
-    }
-    @SubscribeEvent
     public static void addVoidPlayerLayer(EntityRenderersEvent.AddLayers event) {
         for(EntityType<?> entityType : event.getEntityTypes()) {
-            EntityRenderer<?, ?> renderer = event.getRenderer(entityType);
-            if (renderer instanceof LivingEntityRenderer<?, ?, ?> livingRenderer) {
+            EntityRenderer<?> renderer = event.getRenderer(entityType);
+            if (renderer instanceof LivingEntityRenderer<?, ?> livingRenderer) {
                 addVoidLivingLayer(livingRenderer);
             }
         }
 
         for(var type : event.getSkins()) {
-            LivingEntityRenderer<?, ?, ?> playerRenderer = event.getPlayerRenderer(type);    //玩家模型单独注册在皮肤表里
+            LivingEntityRenderer<?, ?> playerRenderer = (LivingEntityRenderer<?, ?>) event.getSkin(type);    //玩家模型单独注册在皮肤表里
             if (playerRenderer != null) {
                 addVoidLivingLayer(playerRenderer);
             }
@@ -214,18 +214,22 @@ public class VoidEffect {
           PhaseWorldTransitionClient.clientTick();
       }
     @SubscribeEvent
-    public static void renderVoidEffects(RenderLevelStageEvent.AfterParticles event) {
+    public static void renderVoidEffects(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
             VoidPhasePostProcessor.resetFrame();
             return;
         }
         PoseStack poseStack = event.getPoseStack();   //拿一个姿态栈（前这一帧渲染时，专门用来记录“位置、旋转、缩放”的一叠变换）
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().position(); //获取相机坐标
-        float partialTick = mc.gameRenderer.getMainCamera().getPartialTickTime();//获取相机的帧间隔
+        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition(); //获取相机坐标
+        float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);//获取相机的帧间隔
         PhaseEmitterClientManager.updateBeforeRender(partialTick);
         boolean firstPerson = mc.options.getCameraType().isFirstPerson();
         boolean localInVoid = mc.player.getData(ModAttachments.IN_VOID.get());
+        boolean usingSpatialSword = mc.player.isUsingItem() && mc.player.getUseItem().getItem() instanceof SpatialSword;
         boolean localInPhaseDimension = PhaseDimensions.isPhaseMirror(mc.level);
         boolean phaseTransitionActive = PhaseWorldTransitionClient.isActive();
         boolean shaderPackActive = isShaderCompatMode();
@@ -235,6 +239,7 @@ public class VoidEffect {
           var blackHoles = VoidBlackHoleManager.getBlackHoles();
           boolean hasVisibleEmitters = PhaseEmitterClientManager.hasVisibleEmitters();
           if (!localInVoid
+                  && !usingSpatialSword
                   && !localInPhaseDimension
                   && !phaseTransitionActive
                   && rings.isEmpty() && trails.isEmpty() && beams.isEmpty() && blackHoles.isEmpty()
@@ -244,6 +249,7 @@ public class VoidEffect {
           }
 
         VoidPhasePostProcessor.beginFrame(mc, partialTick);
+        bindStageTarget(mc, event);
         List<PreparedRingRender> preparedRings = prepareVisibleRings(mc, rings, cameraPos, partialTick, firstPerson);
         List<PreparedBlackHoleRender> preparedBlackHoles = prepareVisibleBlackHoles(mc, blackHoles, cameraPos, partialTick, firstPerson);
 
@@ -266,8 +272,29 @@ public class VoidEffect {
               PhaseEmitterClientManager.renderEmitters(buffers, VOID_WORLD_EFFECT, poseStack, cameraPos, partialTick, light, false);
           }
 
-        writeWorldEffects(mc, buffers, preparedRings, preparedBlackHoles, poseStack, partialTick, shaderPackActive);
+        writeWorldEffects(
+                mc,
+                buffers,
+                preparedRings,
+                preparedBlackHoles,
+                poseStack,
+                partialTick,
+                shaderPackActive,
+                event.getModelViewMatrix(),
+                event.getProjectionMatrix()
+        );
         VoidPhasePostProcessor.finishFrame();
+    }
+
+    private static void bindStageTarget(Minecraft mc, RenderLevelStageEvent event) {
+        if (Minecraft.useShaderTransparency()) {
+            RenderTarget particlesTarget = event.getLevelRenderer().getParticlesTarget();
+            if (particlesTarget != null) {
+                particlesTarget.bindWrite(false);
+                return;
+            }
+        }
+        mc.getMainRenderTarget().bindWrite(false);
     }
 
     private static void renderTrailPass(
@@ -411,7 +438,9 @@ public class VoidEffect {
             List<PreparedBlackHoleRender> blackHoles,
             PoseStack poseStack,
             float partialTick,
-            boolean shaderPackActive
+            boolean shaderPackActive,
+            Matrix4f modelViewMatrix,
+            Matrix4f projectionMatrix
     ) {
         if (rings.isEmpty() && blackHoles.isEmpty()) {
             return;
@@ -419,7 +448,6 @@ public class VoidEffect {
 
         VertexConsumer maskBuffer = null;
         if (!shaderPackActive) {
-            VoidPhasePostProcessor.beginMaskWrite();
             maskBuffer = buffers.getBuffer(VOID_MASK_EFFECT);
         }
 
@@ -439,16 +467,15 @@ public class VoidEffect {
                     prepared.renderZ()
             );
             VoidRingRenderer.applyDistortionFacingRotation(poseStack, prepared.ring(), prepared.distortionFacingData());
-            VoidRingRenderer.ScreenMaskData screenMaskData = null;
-            if (shaderPackActive || prepared.ring().preset.occludedByBlocks()) {
-                screenMaskData = VoidRingRenderer.computeScreenMaskData(
-                        mc,
-                        prepared.ring(),
-                        prepared.center(),
-                        partialTick,
-                        prepared.distortionFacingData()
-                );
-            }
+            VoidRingRenderer.ScreenMaskData screenMaskData = VoidRingRenderer.computeScreenMaskData(
+                    mc,
+                    prepared.ring(),
+                    prepared.center(),
+                    partialTick,
+                    prepared.distortionFacingData(),
+                    modelViewMatrix,
+                    projectionMatrix
+            );
             if (shaderPackActive) {
                 if (screenMaskData != null) {
                     VoidPhasePostProcessor.writeEffectRow(
@@ -465,12 +492,20 @@ public class VoidEffect {
                     VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
                 }
             } else {
-                VoidPhasePostProcessor.writeEffectRow(
-                        effectIndex,
-                        prepared.ring(),
-                        partialTick,
-                        screenMaskData == null ? -1.0F : screenMaskData.centerDepth()
-                );
+                if (screenMaskData != null) {
+                    VoidPhasePostProcessor.writeEffectRow(
+                            effectIndex,
+                            prepared.ring(),
+                            partialTick,
+                            screenMaskData.centerU(),
+                            screenMaskData.centerV(),
+                            screenMaskData.halfWidthU(),
+                            screenMaskData.halfHeightV(),
+                            screenMaskData.centerDepth()
+                    );
+                } else {
+                    VoidPhasePostProcessor.writeEffectRow(effectIndex, prepared.ring(), partialTick);
+                }
                 VoidRingRenderer.renderMask(poseStack, maskBuffer, prepared.ring(), partialTick, effectIndex);
             }
             poseStack.popPose();
@@ -493,16 +528,15 @@ public class VoidEffect {
                     prepared.blackHole().config,
                     prepared.distortionFacingData()
             );
-            VoidBlackHoleRenderer.ScreenMaskData screenMaskData = null;
-            if (shaderPackActive || prepared.blackHole().config.occludedByBlocks()) {
-                screenMaskData = VoidBlackHoleRenderer.computeScreenMaskData(
-                        mc,
-                        prepared.blackHole(),
-                        prepared.center(),
-                        partialTick,
-                        prepared.distortionFacingData()
-                );
-            }
+            VoidBlackHoleRenderer.ScreenMaskData screenMaskData = VoidBlackHoleRenderer.computeScreenMaskData(
+                    mc,
+                    prepared.blackHole(),
+                    prepared.center(),
+                    partialTick,
+                    prepared.distortionFacingData(),
+                    modelViewMatrix,
+                    projectionMatrix
+            );
             if (shaderPackActive) {
                 if (screenMaskData != null) {
                     VoidPhasePostProcessor.writeBlackHoleEffectRow(
@@ -519,12 +553,20 @@ public class VoidEffect {
                     VoidPhasePostProcessor.writeBlackHoleEffectRow(effectIndex, prepared.blackHole(), partialTick);
                 }
             } else {
-                VoidPhasePostProcessor.writeBlackHoleEffectRow(
-                        effectIndex,
-                        prepared.blackHole(),
-                        partialTick,
-                        screenMaskData == null ? -1.0F : screenMaskData.centerDepth()
-                );
+                if (screenMaskData != null) {
+                    VoidPhasePostProcessor.writeBlackHoleEffectRow(
+                            effectIndex,
+                            prepared.blackHole(),
+                            partialTick,
+                            screenMaskData.centerU(),
+                            screenMaskData.centerV(),
+                            screenMaskData.halfWidthU(),
+                            screenMaskData.halfHeightV(),
+                            screenMaskData.centerDepth()
+                    );
+                } else {
+                    VoidPhasePostProcessor.writeBlackHoleEffectRow(effectIndex, prepared.blackHole(), partialTick);
+                }
                 VoidBlackHoleRenderer.renderMask(poseStack, maskBuffer, prepared.blackHole(), partialTick, effectIndex);
             }
             poseStack.popPose();
@@ -533,7 +575,6 @@ public class VoidEffect {
 
         if (!shaderPackActive) {
             buffers.endBatch(VOID_MASK_EFFECT);
-            VoidPhasePostProcessor.endMaskWrite();
         }
     }
 
@@ -652,10 +693,11 @@ public class VoidEffect {
     }
 
     @SubscribeEvent
-    public static void noInvisible(RenderLivingEvent.Pre<?, ?, ?> event) {
-        Boolean inVoid = event.getRenderState().getRenderData(IN_VOID_RENDER);
-        Float alpha = event.getRenderState().getRenderData(VOID_PLAYER_ALPHA);//隐身效果实现
-        if (Boolean.TRUE.equals(inVoid) && alpha != null && alpha <= 0.01F) {
+    public static void noInvisible(RenderLivingEvent.Pre<?, ?> event) {
+        LivingEntity entity = event.getEntity();
+        boolean inVoid = entity.getData(ModAttachments.IN_VOID.get());
+        float alpha = VoidClock.getVoidFlashAlpha(entity);//隐身效果实现
+        if (inVoid && alpha <= 0.01F) {
             event.setCanceled(true);
         }
     }

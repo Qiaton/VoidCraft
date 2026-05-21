@@ -6,10 +6,10 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
-import net.minecraft.util.Util;
+import net.minecraft.Util;
 import net.minecraft.world.level.Level;
 
 public final class PhaseWorldTransitionClient {
@@ -42,7 +42,7 @@ public final class PhaseWorldTransitionClient {
         beginLoadingTransition(null, null);
     }
 
-    public static void beginLoadingTransition(Identifier sourceDimensionId, Identifier targetDimensionId) {
+    public static void beginLoadingTransition(ResourceLocation sourceDimensionId, ResourceLocation targetDimensionId) {
         stage = Stage.ENTER;
         resetVisibleClock();
         teleportRequested = false;
@@ -417,7 +417,7 @@ public final class PhaseWorldTransitionClient {
         restoreHeldKeysPending = false;
     }
 
-    private static ResourceKey<Level> toDimensionKey(Identifier dimensionId, ResourceKey<Level> fallback) {
+    private static ResourceKey<Level> toDimensionKey(ResourceLocation dimensionId, ResourceKey<Level> fallback) {
         if (dimensionId == null) {
             return fallback;
         }

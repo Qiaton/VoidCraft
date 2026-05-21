@@ -5,10 +5,9 @@ import com.example.voidcraft.VoidCraft;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 
 public final class PhaseWorldTransitionOverlay {
@@ -19,10 +18,10 @@ public final class PhaseWorldTransitionOverlay {
     private static final int PHASE_HOLD_COLOR = 0xFF000000 | PHASE_HOLD_RGB;
     private static final int MASK_TEXTURE_SIZE = 512;
     private static final float MASK_INNER_RATIO = 0.52F;
-    private static final Identifier ENTER_MASK_TEXTURE =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_world_enter_mask.png");
-    private static final Identifier EXIT_MASK_TEXTURE =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_world_exit_mask.png");
+    private static final ResourceLocation ENTER_MASK_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_world_enter_mask.png");
+    private static final ResourceLocation EXIT_MASK_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_world_exit_mask.png");
 
     private static DynamicTexture enterMaskTexture;
     private static DynamicTexture exitMaskTexture;
@@ -97,12 +96,7 @@ public final class PhaseWorldTransitionOverlay {
     }
 
     private static DynamicTexture createMaskTexture(String label, boolean enterMask) {
-        DynamicTexture texture = new DynamicTexture(
-                () -> VoidCraft.MODID + " " + label,
-                MASK_TEXTURE_SIZE,
-                MASK_TEXTURE_SIZE,
-                true
-        );
+        DynamicTexture texture = new DynamicTexture(MASK_TEXTURE_SIZE, MASK_TEXTURE_SIZE, true);
         NativeImage pixels = texture.getPixels();
         if (pixels == null) {
             return texture;
@@ -113,7 +107,7 @@ public final class PhaseWorldTransitionOverlay {
                 float px = ((float) x + 0.5F) / (float) MASK_TEXTURE_SIZE * 2.0F - 1.0F;
                 float py = ((float) y + 0.5F) / (float) MASK_TEXTURE_SIZE * 2.0F - 1.0F;
                 float dist = (float) Math.sqrt(px * px + py * py);
-                pixels.setPixel(x, y, enterMask ? enterMaskPixel(dist) : exitMaskPixel(dist));
+                pixels.setPixelRGBA(x, y, enterMask ? enterMaskPixel(dist) : exitMaskPixel(dist));
             }
         }
 
@@ -159,9 +153,8 @@ public final class PhaseWorldTransitionOverlay {
         fillClamped(guiGraphics, right, top, width, bottom, PHASE_HOLD_COLOR);
     }
 
-    private static void blitMask(GuiGraphics guiGraphics, Identifier texture, EllipseBounds bounds) {
+    private static void blitMask(GuiGraphics guiGraphics, ResourceLocation texture, EllipseBounds bounds) {
         guiGraphics.blit(
-                RenderPipelines.GUI_TEXTURED,
                 texture,
                 bounds.x0(),
                 bounds.y0(),
@@ -169,8 +162,6 @@ public final class PhaseWorldTransitionOverlay {
                 0.0F,
                 bounds.width(),
                 bounds.height(),
-                MASK_TEXTURE_SIZE,
-                MASK_TEXTURE_SIZE,
                 MASK_TEXTURE_SIZE,
                 MASK_TEXTURE_SIZE
         );
@@ -203,7 +194,7 @@ public final class PhaseWorldTransitionOverlay {
     }
 
     private static int lerpRgb(float amount, int fromRgb, int toRgb) {
-        return ARGB.srgbLerp(amount, 0xFF000000 | fromRgb, 0xFF000000 | toRgb) & 0x00FFFFFF;
+        return FastColor.ARGB32.lerp(amount, 0xFF000000 | fromRgb, 0xFF000000 | toRgb) & 0x00FFFFFF;
     }
 
     private record EllipseBounds(int x0, int y0, int x1, int y1) {

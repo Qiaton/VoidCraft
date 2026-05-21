@@ -1,0 +1,39 @@
+{
+  "targets": [
+    "swap"
+  ],
+  "passes": [
+    {
+      "name": "void_craft:void_phase",
+      "intarget": "minecraft:main",
+      "outtarget": "swap",
+      "auxtargets": [
+        {
+          "name": "SceneDepthSampler",
+          "id": "minecraft:main:depth"
+        },
+        {
+          "name": "PhaseTearDataSampler",
+          "id": "void_craft:phase_tear_data",
+          "width": 8,
+          "height": 17,
+          "bilinear": false
+        },
+        {
+          "name": "PhaseTearMaskSampler",
+          "id": "void_craft:phase_tear_mask",
+          "width": 128,
+          "height": 1024,
+          "bilinear": false
+        }
+      ],
+      "use_linear_filter": true
+    },
+    {
+      "name": "void_craft:void_copy",
+      "intarget": "swap",
+      "outtarget": "minecraft:main",
+      "use_linear_filter": true
+    }
+  ]
+}

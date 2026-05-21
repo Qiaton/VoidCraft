@@ -5,7 +5,7 @@ import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 // 解绑面板点击删除时发送：owner 是当前方块，target 是要删掉的另一端。
 public record RemoveCoordinateBindingPayload(
@@ -14,7 +14,7 @@ public record RemoveCoordinateBindingPayload(
         BoundVoidPosition target
 ) implements CustomPacketPayload {
     public static final Type<RemoveCoordinateBindingPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "remove_coordinate_binding"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "remove_coordinate_binding"));
 
     public static final StreamCodec<ByteBuf, RemoveCoordinateBindingPayload> STREAM_CODEC = StreamCodec.of(
             RemoveCoordinateBindingPayload::encode,

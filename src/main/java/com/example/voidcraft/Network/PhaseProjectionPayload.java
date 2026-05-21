@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
 // 服务端把原维度的轻量投影数据发给客户端；这里不传方块实体和 NBT。
 public record PhaseProjectionPayload(PhaseProjectionSnapshot snapshot) implements CustomPacketPayload {
     public static final Type<PhaseProjectionPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_projection"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_projection"));
 
     public static final StreamCodec<ByteBuf, PhaseProjectionPayload> STREAM_CODEC = StreamCodec.of(
             PhaseProjectionPayload::encode,
@@ -24,7 +24,7 @@ public record PhaseProjectionPayload(PhaseProjectionSnapshot snapshot) implement
 
     private static void encode(ByteBuf buffer, PhaseProjectionPayload payload) {
         PhaseProjectionSnapshot snapshot = payload.snapshot();
-        Identifier.STREAM_CODEC.encode(buffer, snapshot.sourceDimension());
+        ResourceLocation.STREAM_CODEC.encode(buffer, snapshot.sourceDimension());
         BlockPos.STREAM_CODEC.encode(buffer, snapshot.center());
         ByteBufCodecs.VAR_INT.encode(buffer, snapshot.entries().size());
         for (PhaseProjectionSnapshot.Entry entry : snapshot.entries()) {
@@ -34,7 +34,7 @@ public record PhaseProjectionPayload(PhaseProjectionSnapshot snapshot) implement
     }
 
     private static PhaseProjectionPayload decode(ByteBuf buffer) {
-        Identifier sourceDimension = Identifier.STREAM_CODEC.decode(buffer);
+        ResourceLocation sourceDimension = ResourceLocation.STREAM_CODEC.decode(buffer);
         BlockPos center = BlockPos.STREAM_CODEC.decode(buffer);
         int size = Math.max(0, ByteBufCodecs.VAR_INT.decode(buffer));
         List<PhaseProjectionSnapshot.Entry> entries = new ArrayList<>(size);

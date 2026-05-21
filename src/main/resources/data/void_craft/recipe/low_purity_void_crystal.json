@@ -2,8 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "E": "#void_craft:energies",
-    "V": "void_craft:void_ore"
+    "E": {
+      "tag": "void_craft:energies"
+    },
+    "V": {
+      "item": "void_craft:void_ore"
+    }
   },
   "pattern": [
     "EEE",
