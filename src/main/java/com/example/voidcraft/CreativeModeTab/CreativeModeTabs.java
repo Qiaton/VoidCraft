@@ -15,7 +15,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BlockItemStateProperties;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -31,7 +30,7 @@ public class CreativeModeTabs {
     public static final DeferredHolder<CreativeModeTab,CreativeModeTab> VOID_CRAFT_TAB = TABS.register(
             "void_craft",()-> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.void_craft.create_tab"))
-                    .icon(()-> new ItemStack(Items.IRON_AXE))
+                    .icon(()-> new ItemStack(ModItem.PURE_VOID_CRYSTAL.get()))
                     .displayItems(((parameters, output) -> {
                         output.accept(ModBlockItem.BLACK_BLOCK.get());
                         output.accept(ModBlockItem.VOID_ORE_BLOCK.get());

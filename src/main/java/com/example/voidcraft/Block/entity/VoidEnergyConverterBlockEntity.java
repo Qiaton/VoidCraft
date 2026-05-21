@@ -28,7 +28,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -120,6 +126,7 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements MenuP
         if (level.isClientSide()) {
             return;
         }
+        converter.moveFeNear();
         if (VoidEnergyTransfer.shouldRunTransfer(level, converter)) {
             VoidEnergyTransfer.pushToOutputTargets(converter);
         }
@@ -307,6 +314,92 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements MenuP
             onVoidEnergyNetworkChanged();
         }
         return extractedFe;
+    }
+
+    private void moveFeNear() {
+        if (level == null || level.isClientSide()) {
+            return;
+        }
+        for (Direction side : Direction.values()) {
+            SideMode mode = getSideMode(side);
+            if (mode == SideMode.INPUT) {
+                pullFeFromSide(side);
+            } else if (mode == SideMode.OUTPUT) {
+                pushFeToSide(side);
+            }
+        }
+    }
+
+    private void pullFeFromSide(Direction side) {
+        if (level == null) {
+            return;
+        }
+        resetFeTick();
+        int tickLeft = Math.max(0, MAX_FE_INPUT_PER_TICK - this.feInputThisTick);
+        if (tickLeft <= 0 || this.voidEnergy >= CACHE_CAPACITY) {
+            return;
+        }
+
+        EnergyHandler energy = level.getCapability(Capabilities.Energy.BLOCK, worldPosition.relative(side), side.getOpposite());
+        if (energy == null) {
+            return;
+        }
+
+        int canUse;
+        try (Transaction transaction = Transaction.openRoot()) {
+            int canTake = Math.min(tickLeft, energy.extract(tickLeft, transaction));
+            canUse = canTake <= 0 ? 0 : insertFe(side, canTake, transaction);
+        }
+        if (canUse <= 0) {
+            return;
+        }
+
+        try (Transaction transaction = Transaction.openRoot()) {
+            int taken = energy.extract(canUse, transaction);
+            if (taken <= 0) {
+                return;
+            }
+            int used = insertFe(side, taken, transaction);
+            if (used == taken) {
+                transaction.commit();
+            }
+        }
+    }
+
+    private void pushFeToSide(Direction side) {
+        if (level == null) {
+            return;
+        }
+        resetFeTick();
+        int tickLeft = Math.max(0, MAX_FE_OUTPUT_PER_TICK - this.feOutputThisTick);
+        if (tickLeft <= 0 || this.voidEnergy <= 0L) {
+            return;
+        }
+
+        EnergyHandler energy = level.getCapability(Capabilities.Energy.BLOCK, worldPosition.relative(side), side.getOpposite());
+        if (energy == null) {
+            return;
+        }
+
+        int canGive;
+        try (Transaction transaction = Transaction.openRoot()) {
+            int extracted = extractFe(side, tickLeft, transaction);
+            canGive = extracted <= 0 ? 0 : energy.insert(extracted, transaction);
+        }
+        if (canGive <= 0) {
+            return;
+        }
+
+        try (Transaction transaction = Transaction.openRoot()) {
+            int accepted = energy.insert(canGive, transaction);
+            if (accepted <= 0) {
+                return;
+            }
+            int extracted = extractFe(side, accepted, transaction);
+            if (extracted == accepted) {
+                transaction.commit();
+            }
+        }
     }
 
     private void resetFeTick() {
