@@ -107,8 +107,9 @@ public class VoidEnergyConverterBlock extends BaseEntityBlock {
 
         EnumProperty<SideMode> property = propertyFor(side);
         SideMode nextMode = state.getValue(property).next();
-        level.setBlock(pos, state.setValue(property, nextMode), Block.UPDATE_CLIENTS);
+        level.setBlock(pos, state.setValue(property, nextMode), Block.UPDATE_ALL);
         level.invalidateCapabilities(pos);
+        level.updateNeighborsAt(pos, this);
         player.displayClientMessage(
                 Component.translatable(
                         "message.void_craft.void_energy_converter.side_changed",

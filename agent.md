@@ -39,6 +39,8 @@
   - `ChunkMapperBlockEntity`：只输入虚空能，按档位消耗能量维持区块强加载。
   - `VoidEnergyConverterBlockEntity`：双向虚空能缓存，并用 NeoForge FE capability 进行 FE/虚空能转换。
   - `VoidEnergyConverterBlockEntity`：虚空能缓存 10000，FE 每 tick 输入/输出上限各 1000；FE 转虚空能倍率 0.3，虚空能转 FE 倍率 2.0；六面模式用潜行右键在 none/input/output 间轮换。
+  - 2026-05-21 已增强虚空能转换方块的 FE 兼容：它不再只被动暴露 `EnergyHandler`，每服务端 tick 会主动处理相邻 FE 方块；`INPUT` 面从相邻对应面抽 FE 转虚空能，`OUTPUT` 面把虚空能转 FE 推给相邻对应面。
+  - 转换方块切换面模式时现在用 `Block.UPDATE_ALL`、`level.invalidateCapabilities(pos)` 和 `updateNeighborsAt(...)`，帮助缓存 capability 的管道/机器重新扫描。
   - `VoidPhenomenonCollectorBlock` 档位：I 产 1/t、缓存 50000、1 槽；II 产 2/t、缓存 70000、3 槽；III 产 3/t、缓存 150000、6 槽；IV/void_attuner 产 5/t、缓存 500000、9 槽。
   - `VoidChargerBlock` 档位：低级 1 槽、缓存 5000、每 tick 修 1；中级 3 槽、缓存 50000、每 tick 修 1；高级 9 槽、缓存 200000、每 tick 修 10；每点修复消耗 20 虚空能。
   - `ChunkMapperBlockEntity` 档位半径 `{0,1,2,3}`，每 tick 耗能 `{1,16,32,128}`，缓存 10000，只允许 1 个输入绑定。
