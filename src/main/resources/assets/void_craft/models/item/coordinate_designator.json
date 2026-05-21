@@ -1,0 +1,26 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "void_craft:item/coordinate_designator_output"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "minecraft:custom_model_data": 1
+      },
+      "model": "void_craft:item/coordinate_designator_output"
+    },
+    {
+      "predicate": {
+        "minecraft:custom_model_data": 2
+      },
+      "model": "void_craft:item/coordinate_designator_input"
+    },
+    {
+      "predicate": {
+        "minecraft:custom_model_data": 3
+      },
+      "model": "void_craft:item/coordinate_designator_unbind"
+    }
+  ]
+}

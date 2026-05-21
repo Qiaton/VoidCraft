@@ -17,7 +17,7 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity; // 实体基类。
 import net.minecraft.world.entity.LivingEntity; // 生物实体基类。
 import net.minecraft.world.entity.projectile.Projectile; // 投射物基类。
-import net.minecraft.world.entity.projectile.arrow.AbstractArrow; // 箭实体基类。
+import net.minecraft.world.entity.projectile.AbstractArrow; // 箭实体基类。
 import net.minecraft.world.item.ItemStack; // 物品堆类型。
 import net.minecraft.world.item.enchantment.Enchantment; // 附魔类型。
 import net.minecraft.world.item.enchantment.EnchantmentHelper; // 复用原版弓类伤害附魔结算。
@@ -541,7 +541,7 @@ public class VoidArcher { // 虚空射手附魔逻辑主类。
             float directDamage = pendingAreaDamage.damageContext().getDamage(target);
             float areaDamage = directDamage * targetEntry.damageMultiplier();
             if (areaDamage > 0.0F) {
-                target.hurtServer(pendingAreaDamage.damageContext().serverLevel(), pendingAreaDamage.damageContext().damageSource(), areaDamage);
+                target.hurt(pendingAreaDamage.damageContext().damageSource(), areaDamage);
             }
         }
         return processedTargets;

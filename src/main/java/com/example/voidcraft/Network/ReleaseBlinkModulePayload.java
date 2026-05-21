@@ -5,11 +5,11 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public record ReleaseBlinkModulePayload(int slot, int ticks, double x, double y, double z) implements CustomPacketPayload {
     public static final Type<ReleaseBlinkModulePayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "release_blink_module"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "release_blink_module"));
 
     public static final StreamCodec<ByteBuf, ReleaseBlinkModulePayload> STREAM_CODEC = StreamCodec.of(
             ReleaseBlinkModulePayload::encode,

@@ -44,7 +44,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -138,7 +137,7 @@ public final class ModNetworking {
     ) {
         PacketDistributor.sendToPlayer(
                 player,
-                new PhaseWorldTransitionPayload(sourceDimension.identifier(), targetDimension.identifier())
+                new PhaseWorldTransitionPayload(sourceDimension.location(), targetDimension.location())
         );
     }
 
@@ -403,7 +402,7 @@ public final class ModNetworking {
         registrar.playToServer(SetChunkMapperTierPayload.TYPE, SetChunkMapperTierPayload.STREAM_CODEC, ModNetworking::onSetMapperTierServer);
     }
     public static void sendToServer(CustomPacketPayload payload) {
-        ClientPacketDistributor.sendToServer(payload);
+        PacketDistributor.sendToServer(payload);
     }
     private static void onReleaseBlinkServer(
             ReleaseBlinkModulePayload payload,
@@ -559,7 +558,7 @@ public final class ModNetworking {
 
     private static BlockEntity getUseBlock(ServerPlayer player, BoundVoidPosition position) {
         // 只允许操作同维度、近距离、已加载的方块，防止客户端远程乱改。
-        if (!position.dimension().equals(player.level().dimension().identifier())) {
+        if (!position.dimension().equals(player.level().dimension().location())) {
             return null;
         }
         if (player.blockPosition().distSqr(position.pos()) > 64.0D) {

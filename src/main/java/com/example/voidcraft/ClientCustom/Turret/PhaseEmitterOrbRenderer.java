@@ -33,14 +33,14 @@ public final class PhaseEmitterOrbRenderer {
 
         Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
         Vec3 right = new Vec3(
-                -camera.leftVector().x(),
-                -camera.leftVector().y(),
-                -camera.leftVector().z()
+                -camera.getLeftVector().x(),
+                -camera.getLeftVector().y(),
+                -camera.getLeftVector().z()
         );
         Vec3 up = new Vec3(
-                camera.upVector().x(),
-                camera.upVector().y(),
-                camera.upVector().z()
+                camera.getUpVector().x(),
+                camera.getUpVector().y(),
+                camera.getUpVector().z()
         );
 
         poseStack.pushPose();

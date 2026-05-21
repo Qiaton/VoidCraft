@@ -14,11 +14,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -32,8 +34,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -110,42 +110,46 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", 0L));
-        this.running = input.getBooleanOr("Running", false);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        this.voidEnergy = clampEnergy(tag.getLong("VoidEnergy"));
+        this.running = tag.getBoolean("Running");
 
         // 先清空槽位再读入，避免旧内容残留。
         for (int i = 0; i < this.items.size(); i++) {
             this.items.set(i, ItemStack.EMPTY);
         }
-        ContainerHelper.loadAllItems(input, this.items);
+        ContainerHelper.loadAllItems(tag, this.items, registries);
 
         this.inputSources.clear();
         this.outputTargets.clear();
-        for (ValueInput child : input.childrenListOrEmpty("OutputTargets")) {
+        ListTag outputList = tag.getList("OutputTargets", Tag.TAG_COMPOUND);
+        for (int i = 0; i < outputList.size(); i++) {
             // 发电机只支持输出绑定，读档时也按上限截断。
             if (this.outputTargets.size() >= MAX_OUTPUT_BINDINGS) {
                 break;
             }
-            VoidEnergyBinding.load(child).ifPresent(this.outputTargets::add);
+            VoidEnergyBinding.load(outputList.getCompound(i)).ifPresent(this.outputTargets::add);
         }
         this.syncedOutputCount = this.outputTargets.size();
         this.syncedMaxOutputBindings = MAX_OUTPUT_BINDINGS;
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
-        output.putLong("VoidEnergy", this.voidEnergy);
-        output.putBoolean("Running", this.running);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        tag.putLong("VoidEnergy", this.voidEnergy);
+        tag.putBoolean("Running", this.running);
         // 结晶槽、内部能量和输出目标都随方块实体保存。
-        ContainerHelper.saveAllItems(output, this.items);
+        ContainerHelper.saveAllItems(tag, this.items, registries);
 
-        ValueOutput.ValueOutputList outputList = output.childrenList("OutputTargets");
+        ListTag outputList = new ListTag();
         for (VoidEnergyBinding binding : this.outputTargets) {
-            binding.save(outputList.addChild());
+            CompoundTag child = new CompoundTag();
+            binding.save(child);
+            outputList.add(child);
         }
+        tag.put("OutputTargets", outputList);
     }
 
     @Override
@@ -321,7 +325,7 @@ public class VoidPhenomenonCollectorBlockEntity extends BlockEntity implements C
     @Override
     public BoundVoidPosition getVoidPosition() {
         if (level == null) {
-            return new BoundVoidPosition(Identifier.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
+            return new BoundVoidPosition(ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
         }
         return BoundVoidPosition.of(level, worldPosition);
     }

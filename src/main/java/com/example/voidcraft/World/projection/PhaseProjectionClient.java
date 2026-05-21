@@ -224,8 +224,8 @@ public final class PhaseProjectionClient {
         int maxX = SectionPos.sectionToBlockCoord(maxChunkX) + 15;
         int minZ = SectionPos.sectionToBlockCoord(minChunkZ);
         int maxZ = SectionPos.sectionToBlockCoord(maxChunkZ) + 15;
-        int minY = PhaseProjectionSnapshot.getMinY(mc.level.getMinY(), current.center());
-        int maxY = PhaseProjectionSnapshot.getMaxY(mc.level.getMaxY(), current.center());
+        int minY = PhaseProjectionSnapshot.getMinY(mc.level.getMinBuildHeight(), current.center());
+        int maxY = PhaseProjectionSnapshot.getMaxY(mc.level.getMaxBuildHeight(), current.center());
         // 投影范围改变时只重建投影高度内的相位区块，让区块网格重新套用隐藏规则。
         mc.levelRenderer.setBlocksDirty(minX, minY, minZ, maxX, maxY, maxZ);
     }

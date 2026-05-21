@@ -2,12 +2,24 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": "void_craft:chaos_energy",
-    "I": "minecraft:iron_block",
-    "L": "minecraft:lapis_block",
-    "N": "void_craft:neutral_energy",
-    "P": "void_craft:pure_energy",
-    "V": "void_craft:void_energy"
+    "C": {
+      "item": "void_craft:chaos_energy"
+    },
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "L": {
+      "item": "minecraft:lapis_block"
+    },
+    "N": {
+      "item": "void_craft:neutral_energy"
+    },
+    "P": {
+      "item": "void_craft:pure_energy"
+    },
+    "V": {
+      "item": "void_craft:void_energy"
+    }
   },
   "pattern": [
     "VLC",

@@ -11,9 +11,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Relative;
+import net.minecraft.world.entity.RelativeMovement;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
@@ -139,22 +138,24 @@ public final class GoWorld {
         }
 
         Vec3 targetPos = PhaseWorldRules.findArrivalPos(targetLevel, player.position());
-        ServerPlayer teleported = player.teleport(new TeleportTransition(
+        Vec3 motion = player.getDeltaMovement();
+        boolean teleported = player.teleportTo(
                 targetLevel,
-                targetPos,
-                player.getDeltaMovement(),
+                targetPos.x,
+                targetPos.y,
+                targetPos.z,
+                Set.<RelativeMovement>of(),
                 player.getYRot(),
-                player.getXRot(),
-                Set.<Relative>of(),
-                TeleportTransition.DO_NOTHING
-        ));
+                player.getXRot()
+        );
 
-        if (teleported == null) {
+        if (!teleported) {
             return;
         }
 
-        ModSound.playEnterVoid(teleported.level(), teleported);
-        ModNetworking.sendPhaseTear(teleported, VoidRingInstance.Preset.DEFAULT);
+        player.setDeltaMovement(motion);
+        ModSound.playEnterVoid(player.level(), player);
+        ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
     }
 
     private static ServerLevel getTargetWorldLevel(ServerPlayer player) {

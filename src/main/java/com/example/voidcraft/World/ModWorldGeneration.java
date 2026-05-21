@@ -2,12 +2,12 @@ package com.example.voidcraft.World;
 
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.RegisterEvent;
 
 public final class ModWorldGeneration {
-    private static final Identifier PHASE_SHALLOWS_ID = Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_shallows");
+    private static final ResourceLocation PHASE_SHALLOWS_ID = ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_shallows");
 
     private ModWorldGeneration() {
     }

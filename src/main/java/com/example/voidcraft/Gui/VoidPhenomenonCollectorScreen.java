@@ -5,7 +5,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -80,9 +79,9 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
-        int localX = (int) event.x() - this.leftPos;
-        int localY = (int) event.y() - this.topPos;
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        int localX = (int) mouseX - this.leftPos;
+        int localY = (int) mouseY - this.topPos;
 
         // 页签是纯客户端切换，不需要发包。
         if (GuiDraw.inRect(localX, localY, TAB_OVERVIEW_X, TAB_Y, TAB_WIDTH, TAB_HEIGHT)) {
@@ -94,14 +93,14 @@ public class VoidPhenomenonCollectorScreen extends AbstractContainerScreen<VoidP
             return true;
         }
 
-        return super.mouseClicked(event, isDoubleClick);
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     private void setSelectedTab(int tab) {
         if (this.selectedTab != tab) {
             this.selectedTab = tab;
             this.menu.setOverviewPage(isOverviewPage());
-            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+            GuiDraw.playClick();
         }
     }
 

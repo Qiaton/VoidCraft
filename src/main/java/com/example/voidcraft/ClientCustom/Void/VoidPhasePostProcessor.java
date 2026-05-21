@@ -8,23 +8,24 @@ import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.World.PhaseDimensions;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
+
+import java.io.IOException;
 
 public final class VoidPhasePostProcessor {
     public static final int MAX_EFFECTS = 16;
     public static final int DATA_TEXTURE_WIDTH = 8;
     public static final int DATA_TEXTURE_HEIGHT = MAX_EFFECTS + 1;
-    public static final Identifier DATA_TEXTURE_ID =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
-    public static final Identifier MASK_TEXTURE_ID =
-            Identifier.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_mask.png");
+    public static final ResourceLocation DATA_TEXTURE_ID =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_data.png");
+    public static final ResourceLocation MASK_TEXTURE_ID =
+            ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "textures/effect/phase_tear_mask.png");
     public static final float PHASE_DIMENSION_FILTER_STRENGTH = 0.70F;
 
     private static DynamicTexture dataTexture;
@@ -70,13 +71,11 @@ public final class VoidPhasePostProcessor {
             return;
         }
 
-        RenderSystem.outputColorTextureOverride = maskTarget.getColorTextureView();
-        RenderSystem.outputDepthTextureOverride = null;
+        maskTarget.bindWrite(false);
     }
 
     public static void endMaskWrite() {
-        RenderSystem.outputColorTextureOverride = null;
-        RenderSystem.outputDepthTextureOverride = null;
+        Minecraft.getInstance().getMainRenderTarget().bindWrite(false);
     }
 
     public static boolean shouldRenderRing(Minecraft mc, VoidRingInstance ring, boolean firstPerson) {
@@ -243,12 +242,7 @@ public final class VoidPhasePostProcessor {
 
     private static void ensureResources(Minecraft mc) {
         if (dataTexture == null || dataPixels == null) {
-            dataTexture = new DynamicTexture(
-                    () -> VoidCraft.MODID + " phase tear data",
-                    DATA_TEXTURE_WIDTH,
-                    DATA_TEXTURE_HEIGHT,
-                    true
-            );
+            dataTexture = new DynamicTexture(DATA_TEXTURE_WIDTH, DATA_TEXTURE_HEIGHT, true);
             dataPixels = dataTexture.getPixels();
             clearDataPixels();
             dataTexture.upload();
@@ -262,7 +256,7 @@ public final class VoidPhasePostProcessor {
                 maskTarget.destroyBuffers();
             }
 
-            maskTarget = new TextureTarget("Phase Tear Mask", width, height, false);
+            maskTarget = new TextureTarget(width, height, false, Minecraft.ON_OSX);
             if (maskTexture == null) {
                 maskTexture = new RenderTargetTexture(maskTarget);
                 mc.getTextureManager().register(MASK_TEXTURE_ID, maskTexture);
@@ -288,11 +282,11 @@ public final class VoidPhasePostProcessor {
                 PhaseWorldTransitionClient.holdWhite(),
                 PhaseWorldTransitionClient.stageCode()
         );
-        dataPixels.setPixel(3, 0, 0);
-        dataPixels.setPixel(4, 0, 0);
-        dataPixels.setPixel(5, 0, 0);
-        dataPixels.setPixel(6, 0, 0);
-        dataPixels.setPixel(7, 0, 0);
+        dataPixels.setPixelRGBA(3, 0, 0);
+        dataPixels.setPixelRGBA(4, 0, 0);
+        dataPixels.setPixelRGBA(5, 0, 0);
+        dataPixels.setPixelRGBA(6, 0, 0);
+        dataPixels.setPixelRGBA(7, 0, 0);
     }
 
     private static float getFullScreenPhaseStrength(Minecraft mc) {
@@ -316,18 +310,19 @@ public final class VoidPhasePostProcessor {
     }
 
     private static void clearMaskTarget() {
-        if (maskTarget != null && maskTarget.getColorTexture() != null) {
-            RenderSystem.getDevice().createCommandEncoder().clearColorTexture(maskTarget.getColorTexture(), 0);
+        if (maskTarget != null && maskTarget.getColorTextureId() > 0) {
+            maskTarget.clear(Minecraft.ON_OSX);
+            Minecraft.getInstance().getMainRenderTarget().bindWrite(false);
         }
     }
 
     private static void writePackedU16(int x, int y, float first, float second) {
         int firstPacked = Mth.clamp((int) Math.round(Mth.clamp(first, 0.0F, 1.0F) * 65535.0F), 0, 65535);
         int secondPacked = Mth.clamp((int) Math.round(Mth.clamp(second, 0.0F, 1.0F) * 65535.0F), 0, 65535);
-        dataPixels.setPixel(
+        dataPixels.setPixelRGBA(
                 x,
                 y,
-                ARGB.color(
+                FastColor.ARGB32.color(
                         secondPacked & 0xFF,
                         firstPacked >> 8 & 0xFF,
                         firstPacked & 0xFF,
@@ -345,9 +340,12 @@ public final class VoidPhasePostProcessor {
 
         private void setTarget(TextureTarget target) {
             this.target = target;
-            this.texture = target.getColorTexture();
-            this.textureView = target.getColorTextureView();
-            this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+            this.id = target.getColorTextureId();
+            this.setFilter(false, false);
+        }
+
+        @Override
+        public void load(ResourceManager resourceManager) throws IOException {
         }
 
         @Override

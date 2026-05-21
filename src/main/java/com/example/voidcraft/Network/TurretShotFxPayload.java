@@ -5,7 +5,7 @@ import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 // 炮台射击只把命中坐标和光束配置同步给客户端，伤害始终在服务端结算。
 public record TurretShotFxPayload(
@@ -32,7 +32,7 @@ public record TurretShotFxPayload(
         int glowColor
 ) implements CustomPacketPayload {
     public static final Type<TurretShotFxPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "turret_shot_fx"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "turret_shot_fx"));
 
     public static final StreamCodec<ByteBuf, TurretShotFxPayload> STREAM_CODEC =
             StreamCodec.of(

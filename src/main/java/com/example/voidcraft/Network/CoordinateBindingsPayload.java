@@ -10,7 +10,7 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.List;
 // 服务端把某个虚空能方块的输入/输出绑定列表发给客户端解绑面板。
 public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> entries) implements CustomPacketPayload {
     public static final Type<CoordinateBindingsPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "coordinate_bindings"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "coordinate_bindings"));
 
     public static final StreamCodec<ByteBuf, CoordinateBindingsPayload> STREAM_CODEC = StreamCodec.of(
             CoordinateBindingsPayload::encode,
@@ -64,13 +64,13 @@ public record CoordinateBindingsPayload(BoundVoidPosition owner, List<Entry> ent
 
     static void writePosition(ByteBuf buffer, BoundVoidPosition position) {
         // 网络包用二进制写位置，比 NBT 字符串更轻。
-        Identifier.STREAM_CODEC.encode(buffer, position.dimension());
+        ResourceLocation.STREAM_CODEC.encode(buffer, position.dimension());
         BlockPos.STREAM_CODEC.encode(buffer, position.pos());
     }
 
     static BoundVoidPosition readPosition(ByteBuf buffer) {
         return new BoundVoidPosition(
-                Identifier.STREAM_CODEC.decode(buffer),
+                ResourceLocation.STREAM_CODEC.decode(buffer),
                 BlockPos.STREAM_CODEC.decode(buffer)
         );
     }

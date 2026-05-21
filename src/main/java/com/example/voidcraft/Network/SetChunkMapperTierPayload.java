@@ -5,12 +5,12 @@ import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 // 客户端点档位按钮后只告诉服务端“哪个映射器要改到几档”。
 public record SetChunkMapperTierPayload(BoundVoidPosition owner, int tier) implements CustomPacketPayload {
     public static final Type<SetChunkMapperTierPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "set_chunk_mapper_tier"));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "set_chunk_mapper_tier"));
 
     public static final StreamCodec<ByteBuf, SetChunkMapperTierPayload> STREAM_CODEC = StreamCodec.of(
             SetChunkMapperTierPayload::encode,
