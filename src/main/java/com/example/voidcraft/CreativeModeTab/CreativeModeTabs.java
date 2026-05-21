@@ -48,8 +48,6 @@ public class CreativeModeTabs {
                         output.accept(ModBlockItem.MID_VOID_CHARGER.get());
                         output.accept(ModBlockItem.HIGH_VOID_CHARGER.get());
                         output.accept(ModItem.VOID_ORE.get());
-                        output.accept(ModItem.FLOW_TYPE.get());
-                        output.accept(ModItem.SPATIAL_SWORD);
                         output.accept(ModItem.CRUDE_PHASE_WATCH);
                         output.accept(ModItem.ATTUNED_PHASE_WATCH);
                         output.accept(ModItem.PHASE_WATCH);

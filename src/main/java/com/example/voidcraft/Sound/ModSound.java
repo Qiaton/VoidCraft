@@ -24,7 +24,7 @@ public class ModSound {
     );
     public static final DeferredHolder<SoundEvent, SoundEvent> TELEPORT_PORTAL_ENTER = SOUND_EVENTS.register(
             "teleport_portal_enter",
-            SoundEvent::createVariableRangeEvent
+            id -> SoundEvent.createFixedRangeEvent(id, 32.0F)
     );
     public static final DeferredHolder<SoundEvent, SoundEvent> TELEPORT_DEPLOY_START = SOUND_EVENTS.register(
             "teleport_deploy_start",
@@ -75,7 +75,7 @@ public class ModSound {
     public static final SoundSource VOID_SOUND_SOURCE = SoundSource.PLAYERS;
     public static final float ENTER_VOID_VOLUME = 6.0F;
     public static final float ENTER_VOID_PITCH = 1.0F;
-    public static final float TELEPORT_PORTAL_ENTER_VOLUME = 6.0F;
+    public static final float TELEPORT_PORTAL_ENTER_VOLUME = 2.0F;
     public static final float TELEPORT_PORTAL_ENTER_PITCH = 1.0F;
     public static final float TELEPORT_DEPLOY_START_VOLUME = 6.0F;
     public static final float TELEPORT_DEPLOY_START_PITCH = 1.0F;
