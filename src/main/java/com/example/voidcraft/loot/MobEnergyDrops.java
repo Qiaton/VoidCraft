@@ -14,8 +14,8 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 public final class MobEnergyDrops {
     private static final float CHAOS_CHANCE = 0.05F;
-    private static final float NEUTRAL_CHANCE = 0.10F;
-    private static final float PURE_CHANCE = 0.80F;
+    private static final float NEUTRAL_CHANCE = 0.05F;
+    private static final float PURE_CHANCE = 0.10F;
     private static final int PURE_ONE_WEIGHT = 100;
     private static final int PURE_TWO_WEIGHT = 50;
     private static final int PURE_THREE_WEIGHT = 5;

@@ -11,7 +11,7 @@
 ## 构建与运行
 
 - Gradle/NeoForge 项目使用 Java 21，ModDevGradle `2.0.141`。
-- `gradle.properties`：Minecraft `1.21.11`，NeoForge `21.11.42`，Parchment `2025.12.20`，mod id `void_craft`，mod version `1.0.0`。
+- `gradle.properties`：Minecraft `1.21.11`，NeoForge `21.11.42`，Parchment `2025.12.20`，mod id `void_craft`，mod version `1.0.1`。
 - Codex app 的 `.codex/environments/environment.toml` 里“运行”动作是 `./gradlew clean runClient`。
 - 当前工作区有未跟踪的 `agent.md` 作为项目记忆文件；不要把它误当作源码改动。
 
@@ -176,7 +176,7 @@
 
 - 资源位于 `src/main/resources/assets/void_craft`，包括方块/物品模型、贴图、GUI 能量帧、音效、语言和 post effect shader。
 - 数据位于 `src/main/resources/data/void_craft`，包括配方、战利品表、伤害类型、附魔、维度和世界生成配置。
-- `MobEnergyDrops` 按生物类别掉 chaos/neutral/pure energy。
+- `MobEnergyDrops` 按生物类别掉 chaos/neutral/pure energy；当前 neutral 掉率 5%，pure 掉率 10%。
 - `ModLootTables` 注入结构宝箱和钓鱼宝藏，产出模块和 modifier。
 
 ## 配置项
