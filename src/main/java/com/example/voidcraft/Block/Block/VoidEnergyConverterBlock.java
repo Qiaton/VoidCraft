@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -76,13 +75,12 @@ public class VoidEnergyConverterBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (player.isShiftKeyDown()) {
-            cycleSide(state, level, pos, player, hit.getDirection());
-            return ItemInteractionResult.sidedSuccess(level.isClientSide());
+            return cycleSide(state, level, pos, player, hit.getDirection());
         }
         if (stack.getItem() instanceof CoordinateDesignatorItem) {
-            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.PASS;
         }
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }

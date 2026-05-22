@@ -2,12 +2,8 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "L": {
-      "item": "void_craft:low_purity_void_crystal"
-    },
-    "V": {
-      "item": "void_craft:void_energy"
-    }
+    "L": "void_craft:low_purity_void_crystal",
+    "V": "void_craft:void_energy"
   },
   "pattern": [
     "LLL",

@@ -5,7 +5,7 @@ import com.example.voidcraft.VoidCraft;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
@@ -35,7 +35,7 @@ public record TurretShotFxPayload(
         int glowColor
 ) implements CustomPacketPayload {
     public static final Type<TurretShotFxPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "turret_shot_fx"));
+            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "turret_shot_fx"));
 
     public static final StreamCodec<ByteBuf, TurretShotFxPayload> STREAM_CODEC =
             StreamCodec.of(

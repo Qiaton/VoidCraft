@@ -967,13 +967,13 @@ public class PhaseTurretModule extends ModuleItem {
         if (parent instanceof LivingEntity livingParent) {
             int previousInvulnerableTime = livingParent.invulnerableTime;
             livingParent.invulnerableTime = 0;
-            boolean hurt = partEntity.hurt(damageSource, damage);
+            boolean hurt = partEntity.hurtServer(serverLevel, damageSource, damage);
             // 部件伤害最终常会转发到父实体；这里清的是父实体无敌帧，末影龙也走这条路。
             livingParent.invulnerableTime = Math.min(livingParent.invulnerableTime, previousInvulnerableTime);
             return hurt;
         }
 
-        return partEntity.hurt(damageSource, damage);
+        return partEntity.hurtServer(serverLevel, damageSource, damage);
     }
 
     private static boolean hurtRealTarget(
@@ -990,7 +990,7 @@ public class PhaseTurretModule extends ModuleItem {
             return false;
         }
 
-        return target.hurt(damageSource, damage);
+        return target.hurtServer(serverLevel, damageSource, damage);
     }
 
     private static boolean hurtLiving(
@@ -1001,7 +1001,7 @@ public class PhaseTurretModule extends ModuleItem {
     ) {
         int previousInvulnerableTime = target.invulnerableTime;
         target.invulnerableTime = 0;
-        boolean hurt = target.hurt(damageSource, damage);
+        boolean hurt = target.hurtServer(serverLevel, damageSource, damage);
         // 炮台伤害自己绕过受击冷却，但不额外延长目标对其他来源的无敌帧。
         target.invulnerableTime = Math.min(target.invulnerableTime, previousInvulnerableTime);
         return hurt;

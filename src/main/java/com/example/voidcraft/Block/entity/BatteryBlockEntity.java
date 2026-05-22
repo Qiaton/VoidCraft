@@ -13,11 +13,11 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -64,41 +64,33 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        this.voidEnergy = clampEnergy(tag.contains("VoidEnergy", Tag.TAG_ANY_NUMERIC) ? tag.getLong("VoidEnergy") : DEFAULT_ENERGY);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", DEFAULT_ENERGY));
         // 输入和输出都持久化，重进世界后网络关系还能恢复。
         this.inputSources.clear();
-        ListTag inputList = tag.getList("InputSources", Tag.TAG_COMPOUND);
-        for (int i = 0; i < inputList.size(); i++) {
-            VoidEnergyBinding.load(inputList.getCompound(i)).ifPresent(this.inputSources::add);
+        for (ValueInput child : input.childrenListOrEmpty("InputSources")) {
+            VoidEnergyBinding.load(child).ifPresent(this.inputSources::add);
         }
         this.outputTargets.clear();
-        ListTag outputList = tag.getList("OutputTargets", Tag.TAG_COMPOUND);
-        for (int i = 0; i < outputList.size(); i++) {
-            VoidEnergyBinding.load(outputList.getCompound(i)).ifPresent(this.outputTargets::add);
+        for (ValueInput child : input.childrenListOrEmpty("OutputTargets")) {
+            VoidEnergyBinding.load(child).ifPresent(this.outputTargets::add);
         }
         updateEnergyStage();
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putLong("VoidEnergy", this.voidEnergy);
-        ListTag inputList = new ListTag();
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putLong("VoidEnergy", this.voidEnergy);
+        ValueOutput.ValueOutputList inputList = output.childrenList("InputSources");
         for (VoidEnergyBinding binding : this.inputSources) {
-            CompoundTag child = new CompoundTag();
-            binding.save(child);
-            inputList.add(child);
+            binding.save(inputList.addChild());
         }
-        tag.put("InputSources", inputList);
-        ListTag outputList = new ListTag();
+        ValueOutput.ValueOutputList outputList = output.childrenList("OutputTargets");
         for (VoidEnergyBinding binding : this.outputTargets) {
-            CompoundTag child = new CompoundTag();
-            binding.save(child);
-            outputList.add(child);
+            binding.save(outputList.addChild());
         }
-        tag.put("OutputTargets", outputList);
     }
 
     private int getEnergyStage() {
@@ -139,7 +131,7 @@ public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransfe
     @Override
     public BoundVoidPosition getVoidPosition() {
         if (level == null) {
-            return new BoundVoidPosition(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
+            return new BoundVoidPosition(net.minecraft.resources.Identifier.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
         }
         return BoundVoidPosition.of(level, worldPosition);
     }

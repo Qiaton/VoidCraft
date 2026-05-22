@@ -19,7 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import static com.example.voidcraft.ClientCustom.ModuleInputMode.getInputTypeFromSlot;
 
@@ -70,7 +70,7 @@ public final class ClientKeyEvents {
         }
 
         // 如果当前确实取消了蓄力，就把这次同键位输入吃掉，避免 Q 同时触发丢弃或其他绑定。
-        if (matchesKey(ModKeyMappings.CANCEL_HOLD_RELEASE_KEY, event) && cancelHoldRelease(mc)) {
+        if (ModKeyMappings.CANCEL_HOLD_RELEASE_KEY.matches(event.getKeyEvent()) && cancelHoldRelease(mc)) {
             suppressMatchingKeyMappings(mc, event);
             return;
         }
@@ -131,7 +131,7 @@ public final class ClientKeyEvents {
     private static void suppressMatchingKeyMappings(Minecraft mc, InputEvent.Key event, KeyMapping primaryKey) {
         // 清掉所有和这次按键事件匹配的 KeyMapping，覆盖同物理键的原版或其他 mod 功能。
         for (KeyMapping keyMapping : mc.options.keyMappings) {
-            if (keyMapping == primaryKey || !matchesKey(keyMapping, event)) {
+            if (keyMapping == primaryKey || !keyMapping.matches(event.getKeyEvent())) {
                 continue;
             }
 
@@ -271,19 +271,15 @@ public final class ClientKeyEvents {
     }
 
     private static int resolveSkillSlotForKeyEvent(Minecraft mc, InputEvent.Key event) {
-        if (matchesKey(ModKeyMappings.SKILL_KEY_1, event) && isSkillSlotUsable(mc, 0)) {
+        if (ModKeyMappings.SKILL_KEY_1.matches(event.getKeyEvent()) && isSkillSlotUsable(mc, 0)) {
             return 0;
         }
 
-        if (matchesKey(ModKeyMappings.SKILL_KEY_2, event) && isSkillSlotUsable(mc, 1)) {
+        if (ModKeyMappings.SKILL_KEY_2.matches(event.getKeyEvent()) && isSkillSlotUsable(mc, 1)) {
             return 1;
         }
 
         return -1;
-    }
-
-    private static boolean matchesKey(KeyMapping keyMapping, InputEvent.Key event) {
-        return keyMapping.matches(event.getKey(), event.getScanCode());
     }
 
     private static KeyMapping getSkillKey(int slot) {

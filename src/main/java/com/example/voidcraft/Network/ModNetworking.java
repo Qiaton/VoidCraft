@@ -50,6 +50,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -153,7 +154,7 @@ public final class ModNetworking {
     ) {
         PacketDistributor.sendToPlayer(
                 player,
-                new PhaseWorldTransitionPayload(sourceDimension.location(), targetDimension.location())
+                new PhaseWorldTransitionPayload(sourceDimension.identifier(), targetDimension.identifier())
         );
     }
 
@@ -640,7 +641,7 @@ public final class ModNetworking {
 
     // 客户端发包入口（调用场景：按键、GUI、转场 ready；payload 是具体 C2S 自定义包）。
     public static void sendToServer(CustomPacketPayload payload) {
-        PacketDistributor.sendToServer(payload);
+        ClientPacketDistributor.sendToServer(payload);
     }
 
     // Blink 释放接收（调用场景：客户端松开 Blink 蓄力键；slot 是模块槽，ticks 是蓄力时长，x/y/z 是客户端预览目标）。
@@ -909,7 +910,7 @@ public final class ModNetworking {
 
     private static BlockEntity getUseBlock(ServerPlayer player, BoundVoidPosition position) {
         // 只允许操作同维度、近距离、已加载的方块，防止客户端远程乱改。
-        if (!position.dimension().equals(player.level().dimension().location())) {
+        if (!position.dimension().equals(player.level().dimension().identifier())) {
             return null;
         }
         if (player.blockPosition().distSqr(position.pos()) > 64.0D) {

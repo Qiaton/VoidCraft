@@ -1,6 +1,5 @@
 package com.example.voidcraft.Effect;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -8,7 +7,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Vector4f;
 
 public final class VoidRingRenderer {
     private static final int ANGLE_SEGMENTS = 32;
@@ -323,12 +321,13 @@ public final class VoidRingRenderer {
             int effectIndex
     ) {
         RenderMetrics metrics = computeMetrics(ring, partialTick);
-        MaskMetrics maskMetrics = computeMaskMetrics(ring, partialTick, metrics);
-        if (maskMetrics.halfHeight() <= 0.001F || maskMetrics.halfWidth() <= 0.001F) {
+        float halfHeight = metrics.halfHeight() * ring.preset.distortionHeightScale();
+        float halfWidth = metrics.halfWidth() * ring.preset.distortionWidthScale();
+        if (halfHeight <= 0.001F || halfWidth <= 0.001F) {
             return;
         }
 
-        renderMaskLayer(buffer, poseStack.last().pose(), maskMetrics.halfHeight(), maskMetrics.halfWidth(), -0.003F, effectIndex);
+        renderMaskLayer(buffer, poseStack.last().pose(), halfHeight, halfWidth, -0.003F, effectIndex);
     }
 
     public static ScreenMaskData computeScreenMaskData(VoidRingInstance ring, Vec3 center, Vec3 cameraPos, float partialTick) {
@@ -348,29 +347,10 @@ public final class VoidRingRenderer {
             float partialTick,
             FacingData facingData
     ) {
-        return computeScreenMaskData(
-                mc,
-                ring,
-                center,
-                partialTick,
-                facingData,
-                RenderSystem.getModelViewMatrix(),
-                RenderSystem.getProjectionMatrix()
-        );
-    }
-
-    public static ScreenMaskData computeScreenMaskData(
-            Minecraft mc,
-            VoidRingInstance ring,
-            Vec3 center,
-            float partialTick,
-            FacingData facingData,
-            Matrix4f modelViewMatrix,
-            Matrix4f projectionMatrix
-    ) {
         RenderMetrics metrics = computeMetrics(ring, partialTick);
-        MaskMetrics maskMetrics = computeMaskMetrics(ring, partialTick, metrics);
-        if (maskMetrics.halfHeight() <= 0.001F || maskMetrics.halfWidth() <= 0.001F || mc.gameRenderer == null) {
+        float halfHeight = metrics.halfHeight() * ring.preset.distortionHeightScale();
+        float halfWidth = metrics.halfWidth() * ring.preset.distortionWidthScale();
+        if (halfHeight <= 0.001F || halfWidth <= 0.001F || mc.gameRenderer == null) {
             return null;
         }
 
@@ -430,27 +410,6 @@ public final class VoidRingRenderer {
 
     public static void applyCameraFacingRotation(PoseStack poseStack, VoidRingInstance ring, Vec3 center, Vec3 cameraPos) {
         applyCameraFacingRotation(poseStack, ring, computeFacingData(ring, center, cameraPos));
-    }
-
-    private static Vec3 projectPoint(Minecraft mc, Vec3 point) {
-        return projectPoint(mc, point, RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix());
-    }
-
-    private static Vec3 projectPoint(Minecraft mc, Vec3 point, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-        Vector4f clip = new Vector4f(
-                (float) (point.x - cameraPos.x),
-                (float) (point.y - cameraPos.y),
-                (float) (point.z - cameraPos.z),
-                1.0F
-        );
-        clip.mul(modelViewMatrix);
-        clip.mul(projectionMatrix);
-        if (clip.w() <= 1.0E-6F) {
-            return null;
-        }
-        float invW = 1.0F / clip.w();
-        return new Vec3(clip.x() * invW, clip.y() * invW, clip.z() * invW);
     }
 
     public static void applyCameraFacingRotation(PoseStack poseStack, VoidRingInstance ring, FacingData facingData) {
@@ -555,17 +514,6 @@ public final class VoidRingRenderer {
         float lineHalfWidth = Math.max(preset.endHalfWidth() * ring.scale, halfWidth * 0.35F);
 
         return new RenderMetrics(halfHeight, halfWidth, fade, lineAlpha, lineHalfWidth);
-    }
-
-    private static MaskMetrics computeMaskMetrics(VoidRingInstance ring, float partialTick, RenderMetrics metrics) {
-        float progress = ring.getProgress(partialTick);
-        float expand = smoothstep(0.0F, 0.16F, progress);
-        float baseHalfHeight = Math.max(metrics.halfHeight(), ring.preset.peakHalfHeight() * ring.scale * expand);
-        float baseHalfWidth = Math.max(metrics.halfWidth(), ring.preset.peakHalfWidth() * ring.scale * expand);
-        return new MaskMetrics(
-                baseHalfHeight * ring.preset.distortionHeightScale(),
-                baseHalfWidth * ring.preset.distortionWidthScale()
-        );
     }
 
     private static void renderFilledLayer(

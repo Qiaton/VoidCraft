@@ -59,9 +59,7 @@ public final class PhaseWorldEvents {
             return;
         }
 
-        if (event.getChunk() instanceof LevelChunk chunk) {
-            clearGeneratedLootContainers(chunk);
-        }
+        clearGeneratedLootContainers(event.getChunk());
     }
 
     @SubscribeEvent
@@ -110,12 +108,12 @@ public final class PhaseWorldEvents {
     }
 
     private static void clearGeneratedLootContainer(Entity entity) {
-        if (!(entity instanceof ContainerEntity container) || container.getLootTable() == null) {
+        if (!(entity instanceof ContainerEntity container) || container.getContainerLootTable() == null) {
             return;
         }
 
-        container.setLootTable(null);
-        container.setLootTableSeed(0L);
+        container.setContainerLootTable(null);
+        container.setContainerLootTableSeed(0L);
         container.clearItemStacks();
         container.setChanged();
     }

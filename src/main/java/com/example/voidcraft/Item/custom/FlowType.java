@@ -2,7 +2,6 @@ package com.example.voidcraft.Item.custom;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -15,7 +14,7 @@ public class FlowType extends Item {
         super(properties);
     }
     @Override
-    public @NonNull InteractionResultHolder<ItemStack> use(Level level, Player player, @NonNull InteractionHand hand){
+    public @NonNull InteractionResult use(Level level, Player player, @NonNull InteractionHand hand){
         ItemStack itemStack = player.getItemInHand(hand);
 
         if (!level.isClientSide()){
@@ -32,6 +31,6 @@ public class FlowType extends Item {
 //            });
 //                FlowEffect.fov_effect=1.5F;
         }
-        return InteractionResultHolder.success(itemStack);
+        return InteractionResult.SUCCESS;
     }
 }

@@ -4,9 +4,7 @@
   "cookingtime": 100,
   "experience": 2.0,
   "group": "void_ore",
-  "ingredient": {
-    "item": "void_craft:void_ore_block"
-  },
+  "ingredient": "void_craft:void_ore_block",
   "result": {
     "count": 2,
     "id": "void_craft:void_ore"

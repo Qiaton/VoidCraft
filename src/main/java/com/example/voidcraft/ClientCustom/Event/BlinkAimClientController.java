@@ -12,7 +12,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule.DISTANCE_PER_TICK;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule.MAX_DISTANCE;
@@ -98,7 +98,7 @@ public final class BlinkAimClientController {
         VoidRingManager.removePersistentRing(indicatorId(slot));
 
 
-        PacketDistributor.sendToServer(new ReleaseBlinkModulePayload(slot, ticks, finalTarget.x, finalTarget.y, finalTarget.z)); // 把槽位、蓄力 tick 和目标点交给服务端验算后执行
+        ClientPacketDistributor.sendToServer(new ReleaseBlinkModulePayload(slot, ticks, finalTarget.x, finalTarget.y, finalTarget.z)); // 把槽位、蓄力 tick 和目标点交给服务端验算后执行
     }
 
     public static void onCancel(int slot) {

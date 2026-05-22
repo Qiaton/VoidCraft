@@ -9,7 +9,7 @@ import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -59,7 +59,7 @@ public final class CoordinateBindingPreviewClient {
     }
 
     private static void renderLoadedBindings(ClientLevel level, Player player) {
-        ResourceLocation dimension = level.dimension().location();
+        Identifier dimension = level.dimension().identifier();
         BlockPos playerPos = player.blockPosition();
         int minChunkX = (playerPos.getX() - (int) RENDER_RADIUS) >> 4;
         int maxChunkX = (playerPos.getX() + (int) RENDER_RADIUS) >> 4;

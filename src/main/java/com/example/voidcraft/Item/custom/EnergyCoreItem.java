@@ -5,10 +5,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import org.jspecify.annotations.NonNull;
 
-import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public class EnergyCoreItem extends Item {
     public static final long BASE_LIFETIME = 200L;
@@ -123,10 +124,11 @@ public class EnergyCoreItem extends Item {
     public void appendHoverText(
             @NonNull ItemStack stack,
             TooltipContext context,
-            List<Component> tooltip,
+            TooltipDisplay tooltipDisplay,
+            Consumer<Component> tooltip,
             TooltipFlag flag
     ) {
-        super.appendHoverText(stack, context, tooltip, flag);
+        super.appendHoverText(stack, context, tooltipDisplay, tooltip, flag);
 
         long currentMaxLifetime = getCurrentMaxLifetime(stack);
         long currentLifetime = getCurrentLifetime(stack);
@@ -134,21 +136,21 @@ public class EnergyCoreItem extends Item {
                 ? 0.0D
                 : currentLifetime * 100.0D / currentMaxLifetime;
 
-        tooltip.add(Component.translatable(
+        tooltip.accept(Component.translatable(
                 "tooltip.void_craft.energy_core.recharge_efficiency",
                 formatPercent(getRechargeEfficiencyPercent())
         ));
-        tooltip.add(Component.translatable(
+        tooltip.accept(Component.translatable(
                 "tooltip.void_craft.energy_core.lifetime",
                 formatPercent(lifetimePercent)
         ));
-        tooltip.add(Component.translatable(
+        tooltip.accept(Component.translatable(
                 "tooltip.void_craft.energy_core.max_lifetime",
                 Component.translatable(getMaxLifetimeStateKey(stack))
         ));
 
         if (currentLifetime <= 0L) {
-            tooltip.add(Component.translatable("tooltip.void_craft.energy_core.depleted"));
+            tooltip.accept(Component.translatable("tooltip.void_craft.energy_core.depleted"));
         }
     }
 

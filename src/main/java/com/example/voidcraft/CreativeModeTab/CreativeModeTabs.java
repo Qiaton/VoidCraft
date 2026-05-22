@@ -9,13 +9,14 @@ import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.VoidCraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BlockItemStateProperties;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -94,9 +95,9 @@ public class CreativeModeTabs {
                 DataComponents.BLOCK_STATE,
                 BlockItemStateProperties.EMPTY.with(BatteryBlock.ENERGY_STAGE, 0)
         );
-        CompoundTag tag = new CompoundTag();
-        tag.putLong("VoidEnergy", 0L);
-        BlockItem.setBlockEntityData(stack, ModBlockEntities.BATTERY_BLOCK_ENTITY.get(), tag);
+        TagValueOutput output = TagValueOutput.createWithoutContext(ProblemReporter.DISCARDING);
+        output.putLong("VoidEnergy", 0L);
+        BlockItem.setBlockEntityData(stack, ModBlockEntities.BATTERY_BLOCK_ENTITY.get(), output);
         return stack;
     }
     public static ItemStack getModuleItem(){

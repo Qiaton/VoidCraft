@@ -4,12 +4,6 @@
 # Note that there are a couple of TOML lists in this file.
 # Find more information on toml format here:  https://github.com/toml-lang/toml
 
-# The mod loader type. This is required by the 1.21.1 FML loader.
-modLoader="javafml"
-
-# The loader version range. NeoForge 1.21.1 uses the 4.x FML loader.
-loaderVersion="[4,)"
-
 # The license for you mod. This is mandatory metadata and allows for easier comprehension of your redistributive properties.
 # Review your options at https://choosealicense.com/. All rights reserved is the default copyright stance, and is thus the default here.
 license="${mod_license}"

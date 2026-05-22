@@ -16,7 +16,7 @@ public final class ModCapabilities {
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.VOID_ENERGY_CONVERTER_BLOCK_ENTITY.get(),
                 VoidEnergyConverterBlockEntity::getEnergyHandler
         );

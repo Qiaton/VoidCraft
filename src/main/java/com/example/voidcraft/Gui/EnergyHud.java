@@ -2,11 +2,11 @@ package com.example.voidcraft.Gui;
 
 import com.example.voidcraft.Config;
 import com.example.voidcraft.VoidCraft;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 import java.util.Locale;
 
@@ -16,7 +16,7 @@ public final class EnergyHud {
     private static final int HUD_WIDTH = 128;
     private static final int HUD_HEIGHT = 64;
     private static final long STALE_MILLIS = 1500L;
-    private static final ResourceLocation[] ENERGY_TEXTURES = new ResourceLocation[101];
+    private static final Identifier[] ENERGY_TEXTURES = new Identifier[101];
 
     private static int percent;
     private static boolean visible;
@@ -24,7 +24,7 @@ public final class EnergyHud {
 
     static {
         for (int i = 0; i < ENERGY_TEXTURES.length; i++) {
-            ENERGY_TEXTURES[i] = ResourceLocation.fromNamespaceAndPath(
+            ENERGY_TEXTURES[i] = Identifier.fromNamespaceAndPath(
                     VoidCraft.MODID,
                     String.format(Locale.ROOT, "textures/gui/energy/energy_%03d.png", i)
             );
@@ -77,17 +77,15 @@ public final class EnergyHud {
             }
         }
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED,
                 ENERGY_TEXTURES[percent],
                 x,
                 y,
+                0.0F,
+                0.0F,
                 HUD_WIDTH,
                 HUD_HEIGHT,
-                0.0F,
-                0.0F,
                 TEXTURE_WIDTH,
                 TEXTURE_HEIGHT,
                 TEXTURE_WIDTH,

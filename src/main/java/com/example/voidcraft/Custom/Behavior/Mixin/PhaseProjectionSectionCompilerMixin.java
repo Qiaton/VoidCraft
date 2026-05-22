@@ -2,7 +2,7 @@ package com.example.voidcraft.Custom.Behavior.Mixin;
 
 import com.example.voidcraft.World.projection.PhaseProjectionClient;
 import net.minecraft.client.renderer.SectionBufferBuilderPack;
-import net.minecraft.client.renderer.chunk.RenderChunkRegion;
+import net.minecraft.client.renderer.chunk.RenderSectionRegion;
 import net.minecraft.client.renderer.chunk.SectionCompiler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -16,17 +16,17 @@ import java.util.List;
 @Mixin(SectionCompiler.class)
 public class PhaseProjectionSectionCompilerMixin {
     @Redirect(
-            method = "compile(Lnet/minecraft/core/SectionPos;Lnet/minecraft/client/renderer/chunk/RenderChunkRegion;Lcom/mojang/blaze3d/vertex/VertexSorting;Lnet/minecraft/client/renderer/SectionBufferBuilderPack;Ljava/util/List;)Lnet/minecraft/client/renderer/chunk/SectionCompiler$Results;",
+            method = "compile(Lnet/minecraft/core/SectionPos;Lnet/minecraft/client/renderer/chunk/RenderSectionRegion;Lcom/mojang/blaze3d/vertex/VertexSorting;Lnet/minecraft/client/renderer/SectionBufferBuilderPack;Ljava/util/List;)Lnet/minecraft/client/renderer/chunk/SectionCompiler$Results;",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/chunk/RenderChunkRegion;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
+                    target = "Lnet/minecraft/client/renderer/chunk/RenderSectionRegion;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"
             )
     )
     private BlockState voidcraft$getDrawState(
-            RenderChunkRegion region,
+            RenderSectionRegion region,
             BlockPos pos,
             SectionPos sectionPos,
-            RenderChunkRegion originalRegion,
+            RenderSectionRegion originalRegion,
             com.mojang.blaze3d.vertex.VertexSorting vertexSorting,
             SectionBufferBuilderPack sectionBufferBuilderPack,
             List<net.neoforged.neoforge.client.event.AddSectionGeometryEvent.AdditionalSectionRenderer> additionalRenderers

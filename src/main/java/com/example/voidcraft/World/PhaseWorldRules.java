@@ -39,8 +39,8 @@ public final class PhaseWorldRules {
     }
 
     private static Vec3 findSamePos(ServerLevel level, Vec3 preferred) {
-        double minY = level.getMinBuildHeight() + 1.0D;
-        double maxY = level.getMinBuildHeight() + level.getHeight() - 2.0D;
+        double minY = level.getMinY() + 1.0D;
+        double maxY = level.getMinY() + level.getHeight() - 2.0D;
         double y = Mth.clamp(preferred.y, minY, maxY);
         return new Vec3(preferred.x, y, preferred.z);
     }

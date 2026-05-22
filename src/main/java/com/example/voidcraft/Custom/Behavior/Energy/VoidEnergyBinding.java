@@ -1,7 +1,7 @@
 package com.example.voidcraft.Custom.Behavior.Energy;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import java.util.Optional;
 
@@ -13,19 +13,16 @@ public record VoidEnergyBinding(BoundVoidPosition target, VoidEnergyBindingType 
     }
 
     // 绑定会跟着方块实体一起存盘，重进世界后还能恢复连接关系。
-    public void save(CompoundTag tag) {
-        this.target.save(tag);
-        tag.putString("Type", this.type.getId());
+    public void save(ValueOutput output) {
+        this.target.save(output);
+        output.putString("Type", this.type.getId());
     }
 
     // 读不到位置时直接丢掉这条绑定，避免保留半坏的连接。
-    public static Optional<VoidEnergyBinding> load(CompoundTag tag) {
-        String typeId = tag.contains("Type", Tag.TAG_STRING)
-                ? tag.getString("Type")
-                : VoidEnergyBindingType.OUTPUT.getId();
-        return BoundVoidPosition.load(tag).map(target -> new VoidEnergyBinding(
+    public static Optional<VoidEnergyBinding> load(ValueInput input) {
+        return BoundVoidPosition.load(input).map(target -> new VoidEnergyBinding(
                 target,
-                VoidEnergyBindingType.byId(typeId)
+                VoidEnergyBindingType.byId(input.getStringOr("Type", VoidEnergyBindingType.OUTPUT.getId()))
         ));
     }
 }
