@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:book",
+    "V": "void_craft:void_ore"
+  },
+  "pattern": [
+    " V ",
+    "VBV",
+    " V "
+  ],
+  "result": {
+    "count": 1,
+    "id": "void_craft:guide_book"
+  }
+}

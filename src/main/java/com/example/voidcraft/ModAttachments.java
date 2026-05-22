@@ -1,5 +1,6 @@
 package com.example.voidcraft;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -30,6 +31,13 @@ public class ModAttachments {       //模组的附件中心
             "void_speed",
             ()->AttachmentType.builder(()->0.3F)
                     .sync(ByteBufCodecs.FLOAT)
+                    .build()
+    );
+    public static Supplier<AttachmentType<Boolean>> GUIDE_BOOK_GIVEN = VOID_ATTACHMENTS.register(
+            "guide_book_given",
+            ()->AttachmentType.builder(()->false)
+                    .serialize(Codec.BOOL.fieldOf("value"))
+                    .copyOnDeath()
                     .build()
     );
     public static void register(IEventBus bus) {
