@@ -1,7 +1,6 @@
 package com.example.voidcraft.Block;
 import com.example.voidcraft.Block.Block.*;
 import com.example.voidcraft.VoidCraft;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -15,7 +14,7 @@ public class ModBlock {
     public static final DeferredBlock<PhaseBlock> BLACK_BLOCK = BLOCKS.registerBlock(
             "black_block",
             PhaseBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)     // 普通方块默认摩擦系数
                     .noOcclusion()      // 半透明相位材质需要关闭普通实心遮挡
                     .lightLevel(state -> 4)
@@ -26,7 +25,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidOreBlock> VOID_ORE_BLOCK = BLOCKS.registerBlock(
             "void_ore_block",
             VoidOreBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 4)
@@ -37,7 +36,7 @@ public class ModBlock {
     public static final DeferredBlock<BatteryBlock> BATTERY_BLOCK = BLOCKS.registerBlock(
             "battery_block",
             BatteryBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 3)
@@ -48,7 +47,7 @@ public class ModBlock {
     public static final DeferredBlock<ChunkMapperBlock> CHUNK_MAPPER_BLOCK = BLOCKS.registerBlock(
             "chunk_mapper_block",
             ChunkMapperBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 3)
@@ -59,7 +58,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidEnergyConverterBlock> VOID_ENERGY_CONVERTER = BLOCKS.registerBlock(
             "void_energy_converter",
             VoidEnergyConverterBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> 4)
@@ -70,7 +69,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
             "void_phenomenon_collector",
             VoidPhenomenonCollectorBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     // ACTIVE 时发光更强，用来反馈发电机正在消耗结晶。
@@ -81,7 +80,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> IMPROVED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
             "improved_void_phenomenon_collector",
             VoidPhenomenonCollectorBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
@@ -91,7 +90,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> ADVANCED_VOID_PHENOMENON_COLLECTOR = BLOCKS.registerBlock(
             "advanced_void_phenomenon_collector",
             VoidPhenomenonCollectorBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
@@ -101,7 +100,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidPhenomenonCollectorBlock> VOID_ATTUNER = BLOCKS.registerBlock(
             "void_attuner",
             VoidPhenomenonCollectorBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidPhenomenonCollectorBlock.ACTIVE) ? 7 : 3)
@@ -111,7 +110,7 @@ public class ModBlock {
     public static final DeferredBlock<ModuleBoostBlock> MODULE_BOOST_TABLE = BLOCKS.registerBlock(
             "module_boost_table",
             ModuleBoostBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .strength(FUNCTIONAL_BLOCK_STRENGTH, FUNCTIONAL_BLOCK_BLAST_RESISTANCE)
                     .requiresCorrectToolForDrops()
@@ -119,7 +118,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidChargerBlock> LOW_VOID_CHARGER = BLOCKS.registerBlock(
             "low_void_charger",
             VoidChargerBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 7 : 3)
@@ -129,7 +128,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidChargerBlock> MID_VOID_CHARGER = BLOCKS.registerBlock(
             "mid_void_charger",
             VoidChargerBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 8 : 3)
@@ -139,7 +138,7 @@ public class ModBlock {
     public static final DeferredBlock<VoidChargerBlock> HIGH_VOID_CHARGER = BLOCKS.registerBlock(
             "high_void_charger",
             VoidChargerBlock::new,
-            BlockBehaviour.Properties.of()
+            props -> props
                     .friction(0.6F)
                     .noOcclusion()
                     .lightLevel(state -> state.getValue(VoidChargerBlock.ACTIVE) ? 10 : 3)

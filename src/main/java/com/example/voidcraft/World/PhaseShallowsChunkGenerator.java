@@ -10,7 +10,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
@@ -32,7 +32,6 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
@@ -50,7 +49,7 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
 
     private static final int BROAD_CELL_SIZE = 64;
     private static final int DETAIL_CELL_SIZE = 24;
-    private static final ResourceLocation HEIGHT_RANDOM = ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_shallows_height");
+    private static final Identifier HEIGHT_RANDOM = Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_shallows_height");
     public static final MapCodec<PhaseShallowsChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Biome.CODEC.fieldOf("biome").forGetter(generator -> generator.biome)
     ).apply(instance, instance.stable(PhaseShallowsChunkGenerator::new)));
@@ -78,7 +77,8 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
             ChunkGeneratorStructureState structureState,
             StructureManager structureManager,
             ChunkAccess chunk,
-            StructureTemplateManager structureTemplateManager
+            StructureTemplateManager structureTemplateManager,
+            ResourceKey<Level> level
     ) {
     }
 
@@ -108,8 +108,7 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
             RandomState random,
             BiomeManager biomeManager,
             StructureManager structureManager,
-            ChunkAccess chunk,
-            GenerationStep.Carving carving
+            ChunkAccess chunk
     ) {
     }
 
@@ -131,8 +130,8 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
         BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
         Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
         Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
-        int chunkMinY = chunk.getMinBuildHeight();
-        int chunkMaxY = chunk.getMinBuildHeight() + chunk.getHeight() - 1;
+        int chunkMinY = chunk.getMinY();
+        int chunkMaxY = chunk.getMinY() + chunk.getHeight() - 1;
         int minFillY = Math.max(chunkMinY, this.getMinY());
 
         for (int localX = 0; localX < 16; localX++) {
@@ -143,7 +142,7 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
 
                 for (int y = minFillY; y <= surfaceY; y++) {
                     BlockState state = terrainState(y, surfaceY, minFillY);
-                    chunk.setBlockState(mutablePos.set(localX, y, localZ), state, false);
+                    chunk.setBlockState(mutablePos.set(localX, y, localZ), state);
                     oceanFloor.update(localX, y, localZ, state);
                     worldSurface.update(localX, y, localZ, state);
                 }
@@ -155,15 +154,15 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getBaseHeight(int x, int z, Heightmap.Types type, LevelHeightAccessor level, RandomState random) {
-        int surfaceY = Mth.clamp(surfaceHeight(x, z, random), Math.max(level.getMinBuildHeight(), this.getMinY()), level.getMaxBuildHeight());
+        int surfaceY = Mth.clamp(surfaceHeight(x, z, random), Math.max(level.getMinY(), this.getMinY()), level.getMaxY());
         BlockState surface = surfaceState();
-        return type.isOpaque().test(surface) ? surfaceY + 1 : level.getMinBuildHeight();
+        return type.isOpaque().test(surface) ? surfaceY + 1 : level.getMinY();
     }
 
     @Override
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor height, RandomState random) {
-        int minY = height.getMinBuildHeight();
-        int maxY = height.getMinBuildHeight() + height.getHeight() - 1;
+        int minY = height.getMinY();
+        int maxY = height.getMinY() + height.getHeight() - 1;
         int minFillY = Math.max(minY, this.getMinY());
         int surfaceY = Mth.clamp(surfaceHeight(x, z, random), minFillY, maxY);
         BlockState[] states = new BlockState[height.getHeight()];
@@ -180,7 +179,7 @@ public class PhaseShallowsChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getSpawnHeight(LevelHeightAccessor level) {
-        return Math.min(level.getMaxBuildHeight(), SURFACE_MAX_Y + SAFE_SPAWN_EXTRA_Y);
+        return Math.min(level.getMaxY(), SURFACE_MAX_Y + SAFE_SPAWN_EXTRA_Y);
     }
 
     @Override

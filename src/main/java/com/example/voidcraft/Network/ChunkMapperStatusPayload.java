@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
 // 区块映射器状态面板只需要这一份快照；修改档位后服务端会重新发送。
@@ -26,7 +26,7 @@ public record ChunkMapperStatusPayload(
         Component inputName
 ) implements CustomPacketPayload {
     public static final Type<ChunkMapperStatusPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "chunk_mapper_status"));
+            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "chunk_mapper_status"));
 
     public static final StreamCodec<ByteBuf, ChunkMapperStatusPayload> STREAM_CODEC = StreamCodec.of(
             ChunkMapperStatusPayload::encode,

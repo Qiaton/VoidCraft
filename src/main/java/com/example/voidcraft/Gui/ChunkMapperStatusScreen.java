@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 public class ChunkMapperStatusScreen extends Screen {
@@ -55,7 +56,7 @@ public class ChunkMapperStatusScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
         int left = panelLeft();
         int top = panelTop();
 
@@ -63,22 +64,22 @@ public class ChunkMapperStatusScreen extends Screen {
         for (int tier = 0; tier <= ChunkMapperBlock.MAX_TIER; tier++) {
             int x = tierTagX(left, tier);
             int y = top + TIER_TAG_Y;
-            if (GuiDraw.inRect(mouseX, mouseY, x, y, TIER_TAG_WIDTH, TIER_TAG_HEIGHT)) {
+            if (GuiDraw.inRect(event.x(), event.y(), x, y, TIER_TAG_WIDTH, TIER_TAG_HEIGHT)) {
                 if (tier != this.payload.tier()) {
                     setTier(tier);
-                    GuiDraw.playClick();
+                    AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
                 }
                 return true;
             }
         }
 
-        if (GuiDraw.inRect(mouseX, mouseY, closeTagX(left), closeTagY(top), CLOSE_TAG_WIDTH, CLOSE_TAG_HEIGHT)) {
-            GuiDraw.playClick();
+        if (GuiDraw.inRect(event.x(), event.y(), closeTagX(left), closeTagY(top), CLOSE_TAG_WIDTH, CLOSE_TAG_HEIGHT)) {
+            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
             this.onClose();
             return true;
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, isDoubleClick);
     }
 
     private void renderHeader(GuiGraphics guiGraphics, int left, int top) {

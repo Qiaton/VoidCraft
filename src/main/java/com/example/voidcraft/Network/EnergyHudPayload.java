@@ -5,11 +5,11 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public record EnergyHudPayload(int percent, boolean visible) implements CustomPacketPayload {
     public static final Type<EnergyHudPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"));
+            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"));
 
     public static final StreamCodec<ByteBuf, EnergyHudPayload> STREAM_CODEC =
             StreamCodec.composite(

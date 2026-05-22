@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/cube",
-  "render_type": "minecraft:cutout",
+  "render_type": "minecraft:translucent",
   "textures": {
     "particle": "void_craft:block/void_phenomenon_collector_tier_3_side",
     "up": "void_craft:block/void_phenomenon_collector_active",

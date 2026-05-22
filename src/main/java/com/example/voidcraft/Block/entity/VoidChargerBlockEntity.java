@@ -12,13 +12,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -32,6 +30,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -94,40 +94,36 @@ public class VoidChargerBlockEntity extends BlockEntity implements Container, Me
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        this.voidEnergy = clampEnergy(tag.getLong("VoidEnergy"));
-        this.running = tag.getBoolean("Running");
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        this.voidEnergy = clampEnergy(input.getLongOr("VoidEnergy", 0L));
+        this.running = input.getBooleanOr("Running", false);
 
         for (int i = 0; i < this.items.size(); i++) {
             this.items.set(i, ItemStack.EMPTY);
         }
-        ContainerHelper.loadAllItems(tag, this.items, registries);
+        ContainerHelper.loadAllItems(input, this.items);
 
         this.inputSources.clear();
-        ListTag inputList = tag.getList("InputSources", Tag.TAG_COMPOUND);
-        for (int i = 0; i < inputList.size(); i++) {
+        for (ValueInput child : input.childrenListOrEmpty("InputSources")) {
             if (this.inputSources.size() >= MAX_INPUT_BINDINGS) {
                 break;
             }
-            VoidEnergyBinding.load(inputList.getCompound(i)).ifPresent(this.inputSources::add);
+            VoidEnergyBinding.load(child).ifPresent(this.inputSources::add);
         }
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putLong("VoidEnergy", this.voidEnergy);
-        tag.putBoolean("Running", this.running);
-        ContainerHelper.saveAllItems(tag, this.items, registries);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putLong("VoidEnergy", this.voidEnergy);
+        output.putBoolean("Running", this.running);
+        ContainerHelper.saveAllItems(output, this.items);
 
-        ListTag inputList = new ListTag();
+        ValueOutput.ValueOutputList inputList = output.childrenList("InputSources");
         for (VoidEnergyBinding binding : this.inputSources) {
-            CompoundTag child = new CompoundTag();
-            binding.save(child);
-            inputList.add(child);
+            binding.save(inputList.addChild());
         }
-        tag.put("InputSources", inputList);
     }
 
     @Override
@@ -297,7 +293,7 @@ public class VoidChargerBlockEntity extends BlockEntity implements Container, Me
     @Override
     public BoundVoidPosition getVoidPosition() {
         if (level == null) {
-            return new BoundVoidPosition(ResourceLocation.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
+            return new BoundVoidPosition(Identifier.fromNamespaceAndPath("minecraft", "overworld"), worldPosition);
         }
         return BoundVoidPosition.of(level, worldPosition);
     }

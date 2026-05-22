@@ -6,7 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
@@ -67,7 +67,7 @@ public record PhaseTearPayload(
     public static final int NO_ENTITY = -1;
 
     public static final Type<PhaseTearPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_tear"));
+            new Type<>(Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_tear"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PhaseTearPayload> STREAM_CODEC = StreamCodec.of(
             PhaseTearPayload::encode,

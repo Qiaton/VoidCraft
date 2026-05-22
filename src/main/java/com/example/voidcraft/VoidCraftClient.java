@@ -95,11 +95,11 @@ public class VoidCraftClient {
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(
                 VanillaGuiLayers.HOTBAR,
-                ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
+                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "energy_hud"),
                 EnergyHud::render
         );
         event.registerAboveAll(
-                ResourceLocation.fromNamespaceAndPath(VoidCraft.MODID, "phase_world_transition"),
+                Identifier.fromNamespaceAndPath(VoidCraft.MODID, "phase_world_transition"),
                 (guiGraphics, deltaTracker) -> PhaseWorldTransitionOverlay.render(guiGraphics)
         );
     }

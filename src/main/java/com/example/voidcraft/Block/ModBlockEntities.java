@@ -22,17 +22,17 @@ public class ModBlockEntities {
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BatteryBlockEntity>> BATTERY_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "battery_block",
-            () -> new BlockEntityType<>(BatteryBlockEntity::new, Set.of(ModBlock.BATTERY_BLOCK.get()), null)
+            () -> new BlockEntityType<>(BatteryBlockEntity::new, Set.of(ModBlock.BATTERY_BLOCK.get()))
     );
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChunkMapperBlockEntity>> CHUNK_MAPPER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "chunk_mapper_block",
-            () -> new BlockEntityType<>(ChunkMapperBlockEntity::new, Set.of(ModBlock.CHUNK_MAPPER_BLOCK.get()), null)
+            () -> new BlockEntityType<>(ChunkMapperBlockEntity::new, Set.of(ModBlock.CHUNK_MAPPER_BLOCK.get()))
     );
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidEnergyConverterBlockEntity>> VOID_ENERGY_CONVERTER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "void_energy_converter",
-            () -> new BlockEntityType<>(VoidEnergyConverterBlockEntity::new, Set.of(ModBlock.VOID_ENERGY_CONVERTER.get()), null)
+            () -> new BlockEntityType<>(VoidEnergyConverterBlockEntity::new, Set.of(ModBlock.VOID_ENERGY_CONVERTER.get()))
     );
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidPhenomenonCollectorBlockEntity>> VOID_PHENOMENON_COLLECTOR_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
@@ -44,9 +44,8 @@ public class ModBlockEntities {
                             ModBlock.VOID_PHENOMENON_COLLECTOR.get(),
                             ModBlock.IMPROVED_VOID_PHENOMENON_COLLECTOR.get(),
                             ModBlock.ADVANCED_VOID_PHENOMENON_COLLECTOR.get(),
-                    ModBlock.VOID_ATTUNER.get()
-                    ),
-                    null
+                            ModBlock.VOID_ATTUNER.get()
+                    )
             )
     );
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<VoidChargerBlockEntity>> VOID_CHARGER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
@@ -56,9 +55,8 @@ public class ModBlockEntities {
                     Set.of(
                             ModBlock.LOW_VOID_CHARGER.get(),
                             ModBlock.MID_VOID_CHARGER.get(),
-                    ModBlock.HIGH_VOID_CHARGER.get()
-                    ),
-                    null
+                            ModBlock.HIGH_VOID_CHARGER.get()
+                    )
             )
     );
 

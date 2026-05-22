@@ -1,6 +1,5 @@
 package com.example.voidcraft.Effect;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -8,7 +7,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Vector4f;
 
 public final class VoidBlackHoleRenderer {
     private static final int ANGLE_SEGMENTS = 64;
@@ -114,26 +112,6 @@ public final class VoidBlackHoleRenderer {
             Vec3 center,
             float partialTick,
             FacingData facingData
-    ) {
-        return computeScreenMaskData(
-                mc,
-                blackHole,
-                center,
-                partialTick,
-                facingData,
-                RenderSystem.getModelViewMatrix(),
-                RenderSystem.getProjectionMatrix()
-        );
-    }
-
-    public static ScreenMaskData computeScreenMaskData(
-            Minecraft mc,
-            VoidBlackHoleInstance blackHole,
-            Vec3 center,
-            float partialTick,
-            FacingData facingData,
-            Matrix4f modelViewMatrix,
-            Matrix4f projectionMatrix
     ) {
         RenderMetrics metrics = computeMetrics(blackHole, partialTick);
         float halfHeight = metrics.halfHeight() * blackHole.config.distortionHeightScale();
