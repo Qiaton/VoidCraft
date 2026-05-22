@@ -3,6 +3,7 @@ package com.example.voidcraft.Item;
 import com.example.voidcraft.Item.custom.FlowType;
 import com.example.voidcraft.Item.custom.CoordinateDesignatorItem;
 import com.example.voidcraft.Item.custom.EnergyCoreItem;
+import com.example.voidcraft.Item.custom.GuideBookItem;
 import com.example.voidcraft.Item.custom.PhaseWatchTier;
 import com.example.voidcraft.Item.custom.TieredPhaseWatch;
 import com.example.voidcraft.Item.custom.VoidCrystalItem;
@@ -163,6 +164,11 @@ public class ModItem {
             "coordinate_designator",
             CoordinateDesignatorItem::new,
             new Item.Properties().stacksTo(1)
+    );
+    public static final DeferredItem<GuideBookItem> GUIDE_BOOK = ITEMS.registerItem(
+            "guide_book",
+            GuideBookItem::new,
+            props -> props.stacksTo(1)
     );
     public static final DeferredItem<Item> VOID_ORE = ITEMS.registerItem(
             "void_ore",

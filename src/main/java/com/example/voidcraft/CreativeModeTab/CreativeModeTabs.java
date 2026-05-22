@@ -66,6 +66,7 @@ public class CreativeModeTabs {
                         output.accept(ModItem.PURE_ENERGY);
                         output.accept(ModItem.VOID_ENERGY);
                         output.accept(ModItem.COORDINATE_DESIGNATOR);
+                        output.accept(ModItem.GUIDE_BOOK);
                         addModuleItems(output, ModItem.MODULE_ITEM.get());
                         output.accept(getModuleModifierItem(ModuleModifierType.COOLDOWN_REDUCTION));
                         output.accept(getModuleModifierItem(ModuleModifierType.SPEED_BOOST));

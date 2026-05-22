@@ -1,5 +1,6 @@
 package com.example.voidcraft;
 
+import com.example.voidcraft.Gui.GuideBookMenu;
 import com.example.voidcraft.Gui.ModuleMenu;
 import com.example.voidcraft.Gui.ModuleBoostMenu;
 import com.example.voidcraft.Gui.VoidChargerMenu;
@@ -41,6 +42,10 @@ public class ModMenuType {
     public static final Supplier<MenuType<VoidEnergyConverterMenu>> VOID_ENERGY_CONVERTER_MENU = MENU_TYPE.register(
             "void_energy_converter",
             () -> IMenuTypeExtension.create(VoidEnergyConverterMenu::new)
+    );
+    public static final Supplier<MenuType<GuideBookMenu>> GUIDE_BOOK_MENU = MENU_TYPE.register(
+            "guide_book",
+            () -> new MenuType<>(GuideBookMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
     public static void register(IEventBus bus) {
         MENU_TYPE.register(bus);

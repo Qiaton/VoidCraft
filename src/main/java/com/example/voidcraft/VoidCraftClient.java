@@ -6,6 +6,7 @@ import com.example.voidcraft.ClientCustom.Event.HoldReleaseClientDispatcher;
 import com.example.voidcraft.ClientCustom.Generator.VoidPhenomenonCollectorBlackHoleClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Gui.EnergyHud;
+import com.example.voidcraft.Gui.GuideBookScreen;
 import com.example.voidcraft.Gui.ModuleBoostScreen;
 import com.example.voidcraft.Gui.ModuleScreen;
 import com.example.voidcraft.Gui.PhaseWorldTransitionOverlay;
@@ -87,6 +88,7 @@ public class VoidCraftClient {
         event.register(ModMenuType.VOID_PHENOMENON_COLLECTOR_MENU.get(), VoidPhenomenonCollectorScreen::new);
         event.register(ModMenuType.VOID_CHARGER_MENU.get(), VoidChargerScreen::new);
         event.register(ModMenuType.VOID_ENERGY_CONVERTER_MENU.get(), VoidEnergyConverterScreen::new);
+        event.register(ModMenuType.GUIDE_BOOK_MENU.get(), GuideBookScreen::new);
     }
 
     @SubscribeEvent
