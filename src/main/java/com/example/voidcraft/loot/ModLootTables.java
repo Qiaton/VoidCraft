@@ -153,6 +153,10 @@ public final class ModLootTables {
             new WeightedItem(ModItem.MAX_ENERGY_CORE, 1)
     };
 
+    private static final WeightedItem[] VOID_ORES = {
+            new WeightedItem(ModItem.VOID_ORE, 1)
+    };
+
     private static final WeightedModifierType[] STRUCTURE_MODIFIER_TYPES = {
             new WeightedModifierType(ModuleModifierType.COOLDOWN_REDUCTION, 45),
             new WeightedModifierType(ModuleModifierType.SPEED_BOOST, 35),
@@ -177,12 +181,14 @@ public final class ModLootTables {
         LootTable table = event.getTable();
 
         if (COMMON_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_common_void_ore", 0.06F, VOID_ORES));
             addPool(table, itemPool("void_craft_common_phase_watch", 0.20F, COMMON_WATCHES));
             addPool(table, itemPool("void_craft_common_energy_core", 0.20F, COMMON_CORES));
             addPool(table, modifierPool("void_craft_common_modifier", 0.15F, STRUCTURE_MODIFIER_TYPES, COMMON_MODIFIER_LEVELS));
         }
 
         if (MID_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_mid_void_ore", 0.05F, VOID_ORES));
             addPool(table, itemPool("void_craft_mid_phase_watch", 0.25F, MID_WATCHES));
             addPool(table, itemPool("void_craft_mid_energy_core", 0.25F, MID_CORES));
             addPool(table, midModulePool());
@@ -190,6 +196,7 @@ public final class ModLootTables {
         }
 
         if (HIGH_CHESTS.contains(name)) {
+            addPool(table, itemPool("void_craft_high_void_ore", 0.12F, VOID_ORES));
             addPool(table, itemPool("void_craft_high_phase_watch", 0.60F, HIGH_WATCHES));
             addPool(table, itemPool("void_craft_high_energy_core", 0.35F, HIGH_CORES));
             addPool(table, highModulePool());

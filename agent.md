@@ -1,6 +1,6 @@
 # VoidCraft agent memory
 
-更新时间：2026-05-10。
+更新时间：2026-05-25。
 
 ## 协作约定
 
@@ -96,6 +96,7 @@
 - `IN_VOID` 和 `VOID_SPEED` 是 NeoForge attachments，同步到客户端。
 - `VoidClock` 用 tick 表驱动实体虚空状态和客户端虚空闪光。
 - `VoidEvents` 让虚空实体免伤、免交互、免拾取、怪物不锁定、保氧，并处理跳跃速度。
+- 2026-05-25 虚空仇恨优化：`LivingChangeTargetEvent` 遇到虚空目标时改为取消目标切换，不再 `setNewAboutToBeSetTarget(null)`；已有目标仍在 `clearMobTarget` 里清掉，并额外清 `Brain` 的 `MemoryModuleType.ATTACK_TARGET`，避免脑部 AI 继续追虚空玩家；`./gradlew --offline compileJava` 通过。
 - Mixin：
   - `VoidEntity` / `VoidLivingEntityClass` / `VoidPlayer` 处理碰撞、推挤、投射物命中、流体推力、拾取选取和速度。
   - `PhasePlayerTraversalMixin` 防止原版 tick 重置相位穿墙的 noPhysics。
@@ -180,8 +181,22 @@
 - 数据位于 `src/main/resources/data/void_craft`，包括配方、战利品表、伤害类型、附魔、维度和世界生成配置。
 - `MobEnergyDrops` 按生物类别掉 chaos/neutral/pure energy；当前 neutral 掉率 5%，pure 掉率 10%。
 - `ModLootTables` 注入结构宝箱和钓鱼宝藏，产出模块和 modifier。
+- 已同步 JEI 适配：`compat/jei` 注册模块合成展示、模块强化台展示、模块/modifier 获取说明；JEI 使用本地 `libs/jei-1.21.11-neoforge-27.4.0.22.jar` 作为 compileOnly 可选依赖。
 
 ## 配置项
 
 - 客户端配置 `energyHud`：位置默认 `BOTTOM_RIGHT`，X/Y 偏移默认 12，范围 0-512。
 - 通用配置 `phaseTurret.emitterCount`：默认 4，范围 1-20；读取失败时回退默认值。
+
+## 2026-05-25 虚空流体推力
+
+- `VoidEntity`：抽出 `inVoid(Entity)` 复用虚空判断；旧的无参 `isPushedByFluid()` 拦截保留。
+- 新增对 `Entity.updateFluidHeightAndDoFluidPushing(boolean)` 内 `isPushedByFluid(FluidType)` 的重定向；虚空活体直接返回 `false`，水、岩浆和模组流体不会再追加流速冲走玩家/实体。
+- 这次同步只拦流体推力判断，不取消流体高度、眼部流体、熄火等原版逻辑。
+- 验证：`./gradlew --offline compileJava` 通过。
+
+## 2026-05-25 同版本同步点
+
+- 当前原项目工作区将作为 1.20.1 移植端的新同步基线；移植端 `agent.md` 会记录本次原项目提交 hash。
+- 本同步点覆盖：JEI 展示适配、虚矿生成高度与战利品箱说明、炮台治疗/击退/齐射调整、虚空目标 AI 清理、虚空流体推力拦截，以及对应语言/手册说明。
+- 验证：`./gradlew --offline compileJava` 通过；`git diff --check` 通过。

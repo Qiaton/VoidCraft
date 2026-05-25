@@ -14,7 +14,7 @@ public class HealthAssistPhaseTurretModule extends AssistPhaseTurretModule {
     private static final float DAMAGE_SCALE = 0.65F;
     private static final float SELF_HEAL_PER_LEVEL = 0.10F;
     private static final float FRIEND_HEAL = 0.20F;
-    private static final float FRIEND_HEAL_PER_LEVEL = 0.12F;
+    private static final float FRIEND_HEAL_PER_LEVEL = 0.15F;
     private static final long CHANNEL_ENERGY_ADD = 2L;
     private static final long BURST_ENERGY_ADD = 80L;
     private static final double FRIEND_RANGE = 4.0D;

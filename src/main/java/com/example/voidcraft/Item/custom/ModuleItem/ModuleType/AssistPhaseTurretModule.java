@@ -55,7 +55,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
     private static final double SAFE_DISTANCE = 4.0D;
     private static final double SAFE_DISTANCE_SQR = SAFE_DISTANCE * SAFE_DISTANCE;
     private static final int BASE_MODULE_LEVEL = 1;
-    private static final float SHOT_DAMAGE = 1.0F;
+    private static final float SHOT_DAMAGE = 1.5F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
     private static final int FIRE_INTERVAL_TICKS = 5;
     private static final int TARGET_LOCK_TICKS = 20;
@@ -781,7 +781,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 activeDurationLevel += modifier.level();
             }
             if (modifierType == SPEED_BOOST) {
-                fireRate += fireRate * modifier.level() * 0.2F;
+                fireRate += fireRate * modifier.level() * 0.6F;
             }
         }
 

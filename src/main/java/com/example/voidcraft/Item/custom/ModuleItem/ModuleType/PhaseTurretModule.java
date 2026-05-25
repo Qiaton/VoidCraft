@@ -50,7 +50,7 @@ public class PhaseTurretModule extends ModuleItem {
     private static final double AIM_ASSIST_RADIUS = 0.5D;
     private static final int BASE_MODULE_LEVEL = 1;
     private static final int BASE_EMITTER_COUNT = 1;
-    private static final float SHOT_DAMAGE = 2.5F;
+    private static final float SHOT_DAMAGE = 3.5F;
     private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
     private static final int FIRE_INTERVAL_TICKS = 5;
     private static final long CHANNEL_ENERGY_COST = 10L;
@@ -739,7 +739,7 @@ public class PhaseTurretModule extends ModuleItem {
                 activeDurationLevel += modifier.level();
             }
             if (modifierType == SPEED_BOOST) {
-                fireRate += fireRate * modifier.level() * 0.3F;
+                fireRate += fireRate * modifier.level() * 0.5F;
             }
         }
 

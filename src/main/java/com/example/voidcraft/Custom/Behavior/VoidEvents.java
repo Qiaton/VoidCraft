@@ -7,6 +7,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.TriState;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -17,6 +19,8 @@ import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
+
+import java.util.Optional;
 
 @EventBusSubscriber
 public class VoidEvents {
@@ -103,7 +107,7 @@ public class VoidEvents {
     public static void noMobTarget(LivingChangeTargetEvent event){ //生物准备更换目标时
         if(event.getNewAboutToBeSetTarget() instanceof LivingEntity target
                 && target.getData(ModAttachments.IN_PHASE.get())) {
-            event.setNewAboutToBeSetTarget(null);
+            event.setCanceled(true);
         }
     }
     @SubscribeEvent
@@ -116,6 +120,16 @@ public class VoidEvents {
         LivingEntity target = mob.getTarget();
         if (target != null && target.getData(ModAttachments.IN_PHASE.get())) {
             mob.setTarget(null);
+        }
+
+        clearBrainTarget(mob);
+    }
+
+    private static void clearBrainTarget(Mob mob) {
+        Brain<?> brain = mob.getBrain();
+        Optional<LivingEntity> target = brain.getMemoryInternal(MemoryModuleType.ATTACK_TARGET);
+        if (target != null && target.isPresent() && target.get().getData(ModAttachments.IN_PHASE.get())) {
+            brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
         }
     }
     @SubscribeEvent
