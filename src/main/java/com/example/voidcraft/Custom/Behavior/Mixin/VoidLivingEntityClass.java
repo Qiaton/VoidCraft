@@ -46,16 +46,16 @@ public class VoidLivingEntityClass {
         // 只处理水平输入，避免流体减速
         Vec3 horizontalInput = new Vec3(travelVector.x, 0.0, travelVector.z);
 
-        // 按实体当前速度把输入转换成运动
-        entity.moveRelative(entity.getSpeed(), horizontalInput);
+        // 用飞行一样的输入比例，避免流体自己的低速
+        entity.moveRelative(entity.getSpeed() * 0.1F, horizontalInput);
 
         Vec3 newMotion = entity.getDeltaMovement();
 
-        // 只给水平一点阻尼，Y保留原值
+        // 水平用空气阻尼，Y保留原值
         entity.setDeltaMovement(
-                newMotion.x * 0.51,
+                newMotion.x * 0.91,
                 oldMotion.y,
-                newMotion.z * 0.51
+                newMotion.z * 0.91
         );
 
         entity.move(MoverType.SELF, entity.getDeltaMovement());
