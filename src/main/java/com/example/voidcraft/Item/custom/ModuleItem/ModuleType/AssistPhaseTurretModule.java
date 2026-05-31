@@ -782,6 +782,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
             }
             if (modifierType == SPEED_BOOST) {
                 fireRate += fireRate * modifier.level() * 0.6F;
+                shotDamage *= 1.0F - Math.max(0, 6 - modifier.level()) * 0.05F;
             }
         }
 
