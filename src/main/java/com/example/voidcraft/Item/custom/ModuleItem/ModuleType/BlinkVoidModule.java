@@ -82,9 +82,7 @@ public class BlinkVoidModule extends ModuleItem {
                     return;
                 }
             }
-            else{
-                ModuleSkillClock.setCooldown(player, slot, (long) (COOLDOWN_TICKS/stats.cooldownDuration));
-            }
+            ModuleSkillClock.startRunCooldown(player, slot, 2, (long) (COOLDOWN_TICKS/stats.cooldownDuration));
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
             setBlink(player, target, stats);                                      // 用客户端预览目标点传送，距离已经由服务端验算
             ModSound.playEnterVoid(level, player);

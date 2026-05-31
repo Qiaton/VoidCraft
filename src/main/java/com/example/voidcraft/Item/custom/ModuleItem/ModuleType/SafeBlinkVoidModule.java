@@ -76,13 +76,12 @@ public class SafeBlinkVoidModule extends BlinkVoidModule {
         long cost =  stats.energyCost();
         long cooldown = (long) (COOLDOWN_TICKS / stats.cooldownDuration());
 
-        if (cooldownReady) {
-            ModuleSkillClock.setCooldown(player, slot, cooldown);
-        } else {
+        if (!cooldownReady) {
             if (!ModuleSkillClock.tryUseEnergy(player, cost)) {
                 return;
             }
         }
+        ModuleSkillClock.startRunCooldown(player, slot, 2, cooldown);
         ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT);
         setBlink(player, target);
         ModSound.playEnterVoid(level, player);

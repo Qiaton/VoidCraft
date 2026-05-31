@@ -4,6 +4,8 @@ import com.example.voidcraft.ClientCustom.FlowEffect;
 import com.example.voidcraft.ClientCustom.Coordinate.CoordinateBindingPreviewClient;
 import com.example.voidcraft.ClientCustom.Event.HoldReleaseClientDispatcher;
 import com.example.voidcraft.ClientCustom.Generator.VoidPhenomenonCollectorBlackHoleClient;
+import com.example.voidcraft.ClientCustom.Key.ModKeyMappings;
+import com.example.voidcraft.ClientCustom.Turret.PhaseTurretBlockFlashClient;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
 import com.example.voidcraft.Gui.EnergyHud;
 import com.example.voidcraft.Gui.GuideBookScreen;
@@ -29,6 +31,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
@@ -40,6 +43,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 public class VoidCraftClient {
     public VoidCraftClient(IEventBus bus) {
         bus.addListener(PhaseWorldTransitionScreenRegistration::registerPhaseWorldTransitionScreen);
+        bus.addListener(ModKeyMappings::registerKeys);
     }
 
     @SubscribeEvent
@@ -60,6 +64,7 @@ public class VoidCraftClient {
         PhaseEmitterClientManager.tickLocalAttackInput();
         CoordinateBindingPreviewClient.tick();
         VoidPhenomenonCollectorBlackHoleClient.tick();
+        PhaseTurretBlockFlashClient.tick();
         PhaseProjectionClient.tick();
     }
     @SubscribeEvent
@@ -79,6 +84,10 @@ public class VoidCraftClient {
         if (PhaseEmitterClientManager.shouldHideLocalHands()) {
             event.setCanceled(true);
         }
+    }
+    @SubscribeEvent
+    public static void renderTurretBlockFlash(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+        PhaseTurretBlockFlashClient.render(event);
     }
     @SubscribeEvent
     public static void registerModuleMenu(RegisterMenuScreensEvent event){

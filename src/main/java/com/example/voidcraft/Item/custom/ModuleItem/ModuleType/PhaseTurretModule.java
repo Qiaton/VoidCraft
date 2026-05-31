@@ -12,37 +12,51 @@ import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.ModDamageTypes;
 import com.example.voidcraft.Sound.ModSound;
 import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.VoidCraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.BURST;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleMode.CHANNEL;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleModifierType.*;
 import static com.example.voidcraft.Item.custom.ModuleItem.ModuleStatHelper.addLess;
 
+@EventBusSubscriber(modid = VoidCraft.MODID)
 public class PhaseTurretModule extends ModuleItem {
 
     // 手动炮台的基础数值集中在这里；后续接入配置文件时优先替换这些常量或对应的 getter。
@@ -50,8 +64,8 @@ public class PhaseTurretModule extends ModuleItem {
     private static final double AIM_ASSIST_RADIUS = 0.5D;
     private static final int BASE_MODULE_LEVEL = 1;
     private static final int BASE_EMITTER_COUNT = 1;
-    private static final float SHOT_DAMAGE = 3.5F;
-    private static final float SHOT_DAMAGE_PER_LEVEL = 0.5F;
+    private static final float SHOT_DAMAGE = 1.5F;
+    private static final float SHOT_DAMAGE_PER_LEVEL = 1.0F;
     private static final int FIRE_INTERVAL_TICKS = 5;
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;
@@ -64,9 +78,17 @@ public class PhaseTurretModule extends ModuleItem {
     private static final float HIT_FLASH_ALPHA_SCALE = 0.60F;
     private static final double FIRE_TICK_EPSILON = 1.0E-6D;
     private static final int MAX_DUE_SHOTS_PER_TICK = 20;
+    private static final int DEFAULT_FORM = 0;
+    private static final int DESTROY_FORM = 1;
+    private static final float DESTROY_DAMAGE_SCALE = 0.20F;
+    private static final float BREAK_POWER = 1.0F;
+    private static final float BREAK_POWER_PER_LEVEL = 1.5F;
+    private static final float LOW_LEVEL_BREAK_SCALE = 0.05F;
+    private static final int BREAK_RECORD_TICKS = 5 * 20;
 
     // 服务端按玩家和模块槽位保存开火状态，客户端只同步视觉和输入请求。
     private static final Map<UUID, Map<Integer, FireState>> FIRE_STATES = new HashMap<>();
+    private static final Map<BlockKey, BreakRecord> BREAK_RECORDS = new HashMap<>();
 
     public static final class VisualColors {
         // 炮台球颜色。
@@ -264,6 +286,39 @@ public class PhaseTurretModule extends ModuleItem {
             .noiseScrollSpeed(6.2F)
             .occludedByBlocks(false)
             .build();
+    private static final VoidRingInstance.Preset BLOCK_BREAK_LIGHT = VoidRingInstance.Preset.builder()
+            .renderStyle(VoidRingInstance.Preset.RenderStyle.FLASH)
+            .durationTicks(8)
+            .peakHoldTicks(1)
+            .centerYOffset(0.0F)
+            .color(0xBFE8FF)
+            .followCameraPitch(true)
+            .distortionFollowCameraPitch(true)
+            .startHalfHeight(0.08F)
+            .peakHalfHeight(1.05F)
+            .endHalfHeight(0.08F)
+            .startHalfWidth(0.08F)
+            .peakHalfWidth(1.05F)
+            .endHalfWidth(0.08F)
+            .coreAlpha(0.90F)
+            .glowAlpha(0.62F)
+            .lineAlpha(0.72F)
+            .glowWidthScale(1.25F)
+            .glowHeightScale(1.25F)
+            .shaderGlowWidthScale(1.35F)
+            .shaderGlowHeightScale(1.35F)
+            .shaderCompatOuterGlowGain(1.40F)
+            .shaderCompatCoreGain(1.20F)
+            .shaderCompatLineGain(1.25F)
+            .shaderCompatBloomGain(1.30F)
+            .shaderCompatBloomAlphaScale(0.50F)
+            .distortionAlpha(0.45F)
+            .distortionThickness(1.15F)
+            .distortionAmplitude(2.00F)
+            .distortionWidthScale(1.15F)
+            .distortionHeightScale(1.15F)
+            .occludedByBlocks(false)
+            .build();
     private static final VoidRingInstance.Preset TOGGLE_FLASH = VoidRingInstance.Preset.builder()
             .renderStyle(VoidRingInstance.Preset.RenderStyle.FULL)
             .durationTicks(5)
@@ -361,6 +416,57 @@ public class PhaseTurretModule extends ModuleItem {
         super(properties);
     }
 
+    @SubscribeEvent
+    public static void tickBreakRecords(ServerTickEvent.Post event) {
+        clearOldRecords(event.getServer().overworld().getGameTime());
+    }
+
+    @Override
+    public void appendHoverText(
+            ItemStack stack,
+            TooltipContext context,
+            TooltipDisplay tooltipDisplay,
+            Consumer<Component> tooltipAdder,
+            TooltipFlag flag
+    ) {
+        super.appendHoverText(stack, context, tooltipDisplay, tooltipAdder, flag);
+        if (!canTurnForm()) {
+            return;
+        }
+
+        tooltipAdder.accept(Component.translatable(
+                "tooltip.void_craft.phase_turret.form",
+                getFormName(stack)
+        ));
+        tooltipAdder.accept(Component.translatable(
+                "tooltip.void_craft.phase_turret.switch_form",
+                Component.keybind("key.voidcraft.switch_module_form")
+        ));
+    }
+
+    @Override
+    protected boolean canTurnForm() {
+        return getClass() == PhaseTurretModule.class;
+    }
+
+    @Override
+    protected void doTurnForm(ItemStack stack) {
+        stack.set(
+                ModDataComponents.PHASE_TURRET_FORM.value(),
+                isDestroyForm(stack) ? DEFAULT_FORM : DESTROY_FORM
+        );
+    }
+
+    public static boolean isDestroyForm(ItemStack stack) {
+        return stack.getOrDefault(ModDataComponents.PHASE_TURRET_FORM.get(), DEFAULT_FORM) == DESTROY_FORM;
+    }
+
+    private static Component getFormName(ItemStack stack) {
+        return Component.translatable(isDestroyForm(stack)
+                ? "phase_turret_form.void_craft.destroy"
+                : "phase_turret_form.void_craft.normal");
+    }
+
     @Override
     protected void doUseSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
         Stats stats = getStats(moduleStack);
@@ -417,7 +523,7 @@ public class PhaseTurretModule extends ModuleItem {
         // BURST 只临时开启手动炮台姿态，不额外走 channel 每 tick 能量消耗。
         ModuleSkillClock.startChannel(player, slot, 0);
         int activeTicks = stats.burstActiveTicks();
-        ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.burstCooldownTicks() : 0L);
+        ModuleSkillClock.startRunCooldown(player, slot, activeTicks, stats.burstCooldownTicks());
         FireState state = new FireState();
         state.burstUntilTick = player.tickCount + activeTicks;
         FIRE_STATES
@@ -822,6 +928,9 @@ public class PhaseTurretModule extends ModuleItem {
                     getBeam(moduleStack, emitterSlot, entityHit.getLocation(), hitEntity.getId(), right)
             );
         } else {
+            if (blockHit.getType() == HitResult.Type.BLOCK) {
+                hitBlock(player, moduleStack, blockHit, right);
+            }
 
             return new ShotResult(
                     emitterSlot,
@@ -829,6 +938,35 @@ public class PhaseTurretModule extends ModuleItem {
                     -1,
                     getBeam(moduleStack, emitterSlot, blockHitPos, -1, right)
             );
+        }
+    }
+
+    protected void hitBlock(ServerPlayer player, ItemStack moduleStack, BlockHitResult blockHit, boolean right) {
+        if (!isDestroyForm(moduleStack) || !(player.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        BlockPos pos = blockHit.getBlockPos();
+        BlockState state = serverLevel.getBlockState(pos);
+        if (!canHitBlock(serverLevel, pos, state)) {
+            return;
+        }
+
+        ModNetworking.sendTurretBlockFlash(serverLevel, pos);
+
+        long gameTime = serverLevel.getGameTime();
+        BlockKey key = new BlockKey(serverLevel.dimension(), pos.immutable());
+        float progress = getOldProgress(key, state, gameTime) + getBreakAdd(moduleStack, serverLevel, pos, state);
+        if (progress < 1.0F) {
+            BREAK_RECORDS.put(key, new BreakRecord(state, progress, gameTime));
+            return;
+        }
+
+        BREAK_RECORDS.remove(key);
+        Vec3 center = Vec3.atCenterOf(pos);
+        if (serverLevel.destroyBlock(pos, canDrop(moduleStack, state), player)) {
+            ModNetworking.sendPhaseTearAt(serverLevel, center, 1.0F, BLOCK_BREAK_LIGHT);
+            ModSound.playVoidArcherHit(serverLevel, center);
         }
     }
 
@@ -917,7 +1055,8 @@ public class PhaseTurretModule extends ModuleItem {
 
     protected float getDamage(ItemStack moduleStack, LivingEntity target) {
         Stats stats = getStats(moduleStack);
-        return stats == null ? SHOT_DAMAGE : stats.shotDamage();
+        float damage = stats == null ? SHOT_DAMAGE : stats.shotDamage();
+        return isDestroyForm(moduleStack) ? damage * DESTROY_DAMAGE_SCALE : damage;
     }
 
     protected float getDamage(ItemStack moduleStack, Entity target) {
@@ -925,7 +1064,7 @@ public class PhaseTurretModule extends ModuleItem {
             return getDamage(moduleStack, livingTarget);
         }
 
-        return SHOT_DAMAGE;
+        return isDestroyForm(moduleStack) ? SHOT_DAMAGE * DESTROY_DAMAGE_SCALE : SHOT_DAMAGE;
     }
 
     protected boolean hitTarget(
@@ -1105,6 +1244,74 @@ public class PhaseTurretModule extends ModuleItem {
         return player == null || (parent != player && parent.level() == player.level());
     }
 
+    private static boolean canHitBlock(ServerLevel level, BlockPos pos, BlockState state) {
+        return !state.isAir() && state.getDestroySpeed(level, pos) >= 0.0F;
+    }
+
+    private static float getOldProgress(BlockKey key, BlockState state, long gameTime) {
+        BreakRecord record = BREAK_RECORDS.get(key);
+        if (record == null || !record.sameBlock(state) || gameTime - record.lastHitTick() > BREAK_RECORD_TICKS) {
+            return 0.0F;
+        }
+
+        return record.progress();
+    }
+
+    private static float getBreakAdd(ItemStack moduleStack, ServerLevel level, BlockPos pos, BlockState state) {
+        float hardness = state.getDestroySpeed(level, pos);
+        int levelValue = getModuleLevel(moduleStack);
+        float add = hardness == 0.0F ? 1.0F : getBreakPower(levelValue) / hardness;
+        if (!canDrop(levelValue, state)) {
+            add *= LOW_LEVEL_BREAK_SCALE;
+        }
+
+        return add;
+    }
+
+    private static boolean canDrop(ItemStack moduleStack, BlockState state) {
+        return canDrop(getModuleLevel(moduleStack), state);
+    }
+
+    private static boolean canDrop(int level, BlockState state) {
+        return level >= getNeedLevel(state);
+    }
+
+    private static void clearOldRecords(long gameTime) {
+        Iterator<Map.Entry<BlockKey, BreakRecord>> iterator = BREAK_RECORDS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<BlockKey, BreakRecord> entry = iterator.next();
+            if (gameTime - entry.getValue().lastHitTick() > BREAK_RECORD_TICKS) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private static float getBreakPower(int level) {
+        return BREAK_POWER + Math.max(0, level - BASE_MODULE_LEVEL) * BREAK_POWER_PER_LEVEL;
+    }
+
+    private static int getNeedLevel(BlockState state) {
+        if (state.is(BlockTags.NEEDS_DIAMOND_TOOL)) {
+            return 3;
+        }
+        if (state.is(BlockTags.NEEDS_IRON_TOOL)) {
+            return 2;
+        }
+        if (state.is(BlockTags.NEEDS_STONE_TOOL)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int getModuleLevel(ItemStack moduleStack) {
+        ModuleData data = moduleStack.get(ModDataComponents.MODULE_DATA.get());
+        if (data == null) {
+            return BASE_MODULE_LEVEL;
+        }
+
+        return Math.max(BASE_MODULE_LEVEL, data.level());
+    }
+
     @Override
     public ModuleInputMode getInputMode() {
         // 炮台的 CHANNEL 是点按开关，不走长按释放链。
@@ -1174,6 +1381,15 @@ public class PhaseTurretModule extends ModuleItem {
     }
 
     private record ActiveTurret(int slot, ItemStack moduleStack, PhaseTurretModule module) {
+    }
+
+    private record BlockKey(ResourceKey<Level> dimension, BlockPos pos) {
+    }
+
+    private record BreakRecord(BlockState state, float progress, long lastHitTick) {
+        private boolean sameBlock(BlockState other) {
+            return this.state.is(other.getBlock());
+        }
     }
 
     public record ShotResult(

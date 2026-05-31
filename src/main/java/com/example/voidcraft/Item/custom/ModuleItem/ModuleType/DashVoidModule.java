@@ -75,7 +75,7 @@ public class DashVoidModule extends ModuleItem {
             ModNetworking.sendPhaseTear(player, VoidRingInstance.Preset.DEFAULT); //相位裂缝动画
             int activeTicks = stats.activeTicks();
             DashClock.setDash(player,activeTicks, stats.strength());
-            ModuleSkillClock.startRunCooldown(player, slot, activeTicks, cooldownReady ? stats.cooldownTicks() : 0L);
+            ModuleSkillClock.startRunCooldown(player, slot, activeTicks, stats.cooldownTicks());
             VoidClock.setPhaseTicks(player,activeTicks);
         }
     }

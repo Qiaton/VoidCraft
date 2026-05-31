@@ -178,7 +178,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
                 return;
             }
 
-            startBurst(player, moduleStack, slot, stats, cooldownReady ? stats.burstCooldownTicks() : 0L);
+            startBurst(player, moduleStack, slot, stats, stats.burstCooldownTicks());
         }
     }
 
@@ -878,6 +878,7 @@ public class AssistPhaseTurretModule extends ModuleItem {
         protected double nextFireTick;
         protected UUID lockedTargetId;
         protected int lockUntilTick;
+        protected int dyingHealUntilTick;
         protected int burstUntilTick;
     }
 

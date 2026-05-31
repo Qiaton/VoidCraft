@@ -221,11 +221,11 @@ public class ModuleTurnRecipe extends CustomRecipe {
                 && is(get(input, 0, 0), ModItem.VOID_ENERGY.get())
                 && is(get(input, 1, 0), ModItem.VOID_ENERGY.get())
                 && is(get(input, 2, 0), ModItem.VOID_ENERGY.get())
-                && is(get(input, 0, 1), ModItem.PURE_VOID_CRYSTAL.get())
+                && is(get(input, 0, 1), ModItem.VOID_ENERGY.get())
                 && is(get(input, 1, 1), ModItem.MODULE_ITEM.get())
-                && is(get(input, 2, 1), ModItem.PURE_VOID_CRYSTAL.get())
+                && is(get(input, 2, 1), ModItem.VOID_ENERGY.get())
                 && is(get(input, 0, 2), ModItem.VOID_ENERGY.get())
-                && is(get(input, 1, 2), ModItem.VOID_ENERGY.get())
+                && is(get(input, 1, 2), ModItem.HIGH_PURITY_VOID_CRYSTAL.get())
                 && is(get(input, 2, 2), ModItem.VOID_ENERGY.get());
     }
 
@@ -286,6 +286,12 @@ public class ModuleTurnRecipe extends CustomRecipe {
         if (is(stack, ModItem.ASSIST_PHASE_TURRET_MODULE.get())) {
             return makeOutput(stack, ModItem.PHASE_TURRET_MODULE.get());
         }
+        if (is(stack, ModItem.HEALTH_PHASE_TURRET_MODULE.get())) {
+            return makeOutput(stack, ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get());
+        }
+        if (is(stack, ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get())) {
+            return makeOutput(stack, ModItem.HEALTH_PHASE_TURRET_MODULE.get());
+        }
         return ItemStack.EMPTY;
     }
 
@@ -341,7 +347,7 @@ public class ModuleTurnRecipe extends CustomRecipe {
                     item(Items.BLAZE_ROD), item(ModItem.CHAOS_ENERGY.get()), item(Items.BLAZE_ROD)
             );
             case ASSIST_TOGGLE -> List.of(
-                    item(Items.DIAMOND), item(ModItem.PHASE_TURRET_MODULE.get(), ModItem.ASSIST_PHASE_TURRET_MODULE.get()), item(Items.DIAMOND)
+                    item(Items.DIAMOND), item(ModItem.PHASE_TURRET_MODULE.get(), ModItem.ASSIST_PHASE_TURRET_MODULE.get(), ModItem.HEALTH_PHASE_TURRET_MODULE.get(), ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get()), item(Items.DIAMOND)
             );
             case HEALTH_TURRET -> List.of(
                     emptyItem(), item(ModItem.VOID_ENERGY.get()), emptyItem(),
@@ -373,8 +379,8 @@ public class ModuleTurnRecipe extends CustomRecipe {
             );
             case WORLD -> List.of(
                     item(ModItem.VOID_ENERGY.get()), item(ModItem.VOID_ENERGY.get()), item(ModItem.VOID_ENERGY.get()),
-                    item(ModItem.PURE_VOID_CRYSTAL.get()), item(ModItem.MODULE_ITEM.get()), item(ModItem.PURE_VOID_CRYSTAL.get()),
-                    item(ModItem.VOID_ENERGY.get()), item(ModItem.VOID_ENERGY.get()), item(ModItem.VOID_ENERGY.get())
+                    item(ModItem.VOID_ENERGY.get()), item(ModItem.MODULE_ITEM.get()), item(ModItem.VOID_ENERGY.get()),
+                    item(ModItem.VOID_ENERGY.get()), item(ModItem.HIGH_PURITY_VOID_CRYSTAL.get()), item(ModItem.VOID_ENERGY.get())
             );
             case BLACK_HOLE -> List.of(
                     item(ModItem.VOID_ENERGY.get()), item(ModItem.PURE_VOID_CRYSTAL.get()), item(ModItem.VOID_ENERGY.get()),
@@ -432,7 +438,9 @@ public class ModuleTurnRecipe extends CustomRecipe {
 
     private boolean isAssistBase(ItemStack stack) {
         return is(stack, ModItem.PHASE_TURRET_MODULE.get())
-                || is(stack, ModItem.ASSIST_PHASE_TURRET_MODULE.get());
+                || is(stack, ModItem.ASSIST_PHASE_TURRET_MODULE.get())
+                || is(stack, ModItem.HEALTH_PHASE_TURRET_MODULE.get())
+                || is(stack, ModItem.HEALTH_ASSIST_PHASE_TURRET_MODULE.get());
     }
 
     private boolean isHealthBase(ItemStack stack) {

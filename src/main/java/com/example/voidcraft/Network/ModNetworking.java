@@ -11,6 +11,7 @@ import com.example.voidcraft.ClientCustom.Sound.ContinuousLoopSoundClient;
 import com.example.voidcraft.Gui.ChunkMapperStatusScreen;
 import com.example.voidcraft.Gui.CoordinateBindingScreen;
 import com.example.voidcraft.ClientCustom.Turret.PhaseEmitterClientManager;
+import com.example.voidcraft.ClientCustom.Turret.PhaseTurretBlockFlashClient;
 import com.example.voidcraft.ClientCustom.Void.PhaseWorldTransitionClient;
 import com.example.voidcraft.World.GoWorld;
 import com.example.voidcraft.World.projection.PhaseProjectionClient;
@@ -24,6 +25,7 @@ import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.Effect.VoidRingManager;
 import com.example.voidcraft.Effect.VoidTrailInstance;
 import com.example.voidcraft.Effect.VoidTrailManager;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.AssistPhaseTurretModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlackHoleModule;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.BlinkVoidModule;
@@ -31,6 +33,7 @@ import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.PhaseTurretModule
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
@@ -44,6 +47,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
@@ -75,6 +79,22 @@ public final class ModNetworking {
     // 能量 HUD 同步（调用场景：手表能量变化；player 是接收玩家，percent 是能量百分比，visible 控制 HUD 显隐）。
     public static void sendEnergyHud(ServerPlayer player, int percent, boolean visible) {
         PacketDistributor.sendToPlayer(player, new EnergyHudPayload(percent, visible));
+    }
+
+    public static void sendTurretBlockFlash(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) {
+            return;
+        }
+
+        PacketDistributor.sendToPlayersNear(
+                level,
+                null,
+                pos.getX() + 0.5D,
+                pos.getY() + 0.5D,
+                pos.getZ() + 0.5D,
+                PHASE_TEAR_SEND_RANGE,
+                new PhaseTurretBlockFlashPayload(pos)
+        );
     }
 
     // 坐标绑定面板同步（调用场景：玩家打开/刷新绑定列表；ownerPosition 是当前方块坐标，owner 提供输入输出绑定）。
@@ -616,12 +636,14 @@ public final class ModNetworking {
         registrar.playToClient(TurretStatePayload.TYPE, TurretStatePayload.STREAM_CODEC, ModNetworking::onTurretStateClient);
         // 客户端炮台射击事件：服务端发命中点和光束配置，客户端播放光束/炮口特效。
         registrar.playToClient(TurretShotFxPayload.TYPE, TurretShotFxPayload.STREAM_CODEC, ModNetworking::onTurretShotClient);
+        registrar.playToClient(PhaseTurretBlockFlashPayload.TYPE, PhaseTurretBlockFlashPayload.STREAM_CODEC, ModNetworking::onTurretBlockFlashClient);
         // 客户端坐标绑定事件：服务端发绑定列表，客户端打开/刷新坐标制定器面板。
         registrar.playToClient(CoordinateBindingsPayload.TYPE, CoordinateBindingsPayload.STREAM_CODEC, ModNetworking::onBindingsClient);
         // 客户端区块映射器事件：服务端发状态快照，客户端打开/刷新区块映射器面板。
         registrar.playToClient(ChunkMapperStatusPayload.TYPE, ChunkMapperStatusPayload.STREAM_CODEC, ModNetworking::onMapperStatusClient);
         // 服务端模块使用事件：客户端发槽位，服务端按副手手表重新取模块并执行。
         registrar.playToServer(UseWatchModulePayload.TYPE, UseWatchModulePayload.STREAM_CODEC, ModNetworking::onUseWatchServer);
+        registrar.playToServer(OpenPhaseWatchPayload.TYPE, OpenPhaseWatchPayload.STREAM_CODEC, ModNetworking::onOpenWatchServer);
         // 服务端 Blink 释放事件：客户端发槽位、蓄力 tick 和目标点，服务端重新校验后闪现。
         registrar.playToServer(ReleaseBlinkModulePayload.TYPE, ReleaseBlinkModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlinkServer);
         // 服务端手动炮台输入事件：客户端发左右键状态，服务端只更新手动炮台开火状态。
@@ -637,6 +659,7 @@ public final class ModNetworking {
         // 服务端黑洞释放事件：客户端发槽位和目标点，服务端重新读取模块后释放黑洞。
         registrar.playToServer(ReleaseBlackHoleModulePayload.TYPE, ReleaseBlackHoleModulePayload.STREAM_CODEC, ModNetworking::onReleaseBlackHoleServer);
         registrar.playToServer(CancelTeleportModulePayload.TYPE, CancelTeleportModulePayload.STREAM_CODEC, ModNetworking::onCancelTeleportServer);
+        registrar.playToServer(SwitchModuleFormPayload.TYPE, SwitchModuleFormPayload.STREAM_CODEC, ModNetworking::onSwitchModuleFormServer);
     }
 
     // 客户端发包入口（调用场景：按键、GUI、转场 ready；payload 是具体 C2S 自定义包）。
@@ -710,6 +733,62 @@ public final class ModNetworking {
             return;
         }
         PhaseWatch.useModule(serverPlayer, watchStack, slot);
+    }
+
+    private static void onOpenWatchServer(
+            OpenPhaseWatchPayload payload,
+            IPayloadContext context
+    ) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        ItemStack watchStack = getOpenWatchStack(player, payload.slot());
+        if (!(watchStack.getItem() instanceof PhaseWatch)) {
+            return;
+        }
+
+        PhaseWatch.openMenu(player, watchStack);
+    }
+
+    private static ItemStack getOpenWatchStack(ServerPlayer player, int slot) {
+        if (slot == OpenPhaseWatchPayload.HAND_SLOT) {
+            ItemStack mainHandStack = player.getMainHandItem();
+            if (mainHandStack.getItem() instanceof PhaseWatch) {
+                return mainHandStack;
+            }
+            return player.getOffhandItem();
+        }
+
+        if (slot < 0 || slot >= player.containerMenu.slots.size()) {
+            return ItemStack.EMPTY;
+        }
+
+        return player.containerMenu.slots.get(slot).getItem();
+    }
+
+    private static void onSwitchModuleFormServer(
+            SwitchModuleFormPayload payload,
+            IPayloadContext context
+    ) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        int slot = payload.slot();
+        if (slot < 0 || slot >= player.containerMenu.slots.size()) {
+            return;
+        }
+
+        Slot menuSlot = player.containerMenu.slots.get(slot);
+        ItemStack stack = menuSlot.getItem();
+        if (!ModuleItem.canTurnForm(stack)) {
+            return;
+        }
+
+        ModuleItem.turnForm(stack);
+        menuSlot.setChanged();
+        player.containerMenu.broadcastChanges();
     }
 
     private static void onCancelTeleportServer(
@@ -844,6 +923,10 @@ public final class ModNetworking {
                 new Vec3(payload.targetX(), payload.targetY(), payload.targetZ()),
                 payload.toBeamConfig()
         ));
+    }
+
+    private static void onTurretBlockFlashClient(PhaseTurretBlockFlashPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> PhaseTurretBlockFlashClient.add(payload.pos()));
     }
 
     // 坐标绑定面板接收（调用场景：服务端发绑定列表；payload 带 owner 和输入/输出条目）。

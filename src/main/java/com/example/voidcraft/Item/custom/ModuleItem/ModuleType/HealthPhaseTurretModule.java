@@ -2,8 +2,6 @@ package com.example.voidcraft.Item.custom.ModuleItem.ModuleType;
 
 import com.example.voidcraft.Custom.Behavior.Turret.PhaseEmitterSlot;
 import com.example.voidcraft.Effect.VoidBeamInstance;
-import com.example.voidcraft.Item.custom.ModuleItem.ModuleData;
-import com.example.voidcraft.ModDataComponents;
 import com.example.voidcraft.Network.ModNetworking;
 import com.example.voidcraft.Sound.ModSound;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,40 +11,18 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 public class HealthPhaseTurretModule extends PhaseTurretModule {
-    private static final int BASE_MODULE_LEVEL = 1;
     private static final float DAMAGE_SCALE = 0.65F;
     private static final float SELF_HEAL_PER_LEVEL = 0.07F;
     private static final float FRIEND_HEAL = 0.20F;
     private static final float FRIEND_HEAL_PER_LEVEL = 0.15F;
 
-    private static final int LEFT_BEAM_CORE = 0xF2A4C9;
-    private static final int LEFT_BEAM_GLOW = 0xD9327C;
-    private static final int LEFT_BEAM_LEVEL_2_CORE = 0xF5AED4;
-    private static final int LEFT_BEAM_LEVEL_2_GLOW = 0xE0448E;
-    private static final int LEFT_BEAM_LEVEL_3_CORE = 0xFABAE0;
-    private static final int LEFT_BEAM_LEVEL_3_GLOW = 0xEA55A0;
-    private static final int LEFT_BEAM_LEVEL_4_CORE = 0xFFC6EC;
-    private static final int LEFT_BEAM_LEVEL_4_GLOW = 0xF164B1;
-    private static final int LEFT_BEAM_LEVEL_5_CORE = 0xFFD2F4;
-    private static final int LEFT_BEAM_LEVEL_5_GLOW = 0xFA72C2;
-    private static final int LEFT_BEAM_VOID_CORE = 0xF5C4FF;
-    private static final int LEFT_BEAM_VOID_GLOW = 0xCB68E8;
-
-    private static final int RIGHT_BEAM_CORE = 0xFFF7FC;
-    private static final int RIGHT_BEAM_GLOW = 0xFFB8DC;
-    private static final int RIGHT_BEAM_LEVEL_2_CORE = 0xFFF9FD;
-    private static final int RIGHT_BEAM_LEVEL_2_GLOW = 0xFFC0E5;
-    private static final int RIGHT_BEAM_LEVEL_3_CORE = 0xFFFBFE;
-    private static final int RIGHT_BEAM_LEVEL_3_GLOW = 0xFFC8ED;
-    private static final int RIGHT_BEAM_LEVEL_4_CORE = 0xFFFFFF;
-    private static final int RIGHT_BEAM_LEVEL_4_GLOW = 0xFFD0F4;
-    private static final int RIGHT_BEAM_LEVEL_5_CORE = 0xFFFFFF;
-    private static final int RIGHT_BEAM_LEVEL_5_GLOW = 0xFFD8FA;
-    private static final int RIGHT_BEAM_VOID_CORE = 0xFFFFFF;
-    private static final int RIGHT_BEAM_VOID_GLOW = 0xE8C4FF;
-
     public HealthPhaseTurretModule(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    protected boolean canTurnForm() {
+        return true;
     }
 
     @Override
@@ -100,7 +76,7 @@ public class HealthPhaseTurretModule extends PhaseTurretModule {
                 return false;
             }
 
-            boolean healed = healTarget(livingTarget, amount * getFriendHeal(moduleStack));
+            boolean healed = HealthTurretHelper.heal(livingTarget, amount * getFriendHeal(moduleStack));
             if (healed) {
                 playHeal(player, livingTarget);
             }
@@ -122,11 +98,7 @@ public class HealthPhaseTurretModule extends PhaseTurretModule {
             int targetEntityId,
             boolean right
     ) {
-        int level = getModuleLevel(moduleStack);
-        return makeShotBeam(
-                getBeamCore(level, right),
-                getBeamGlow(level, right)
-        );
+        return HealthTurretHelper.getBeam(moduleStack, right);
     }
 
     @Override
@@ -143,16 +115,6 @@ public class HealthPhaseTurretModule extends PhaseTurretModule {
         ModNetworking.sendTurretShotFx(player, emitterIndex, result.targetPos(), result.beamConfig());
     }
 
-    private static boolean healTarget(LivingEntity target, float amount) {
-        if (target == null || amount <= 0.0F) {
-            return false;
-        }
-
-        float oldHealth = target.getHealth();
-        target.heal(amount);
-        return target.getHealth() > oldHealth;
-    }
-
     private static void playHeal(ServerPlayer player, LivingEntity target) {
         ModSound.playHeal(player, target);
         if (target instanceof ServerPlayer targetPlayer && targetPlayer != player) {
@@ -161,59 +123,10 @@ public class HealthPhaseTurretModule extends PhaseTurretModule {
     }
 
     private static float getSelfHeal(ItemStack moduleStack) {
-        return getModuleLevel(moduleStack) * SELF_HEAL_PER_LEVEL;
+        return HealthTurretHelper.getSelfHeal(moduleStack, SELF_HEAL_PER_LEVEL);
     }
 
     private static float getFriendHeal(ItemStack moduleStack) {
-        return FRIEND_HEAL + getModuleLevel(moduleStack) * FRIEND_HEAL_PER_LEVEL;
-    }
-
-    private static int getModuleLevel(ItemStack moduleStack) {
-        ModuleData data = moduleStack.get(ModDataComponents.MODULE_DATA.get());
-        if (data == null) {
-            return BASE_MODULE_LEVEL;
-        }
-
-        return Math.max(BASE_MODULE_LEVEL, data.level());
-    }
-
-    private static int getBeamCore(int level, boolean right) {
-        if (right) {
-            return switch (level) {
-                case 2 -> RIGHT_BEAM_LEVEL_2_CORE;
-                case 3 -> RIGHT_BEAM_LEVEL_3_CORE;
-                case 4 -> RIGHT_BEAM_LEVEL_4_CORE;
-                case 5 -> RIGHT_BEAM_LEVEL_5_CORE;
-                default -> level >= 6 ? RIGHT_BEAM_VOID_CORE : RIGHT_BEAM_CORE;
-            };
-        }
-
-        return switch (level) {
-            case 2 -> LEFT_BEAM_LEVEL_2_CORE;
-            case 3 -> LEFT_BEAM_LEVEL_3_CORE;
-            case 4 -> LEFT_BEAM_LEVEL_4_CORE;
-            case 5 -> LEFT_BEAM_LEVEL_5_CORE;
-            default -> level >= 6 ? LEFT_BEAM_VOID_CORE : LEFT_BEAM_CORE;
-        };
-    }
-
-    private static int getBeamGlow(int level, boolean right) {
-        if (right) {
-            return switch (level) {
-                case 2 -> RIGHT_BEAM_LEVEL_2_GLOW;
-                case 3 -> RIGHT_BEAM_LEVEL_3_GLOW;
-                case 4 -> RIGHT_BEAM_LEVEL_4_GLOW;
-                case 5 -> RIGHT_BEAM_LEVEL_5_GLOW;
-                default -> level >= 6 ? RIGHT_BEAM_VOID_GLOW : RIGHT_BEAM_GLOW;
-            };
-        }
-
-        return switch (level) {
-            case 2 -> LEFT_BEAM_LEVEL_2_GLOW;
-            case 3 -> LEFT_BEAM_LEVEL_3_GLOW;
-            case 4 -> LEFT_BEAM_LEVEL_4_GLOW;
-            case 5 -> LEFT_BEAM_LEVEL_5_GLOW;
-            default -> level >= 6 ? LEFT_BEAM_VOID_GLOW : LEFT_BEAM_GLOW;
-        };
+        return HealthTurretHelper.getFriendHeal(moduleStack, FRIEND_HEAL, FRIEND_HEAL_PER_LEVEL);
     }
 }

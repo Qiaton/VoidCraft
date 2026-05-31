@@ -1,8 +1,8 @@
 package com.example.voidcraft.Custom.Clock.ModuleSkill;
 
 import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
-import com.example.voidcraft.Custom.Clock.VoidClock;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.HealthVoidModule;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.ModAttachments;
 import net.minecraft.core.NonNullList;
@@ -53,15 +53,15 @@ public class HealthVoidModuleClock {
             }
 
             if (moduleStack.getItem() instanceof HealthVoidModule) {
-                HealthVoidModule.Stats stats = HealthVoidModule.getStats(moduleStack);
+                VoidModule.Stats stats = HealthVoidModule.getStats(moduleStack);
 
                 if (stats == null) {
                     continue;
                 }
 
                 player.setData(ModAttachments.VOID_SPEED.get(), stats.voidSpeed());
-                VoidClock.setPhaseTicks(player, 2);
-                player.heal(stats.burstHealAmount());
+                VoidModule.setFormTicks(player, moduleStack, 2);
+                player.heal(HealthVoidModule.getHealAmount(moduleStack));
                 return;
             }
         }

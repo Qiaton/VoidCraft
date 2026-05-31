@@ -40,6 +40,14 @@ public class ModDataComponents {
             "coordinate_designator_data",
             builder -> builder.persistent(CoordinateDesignatorData.CODEC)
     );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<Integer>> PHASE_TURRET_FORM = DATA_COMPONENTS.registerComponentType(
+            "phase_turret_form",
+            builder -> builder.persistent(Codec.INT)
+    );
+    public static final DeferredHolder<DataComponentType<?>,DataComponentType<Integer>> VOID_MODULE_FORM = DATA_COMPONENTS.registerComponentType(
+            "void_module_form",
+            builder -> builder.persistent(Codec.INT)
+    );
     public static final DeferredHolder<DataComponentType<?>,DataComponentType<Integer>> VOID_CRYSTAL_PROGRESS = DATA_COMPONENTS.registerComponentType(
             "void_crystal_progress",
             // 结晶自己的发电进度存在物品栈上，机器只负责读取和推进。

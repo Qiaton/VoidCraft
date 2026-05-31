@@ -101,9 +101,7 @@ public class TeleportVoidModuleClock {
         }
 
         removeDeploy(player, slot);
-        if (cooldownReady) {
-            ModuleSkillClock.setCooldown(player, slot, data.stats.burstCooldownTicks());
-        }
+        ModuleSkillClock.startRunCooldown(player, slot, data.stats.gateTicks(), data.stats.burstCooldownTicks());
         addGates(data, getViewYaw(player));
         addTouchCooldown(player);
         ModSound.playTeleportDeployEnd(level, player);

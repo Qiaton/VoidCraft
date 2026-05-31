@@ -26,15 +26,10 @@ public class Clock {
        return clock.uuid;
     }
     public static void  removeClock(UUID uuid){
-        try{
-        CLOCKS.forEach(clock -> {
-            if(clock.uuid.equals(uuid)){
-                CLOCKS.remove(clock);
-            }
-        });
-        }catch(Exception e) {
-            throw new RuntimeException("清除定时任务出错"+e.getMessage());
+        if(uuid == null){
+            return;
         }
+        CLOCKS.removeIf(clock -> clock.uuid.equals(uuid));
     }
     private boolean tick() {
         tickLeft--;

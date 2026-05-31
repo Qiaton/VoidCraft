@@ -62,6 +62,30 @@ public class ModuleItem extends Item {
         return modifierData.type().getDisplayName();
     }
 
+    public static boolean canTurnForm(ItemStack stack) {
+        return stack.getItem() instanceof ModuleItem module && module.canTurnForm();
+    }
+
+    protected boolean canTurnForm() {
+        return false;
+    }
+
+    public static void turnForm(ItemStack stack) {
+        if (!(stack.getItem() instanceof ModuleItem module)) {
+            return;
+        }
+
+        if (!module.canTurnForm()) {
+            return;
+        }
+
+        module.doTurnForm(stack);
+    }
+
+    protected void doTurnForm(ItemStack stack) {
+
+    }
+
     public void useSkill(ServerPlayer player, ItemStack watchStack, ItemStack moduleStack, int slot) {
         if(watchStack.isEmpty()) return;
         if(player == null) return;

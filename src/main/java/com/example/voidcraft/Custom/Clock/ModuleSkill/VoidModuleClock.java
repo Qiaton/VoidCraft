@@ -1,7 +1,6 @@
 package com.example.voidcraft.Custom.Clock.ModuleSkill;
 
 import com.example.voidcraft.Custom.Clock.ModuleSkillClock;
-import com.example.voidcraft.Custom.Clock.VoidClock;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.VoidModule;
 import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.ModAttachments;
@@ -60,7 +59,7 @@ public class VoidModuleClock {
                 }
 
                 player.setData(ModAttachments.VOID_SPEED.get(), stats.voidSpeed());
-                VoidClock.setPhaseTicks(player, 2);
+                VoidModule.setFormTicks(player, moduleStack, 2);
                 return;
             }
         }

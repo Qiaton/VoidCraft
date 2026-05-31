@@ -170,9 +170,7 @@ public class BlackHoleModule extends ModuleItem {
                 getCoreDamageType()
         );
 
-        if (cooldownReady) {
-            ModuleSkillClock.setCooldown(player, slot, stats.burstCooldownTicks());
-        }
+        ModuleSkillClock.startRunCooldown(player, slot, stats.durationTicks(), stats.burstCooldownTicks());
     }
 
     private static boolean canUseTarget(ServerPlayer player, Vec3 target, Stats stats) {

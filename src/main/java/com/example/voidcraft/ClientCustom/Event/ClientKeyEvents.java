@@ -6,19 +6,25 @@ import com.example.voidcraft.ClientCustom.Void.VoidInOutEffectClient;
 import com.example.voidcraft.Custom.ModuleSlotHelper;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
 import com.example.voidcraft.Item.custom.ModuleItem.ModuleType.TeleportVoidModule;
+import com.example.voidcraft.Item.custom.PhaseWatch;
 import com.example.voidcraft.VoidCraft;
 import com.example.voidcraft.Network.CancelTeleportModulePayload;
+import com.example.voidcraft.Network.OpenPhaseWatchPayload;
+import com.example.voidcraft.Network.SwitchModuleFormPayload;
 import com.example.voidcraft.Network.UseWatchModulePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import static com.example.voidcraft.ClientCustom.ModuleInputMode.getInputTypeFromSlot;
@@ -44,6 +50,7 @@ public final class ClientKeyEvents {
         }
 
         handleHoldReleaseCancel(mc);
+        handleOpenPhaseWatchKey(mc);
         boolean slot0Usable = isSkillSlotUsable(mc, 0);
         boolean slot0Claimed = handleSkillKey(mc, 0, ModKeyMappings.SKILL_KEY_1, slot0Usable);
         if (slot0Usable
@@ -69,7 +76,16 @@ public final class ClientKeyEvents {
             return;
         }
 
-        // 如果当前确实取消了蓄力，就把这次同键位输入吃掉，避免 Q 同时触发丢弃或其他绑定。
+        if (ModKeyMappings.OPEN_PHASE_WATCH_KEY.matches(event.getKeyEvent()) && openHoveredPhaseWatch(mc)) {
+            suppressMatchingKeyMappings(mc, event);
+            return;
+        }
+
+        if (ModKeyMappings.SWITCH_MODULE_FORM_KEY.matches(event.getKeyEvent()) && switchHoveredModuleForm(mc)) {
+            suppressMatchingKeyMappings(mc, event);
+            return;
+        }
+
         if (ModKeyMappings.CANCEL_HOLD_RELEASE_KEY.matches(event.getKeyEvent()) && cancelHoldRelease(mc)) {
             suppressMatchingKeyMappings(mc, event);
             return;
@@ -79,6 +95,100 @@ public final class ClientKeyEvents {
         if (skillSlot >= 0) {
             suppressMatchingKeyMappings(mc, event, getSkillKey(skillSlot));
         }
+    }
+
+    @SubscribeEvent
+    public static void onScreenKey(ScreenEvent.KeyPressed.Pre event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            return;
+        }
+
+        if (!ModKeyMappings.OPEN_PHASE_WATCH_KEY.matches(event.getKeyEvent())) {
+            return;
+        }
+
+        if (openHoveredPhaseWatch(mc)) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onScreenFormKey(ScreenEvent.KeyPressed.Pre event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            return;
+        }
+
+        if (!ModKeyMappings.SWITCH_MODULE_FORM_KEY.matches(event.getKeyEvent())) {
+            return;
+        }
+
+        if (switchHoveredModuleForm(mc)) {
+            event.setCanceled(true);
+        }
+    }
+
+    private static void handleOpenPhaseWatchKey(Minecraft mc) {
+        if (mc.screen != null) {
+            return;
+        }
+
+        boolean clicked = false;
+        while (ModKeyMappings.OPEN_PHASE_WATCH_KEY.consumeClick()) {
+            if (hasHeldPhaseWatch(mc)) {
+                ClientPacketDistributor.sendToServer(new OpenPhaseWatchPayload(OpenPhaseWatchPayload.HAND_SLOT));
+                clicked = true;
+            }
+        }
+
+        if (clicked) {
+            suppressConflictingKeyMappings(mc, ModKeyMappings.OPEN_PHASE_WATCH_KEY);
+        }
+    }
+
+    private static boolean openHoveredPhaseWatch(Minecraft mc) {
+        if (!(mc.screen instanceof AbstractContainerScreen<?> screen)) {
+            return false;
+        }
+
+        Slot slot = screen.getSlotUnderMouse();
+        if (slot == null || !slot.hasItem()) {
+            return false;
+        }
+
+        if (!(slot.getItem().getItem() instanceof PhaseWatch)) {
+            return false;
+        }
+
+        ClientPacketDistributor.sendToServer(new OpenPhaseWatchPayload(slot.index));
+        return true;
+    }
+
+    private static boolean switchHoveredModuleForm(Minecraft mc) {
+        if (!(mc.screen instanceof AbstractContainerScreen<?> screen)) {
+            return false;
+        }
+
+        Slot slot = screen.getSlotUnderMouse();
+        if (slot == null || !slot.hasItem()) {
+            return false;
+        }
+
+        if (!ModuleItem.canTurnForm(slot.getItem())) {
+            return false;
+        }
+
+        ClientPacketDistributor.sendToServer(new SwitchModuleFormPayload(slot.index));
+        return true;
+    }
+
+    private static boolean hasHeldPhaseWatch(Minecraft mc) {
+        if (mc.player == null) {
+            return false;
+        }
+        return mc.player.getMainHandItem().getItem() instanceof PhaseWatch
+                || mc.player.getOffhandItem().getItem() instanceof PhaseWatch;
     }
 
     private static void handleHoldReleaseCancel(Minecraft mc) {

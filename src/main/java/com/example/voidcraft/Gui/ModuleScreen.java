@@ -1,6 +1,11 @@
 package com.example.voidcraft.Gui;
 
+import com.example.voidcraft.ClientCustom.Key.ModKeyMappings;
+import com.example.voidcraft.Item.custom.ModuleItem.ModuleItem;
+import com.example.voidcraft.Network.ModNetworking;
+import com.example.voidcraft.Network.SwitchModuleFormPayload;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -46,6 +51,34 @@ public class ModuleScreen extends AbstractContainerScreen<ModuleMenu> {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (ModKeyMappings.OPEN_PHASE_WATCH_KEY.matches(event)) {
+            if (turnHoveredModuleForm()) {
+                return true;
+            }
+
+            this.onClose();
+            return true;
+        }
+
+        return super.keyPressed(event);
+    }
+
+    private boolean turnHoveredModuleForm() {
+        Slot slot = this.getSlotUnderMouse();
+        if (slot == null || !slot.hasItem()) {
+            return false;
+        }
+
+        if (!ModuleItem.canTurnForm(slot.getItem())) {
+            return false;
+        }
+
+        ModNetworking.sendToServer(new SwitchModuleFormPayload(slot.index));
+        return true;
     }
 
     private void renderSlotBackgrounds(GuiGraphics guiGraphics) {
