@@ -12,6 +12,7 @@ public class HealthAssistPhaseTurretModule extends AssistPhaseTurretModule {
     private static final float SELF_HEAL_PER_LEVEL = 0.10F;
     private static final float FRIEND_HEAL = 0.20F;
     private static final float FRIEND_HEAL_PER_LEVEL = 0.15F;
+    private static final float HEAL_SCALE = 0.25F;
     private static final long CHANNEL_ENERGY_ADD = 2L;
     private static final long BURST_ENERGY_ADD = 80L;
     private static final double FRIEND_RANGE = 4.0D;
@@ -58,12 +59,16 @@ public class HealthAssistPhaseTurretModule extends AssistPhaseTurretModule {
     @Override
     protected boolean hitTarget(ServerPlayer player, ItemStack moduleStack, Stats stats, LivingEntity target, float damage) {
         if (isHealTarget(player, target)) {
-            return healTarget(target, damage * getFriendHeal(moduleStack));
+            float healAmount = damage * getFriendHeal(moduleStack) * HEAL_SCALE;
+            if (target == player) {
+                healAmount *= HEAL_SCALE;
+            }
+            return healTarget(target, healAmount);
         }
 
         boolean hurt = super.hitTarget(player, moduleStack, stats, target, damage);
         if (hurt) {
-            player.heal(damage * getSelfHeal(moduleStack));
+            player.heal(damage * getSelfHeal(moduleStack) * HEAL_SCALE);
         }
         return hurt;
     }
