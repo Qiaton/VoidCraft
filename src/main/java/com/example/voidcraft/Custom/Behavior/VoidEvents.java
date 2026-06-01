@@ -2,6 +2,7 @@ package com.example.voidcraft.Custom.Behavior;
 
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.VoidCraft;
+import com.example.voidcraft.World.PhasePlayerStateHandler;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -268,6 +269,13 @@ public class VoidEvents {
         }
     }
 
+    public static void restoreVoidState(LivingEntity entity) {
+        restoreVoidPhysics(entity);
+        if(entity instanceof ServerPlayer player){
+            restoreVoidFly(player);
+        }
+    }
+
     private static void setVoidPhysics(LivingEntity entity) {
         VOID_PHYSICS_SNAPSHOTS.computeIfAbsent(entity.getUUID(), ignored -> PhysicsSnapshot.capture(entity));
 
@@ -280,6 +288,12 @@ public class VoidEvents {
     private static void restoreVoidPhysics(LivingEntity entity) {
         PhysicsSnapshot snapshot = VOID_PHYSICS_SNAPSHOTS.remove(entity.getUUID());
         if(snapshot == null){
+            return;
+        }
+
+        if(entity instanceof Player player && !PhasePlayerStateHandler.canPhaseThrough(player)){
+            entity.noPhysics = player.isSpectator();
+            entity.setNoGravity(false);
             return;
         }
 

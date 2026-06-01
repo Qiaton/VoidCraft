@@ -11,6 +11,7 @@
     "VoidPlayer"
   ],
   "client": [
+    "PhaseNightVisionMixin",
     "PhaseProjectionRenderSectionRegionMixin",
     "PhaseProjectionSectionOcclusionMixin",
     "PhaseProjectionSectionCompilerMixin",

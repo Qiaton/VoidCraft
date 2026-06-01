@@ -65,7 +65,7 @@ public class PhaseTurretModule extends ModuleItem {
     private static final int BASE_MODULE_LEVEL = 1;
     private static final int BASE_EMITTER_COUNT = 1;
     private static final float SHOT_DAMAGE = 1.5F;
-    private static final float SHOT_DAMAGE_PER_LEVEL = 1.0F;
+    private static final float SHOT_DAMAGE_PER_LEVEL = 0.7F;
     private static final int FIRE_INTERVAL_TICKS = 5;
     private static final long CHANNEL_ENERGY_COST = 10L;
     private static final long BURST_COOLDOWN_TICKS = 45*20L;

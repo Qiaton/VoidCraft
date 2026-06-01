@@ -68,6 +68,29 @@ vec3 applyFullScreenPhase(vec3 baseColor) {
     return clamp(phase * 2.0, 0.0, 1.0);
 }
 
+vec3 applyPhasePreLight(vec3 baseColor, float strength) {
+    float gray = luma(baseColor);
+    float shadow = 1.0 - smoothstep(0.10, 0.60, gray);
+    vec3 lightColor = baseColor + vec3(0.030, 0.038, 0.050);
+
+    lightColor = mix(lightColor, sqrt(clamp(lightColor, 0.0, 1.0)), shadow * 0.18);
+    return mix(baseColor, clamp(lightColor, 0.0, 1.0), strength);
+}
+
+vec3 applyPhaseContrast(vec3 baseColor, float strength) {
+    float gray = luma(baseColor);
+    vec3 contrastColor = (baseColor - vec3(0.46)) * 1.20 + vec3(0.46);
+    float shadow = 1.0 - smoothstep(0.10, 0.48, gray);
+    float light = smoothstep(0.38, 0.84, gray);
+    float highLight = smoothstep(0.66, 1.0, gray);
+
+    contrastColor *= 1.0 - shadow * 0.30;
+    contrastColor = mix(contrastColor, contrastColor * vec3(0.94, 0.98, 1.06), shadow * 0.16);
+    contrastColor += (vec3(1.0) - contrastColor) * (light * 0.26 + highLight * 0.24) * vec3(0.88, 0.98, 1.12);
+    contrastColor += vec3(0.018, 0.028, 0.044) * light;
+    return mix(baseColor, clamp(contrastColor, 0.0, 1.0), strength);
+}
+
 void accumulateBlackHoleEffect(
     vec2 normalized,
     float maskAlpha,
@@ -531,7 +554,9 @@ void main() {
     color = mix(color, texture(InSampler, texCoord).rgb, voidInOutEllipseMask(voidInOutMaskProgress, 0.18) * step(0.5, voidInOutActive));
 
     if (fullScreenPhaseStrength > 0.001) {
+        color = applyPhasePreLight(color, fullScreenPhaseStrength);
         color = mix(color, applyFullScreenPhase(color), 0.84 * fullScreenPhaseStrength);
+        color = applyPhaseContrast(color, fullScreenPhaseStrength);
     }
 
     color = mix(color, color * vec3(0.024, 0.028, 0.060), clamp(blackHoleShadow, 0.0, 1.0));

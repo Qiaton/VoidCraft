@@ -1,5 +1,6 @@
 package com.example.voidcraft.Custom.Clock;
 
+import com.example.voidcraft.Custom.Behavior.VoidEvents;
 import com.example.voidcraft.Effect.VoidRingInstance;
 import com.example.voidcraft.ModAttachments;
 import com.example.voidcraft.Sound.ModSound;
@@ -69,6 +70,7 @@ public class VoidClock {
         if (ticks == null) {
             if (entity.getData(ModAttachments.IN_VOID.get())) {
                 entity.setData(ModAttachments.IN_VOID.get(), false);
+                VoidEvents.restoreVoidState(entity);
             }
             return false;
         }
@@ -86,6 +88,7 @@ public class VoidClock {
             VOID_TICKS.remove(uuid);//删除数据表 优化性能
             if (entity.getData(ModAttachments.IN_VOID.get())) {
                 entity.setData(ModAttachments.IN_VOID.get(), false);//计时结束时退出虚空状态
+                VoidEvents.restoreVoidState(entity);
             }
             return false;
         }
@@ -188,6 +191,7 @@ public class VoidClock {
         ModNetworking.sendPhaseTear(entity, VoidRingInstance.Preset.DEFAULT);
         VOID_TICKS.remove(entity.getUUID());
         entity.setData(ModAttachments.IN_VOID.get(), false);
+        VoidEvents.restoreVoidState(entity);
         if (PHASE_TICKS.getOrDefault(entity.getUUID(), 0) <= 0) {
             entity.setData(ModAttachments.IN_PHASE.get(), false);
         }

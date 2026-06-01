@@ -17,7 +17,7 @@
 - Minecraft / NeoForge：`1.21.11` / `21.11.42`
 - Java：21
 - mod id：`void_craft`
-- mod version：`1.0.2`
+- mod version：`1.0.4`
 - 主入口：`src/main/java/com/example/voidcraft/VoidCraft.java`
 - 客户端入口：`src/main/java/com/example/voidcraft/VoidCraftClient.java`
 - 网络入口：`src/main/java/com/example/voidcraft/Network/ModNetworking.java`，当前 `NETWORK_VERSION = "37"`
