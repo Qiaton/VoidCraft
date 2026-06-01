@@ -42,7 +42,7 @@ public class ChunkMapperBlockEntity extends BlockEntity implements VoidEnergyTra
             1
     );
     private static final int[] RADIUS_BY_TIER = {0, 1, 2, 3};
-    private static final long[] ENERGY_COST_BY_TIER = {1L, 16L, 32L, 128L};
+    private static final long[] ENERGY_COST_BY_TIER = {1L, 4L, 16L, 32L};
 
     private int tier;
     private long voidEnergy;

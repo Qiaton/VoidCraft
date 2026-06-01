@@ -25,8 +25,8 @@ import java.util.List;
 
 public class BatteryBlockEntity extends BlockEntity implements VoidEnergyTransferBlockEntity {
     // 电池既能收也能发，是虚空能网络里的中转缓存。
-    public static final long CAPACITY = 40_000L;
-    public static final long DEFAULT_ENERGY = 40_000L;
+    public static final long CAPACITY = 500_000L;
+    public static final long DEFAULT_ENERGY = 500_000L;
     public static final long MAX_INSERT = VoidEnergyProfile.DEFAULT_MAX_INPUT_PER_TRANSFER;
     public static final int MAX_INPUT_BINDINGS = 8;
     public static final int MAX_OUTPUT_BINDINGS = 8;

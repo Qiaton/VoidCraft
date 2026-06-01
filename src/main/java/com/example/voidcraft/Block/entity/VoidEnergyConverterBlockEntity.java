@@ -47,8 +47,8 @@ public class VoidEnergyConverterBlockEntity extends BlockEntity implements MenuP
     public static final int MAX_OUTPUT_BINDINGS = 8;
     public static final int MAX_FE_INPUT_PER_TICK = 1_000;
     public static final int MAX_FE_OUTPUT_PER_TICK = 1_000;
-    public static final double FE_TO_VOID_RATE = 0.3D;
-    public static final double VOID_TO_FE_RATE = 2.D;
+    public static final double FE_TO_VOID_RATE = 0.25D;
+    public static final double VOID_TO_FE_RATE = 4.D;
     public static final int DATA_COUNT = 7;
 
     private static final int DATA_ENERGY_STORED = 0;

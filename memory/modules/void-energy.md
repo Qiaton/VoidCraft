@@ -1,6 +1,6 @@
 # Void energy memory
 
-更新时间：2026-05-29。
+更新时间：2026-06-01。
 
 ## 代码位置
 
@@ -21,11 +21,11 @@
 
 ## 机器
 
-- `BatteryBlockEntity`：双向缓存，容量 40000，默认满电，按 0-9 档刷新模型。
+- `BatteryBlockEntity`：双向缓存，容量 500000，默认满电，按 0-9 档刷新模型。
 - `VoidPhenomenonCollectorBlockEntity`：只输出虚空能，档位决定产能、缓存和结晶槽数。I 为 1/t、50000、1 槽；II 为 2/t、70000、3 槽；III 为 3/t、150000、6 槽；IV / `void_attuner` 为 5/t、500000、9 槽。
 - `VoidChargerBlockEntity`：只输入虚空能，用能量修复 `EnergyCoreItem`。低级 1 槽/5000/每 tick 修 1；中级 3 槽/50000/每 tick 修 1；高级 9 槽/200000/每 tick 修 10；每点修复消耗 20 虚空能。
-- `ChunkMapperBlockEntity`：只输入虚空能，档位半径 `{0,1,2,3}`，每 tick 耗能 `{1,16,32,128}`，缓存 10000，只允许 1 个输入绑定。
-- `VoidEnergyConverterBlockEntity`：双向虚空能缓存 10000，FE 每 tick 输入/输出上限各 1000，FE 转虚空能倍率 0.3，虚空能转 FE 倍率 2.0。
+- `ChunkMapperBlockEntity`：只输入虚空能，档位半径 `{0,1,2,3}`，每 tick 耗能 `{1,4,16,32}`，缓存 10000，只允许 1 个输入绑定。
+- `VoidEnergyConverterBlockEntity`：双向虚空能缓存 10000，FE 每 tick 输入/输出上限各 1000，转换比例为 1 虚空能 : 4 FE（FE 转虚空能倍率 0.25，虚空能转 FE 倍率 4.0）。
 - `VoidEnergyConverterBlockEntity` 每服务端 tick 会主动处理相邻 FE 方块；`INPUT` 面抽 FE，`OUTPUT` 面推 FE。
 - 转换方块切面模式时使用 `Block.UPDATE_ALL`、`level.invalidateCapabilities(pos)` 和 `updateNeighborsAt(...)`，让管道/机器重新扫描 capability。
 
