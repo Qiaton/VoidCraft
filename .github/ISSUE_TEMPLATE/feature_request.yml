@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a gameplay, compatibility, or documentation improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement for VoidCraft. Please focus on the player-facing goal.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should the feature let players or pack makers do?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why does this fit VoidCraft or improve the current experience?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe the intended behavior as concretely as possible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other designs, workarounds, or existing mods/features you considered.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, examples, balance notes, or references.

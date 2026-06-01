@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a crash, broken behavior, or compatibility problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a VoidCraft issue. Please include enough detail for the problem to be reproduced.
+  - type: input
+    id: voidcraft-version
+    attributes:
+      label: VoidCraft version
+      description: The VoidCraft version shown in the mod list or jar name.
+      placeholder: "1.0.4"
+    validations:
+      required: true
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft version
+      placeholder: "1.21.11"
+    validations:
+      required: true
+  - type: input
+    id: neoforge-version
+    attributes:
+      label: NeoForge version
+      placeholder: "21.11.42"
+    validations:
+      required: true
+  - type: textarea
+    id: other-mods
+    attributes:
+      label: Other installed mods
+      description: List other mods, or write "VoidCraft only" if no other mods are installed.
+      placeholder: |
+        - JEI ...
+        - Sodium ...
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Write the smallest set of steps that reproduces the issue.
+      placeholder: |
+        1. Place ...
+        2. Use ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or crash report
+      description: Paste the relevant latest.log or crash report, or attach it to the issue.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, videos, world details, or anything else that helps.

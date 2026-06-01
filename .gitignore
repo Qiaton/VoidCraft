@@ -60,3 +60,7 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Local Export Artifacts ###
+mcmod-bulk/
+voidcraft_mcmod_bulk.zip
